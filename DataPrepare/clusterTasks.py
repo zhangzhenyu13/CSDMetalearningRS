@@ -18,6 +18,7 @@ import time
 from scipy import sparse
 import json
 import pickle
+import copy
 import gc
 gc.collect()
 ##############################################################################
@@ -85,11 +86,13 @@ class Vectorizer:
                 X[row,col]=1
             row+=1
         return X.toarray()
+
 class LDAFlow(Vectorizer):
     def __init__(self):
         self.n_features=200
 
-    def cleanDocs(self,docs):
+    def cleanDocs(self,docs_o):
+        docs=copy.deepcopy(docs_o)
         stop = set(stopwords.words('english'))
         exclude = set(string.punctuation)
         lemma = WordNetLemmatizer()
@@ -119,13 +122,27 @@ class LDAFlow(Vectorizer):
     def train_doctopics(self,docs):
         #print(np.shape(docs),docs[0])
         t0 = time.time()
-        print("performing LDA ")
+
         docs = self.cleanDocs(docs)
-        print("docs cleaning finished")
+
+        print("performing LDA ")
         self.dictionary = corpora.Dictionary(docs)
         doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in docs]
         self.lda = gensim.models.LdaModel(doc_term_matrix, num_topics=self.n_features, id2word=self.dictionary)
         print("LDA built in %fs" % (time.time() - t0))
+        with open("../data/ldamodel.pkl","wb") as f:
+            model={}
+            model["n_features"]=self.n_features
+            model["dict"]=self.dictionary
+            model["lda"]=self.lda
+            pickle.dump(model,f)
+    def loadModel(self):
+        print("loading lda model")
+        with open("../data/ldamodel.pkl","rb") as f:
+            model=pickle.load(f)
+            self.n_features=model["n_features"]
+            self.dictionary=model["dict"]
+            self.lda=model["lda"]
 
 #######################################################################################################################
 def hashingIDF(n_features):
@@ -168,6 +185,17 @@ class LSAFlow(Vectorizer):
             int(explained_variance * 100)))
 
         print("LSA built in %fs" % (time.time() - t0))
+        with open("../data/lsamodel.pkl","wb") as f:
+            model={}
+            model["n_features"]=self.n_features
+            model["lsa"]=self.lsa
+            pickle.dump(model,f)
+
+    def lodaModel(self):
+        with open("../data/lsamodel.pkl","rb") as f:
+            model=pickle.load(f)
+            self.n_features=model["n_features"]
+            self.lsa=model["lsa"]
 
 #######################################################################################################################
 
@@ -230,21 +258,18 @@ def testResults():
     choice=eval(input("1:LDA; 2:LSA \t"))
     if choice==1:
         lda=LDAFlow()
-        lda.loadData()
-        lda.train_doctopics(lda.docs)
-        lda.loadData()
-        X=lda.transformVec(lda.docs)
 
         model=lda
     else:
         choice=2
         lsa=LSAFlow()
-        lsa.loadData()
-        lsa.train_doctopics(lsa.docs)
-        X=lsa.transformVec(lsa.docs)
 
         model=lsa
-
+    #load model
+    model.loadData()
+    model.loadModel()
+    model.train_doctopics(model.docs)
+    model.transformVec(model.docs)
     taskid=model.ids
     X = concatenateTasks(model, X)
     print("vec representation of tasks")
@@ -256,6 +281,7 @@ def testResults():
 
     n_clusters=30
     taskClusters=None
+    km=None
     while n_clusters>0:
         km=KM_cluster(X,n_clusters,minibatch=True)
         print("n_samples: %d, n_features: %d" % X.shape)
@@ -279,8 +305,12 @@ def testResults():
 
     #saving result
     print("saving clustering result")
-    with open("clusters" + str(choice) + ".json", "w") as f:
+    with open("../data/clusterResult/clusters" + str(choice) + ".json", "w") as f:
         json.dump(taskClusters, f, ensure_ascii=False)
         f.write("\n")
+    print("saving model kmeans")
+    with open("../data/clusterResult/kmeans.pkl","wb") as f:
+        pickle.dump(km,f)
+
 if __name__ == '__main__':
     testResults()
