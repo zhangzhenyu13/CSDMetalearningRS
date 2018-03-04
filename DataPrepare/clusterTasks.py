@@ -20,6 +20,7 @@ import json
 import pickle
 import copy
 import gc
+import random
 gc.collect()
 warnings.filterwarnings("ignore")
 ##############################################################################
@@ -60,8 +61,8 @@ class Vectorizer:
             self.startdate.append([data[7]])
             self.diffdeg.append([data[8]])
             self.tasktype.append(data[9])
-
-        print("docs num=%d" % len(self.ids))
+        #print(self.ids[:6])
+        print("task num=%d" % len(self.ids))
     def countFeatures(self,data):
         c=set()
         for r in data:
@@ -122,7 +123,7 @@ class LDAFlow(Vectorizer):
             for topic in lda_doc:
                 X[row, topic[0]] = topic[1]
             row += 1
-        return X
+        return X.toarray()
 
     def train_doctopics(self,docs):
         #print(np.shape(docs),docs[0])
@@ -197,6 +198,7 @@ class LSAFlow(Vectorizer):
             pickle.dump(model,f)
 
     def loadModel(self):
+        print("loading lsa model")
         with open("../data/lsamodel.pkl","rb") as f:
             model=pickle.load(f)
             self.n_features=model["n_features"]
@@ -246,9 +248,8 @@ def concatenateTasks(model,X):
     X_prize=scaler(model.prize)
     X_diffdeg=scaler(model.diffdeg)
     X_tasktype=scaler(model.countFeatures(model.tasktype))
-
-    X=np.concatenate((w[0]*X,
-                      w[1]*X_techs),axis=1)
+    #print(X_techs[:3])
+    X=np.concatenate((w[0]*X,w[1]*X_techs),axis=1)
     X=np.concatenate((X,w[2]*X_lans),axis=1)
     X=np.concatenate((X,w[3]*X_startdate),axis=1)
     X=np.concatenate((X,w[4]*X_duration),axis=1)
@@ -257,10 +258,44 @@ def concatenateTasks(model,X):
     X=np.concatenate((X,w[7]*X_tasktype),axis=1)
 
     return X
+def splitData(X,taskid,choice=2,ratio=0.9):
+    print("saving vec representation of tasks(train/test), ratio=%f"%ratio)
 
-def testResults():
-    X=None
-    model=None
+    indices=np.arange(len(X))
+    random.shuffle(indices)
+    trainIndices=indices[:int(ratio*len(X))]
+    trainX={}
+    testX={}
+    for i in range(len(X)):
+        if i in trainIndices:
+            trainX[taskid[i]]=X[i].tolist()
+        else:
+            testX[taskid[i]]=X[i].tolist()
+
+    with open("../data/clusterResult/taskVec_train" + str(choice) + ".json", "w") as f:
+        json.dump(trainX, f)
+    with open("../data/clusterResult/taskVec_test" + str(choice) + ".json", "w") as f:
+        json.dump(testX, f)
+def loadCluster(Train=False,choice=1):
+    if Train:
+        print("loading training data")
+        with open("../data/clusterResult/taskVec_train" + str(choice) + ".json", "r") as f:
+            data = json.load(f)
+    else:
+        print("loading test data")
+        with open("../data/clusterResult/taskVec_test" + str(choice) + ".json", "r") as f:
+            data = json.load(f)
+    taskid=[]
+    X=[]
+    for k in data.keys():
+        X.append(data[k])
+        taskid.append(k)
+
+    print("loaded data size=%d"%len(taskid))
+    return np.array(taskid),np.array(X)
+
+def genResults():
+
     choice=eval(input("1:LDA; 2:LSA \t"))
     if choice==1:
         lda=LDAFlow()
@@ -273,18 +308,15 @@ def testResults():
         model=lsa
     #load model
     model.loadData()
-    #model.loadModel()
-    model.train_doctopics(model.docs)
+    model.loadModel()
+    #model.train_doctopics(model.docs)
     X=model.transformVec(model.docs)
+
     taskid=model.ids
     X = concatenateTasks(model, X)
-    print("saving vec representation of tasks")
-    with open("../data/clusterResult/taskVec"+str(choice)+".json","w") as f:
-        data={}
-        for i in range(len(taskid)):
-            data[taskid[i]]=X[i].tolist()
-        json.dump(data,f)
-
+    splitData(X,taskid,choice,0.9)
+    taskid,X=loadCluster(Train=True,choice=choice)
+    print("training cluster size=%d"%len(X))
     n_clusters=30
     taskClusters=None
     km=None
@@ -306,6 +338,7 @@ def testResults():
         for i in hist:
             print(i)
         plt.plot(hist,marker='o')
+        plt.title("choice=%d"%choice)
         plt.show()
         n_clusters=eval(input("current cluster size is %d    "%n_clusters))
 
@@ -315,8 +348,8 @@ def testResults():
         json.dump(taskClusters, f, ensure_ascii=False)
         f.write("\n")
     print("saving model kmeans")
-    with open("../data/clusterResult/kmeans.pkl","wb") as f:
+    with open("../data/clusterResult/kmeans"+str(choice)+".pkl","wb") as f:
         pickle.dump(km,f)
 
 if __name__ == '__main__':
-    testResults()
+    genResults()

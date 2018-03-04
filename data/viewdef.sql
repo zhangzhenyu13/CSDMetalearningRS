@@ -18,7 +18,7 @@ create view submission(taskid,handle,subnum,score) as
 select challengeID,handle,count(*),max(finalScore) from challenge_submission group by challengeID,handle;
 
 
-
+select diffdeg from task;
 select * from users;
 select * from task ;
 select * from registration;
