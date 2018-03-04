@@ -2,3 +2,4 @@
 data/clusterResult
 data/graphs
 *.pyc
+data/*.pkl

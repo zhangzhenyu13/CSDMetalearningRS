@@ -21,6 +21,7 @@ import pickle
 import copy
 import gc
 gc.collect()
+warnings.filterwarnings("ignore")
 ##############################################################################
 
 class Vectorizer:
@@ -40,7 +41,7 @@ class Vectorizer:
         self.diffdeg=[]
         self.tasktype=[]
         for data in dataset:
-            print(data)
+            #print(data)
             self.ids.append(data[0])
 
             if data[1] is None:
@@ -65,7 +66,7 @@ class Vectorizer:
         c=set()
         for r in data:
             if r is None:
-                r=''
+                continue
             xs=r.split(",")
             for x in xs:
                 c.add(x)
@@ -78,13 +79,17 @@ class Vectorizer:
         X = sparse.dok_matrix((len(data), count))
         row=0
         for r in data:
+
             if r is None:
-                r=''
+                row+=1
+                continue
+
             xs=r.split(",")
             for x in xs:
                 col=i_c[x]
                 X[row,col]=1
             row+=1
+
         return X.toarray()
 
 class LDAFlow(Vectorizer):
@@ -191,7 +196,7 @@ class LSAFlow(Vectorizer):
             model["lsa"]=self.lsa
             pickle.dump(model,f)
 
-    def lodaModel(self):
+    def loadModel(self):
         with open("../data/lsamodel.pkl","rb") as f:
             model=pickle.load(f)
             self.n_features=model["n_features"]
@@ -242,7 +247,8 @@ def concatenateTasks(model,X):
     X_diffdeg=scaler(model.diffdeg)
     X_tasktype=scaler(model.countFeatures(model.tasktype))
 
-    X=np.concatenate((w[0]*X,w[1]*X_techs),axis=1)
+    X=np.concatenate((w[0]*X,
+                      w[1]*X_techs),axis=1)
     X=np.concatenate((X,w[2]*X_lans),axis=1)
     X=np.concatenate((X,w[3]*X_startdate),axis=1)
     X=np.concatenate((X,w[4]*X_duration),axis=1)
@@ -267,16 +273,16 @@ def testResults():
         model=lsa
     #load model
     model.loadData()
-    model.loadModel()
+    #model.loadModel()
     model.train_doctopics(model.docs)
-    model.transformVec(model.docs)
+    X=model.transformVec(model.docs)
     taskid=model.ids
     X = concatenateTasks(model, X)
-    print("vec representation of tasks")
-    with open("../data/taskVec"+str(choice)+".json","w") as f:
+    print("saving vec representation of tasks")
+    with open("../data/clusterResult/taskVec"+str(choice)+".json","w") as f:
         data={}
         for i in range(len(taskid)):
-            data[taskid[i]]=X[i]
+            data[taskid[i]]=X[i].tolist()
         json.dump(data,f)
 
     n_clusters=30
@@ -301,7 +307,7 @@ def testResults():
             print(i)
         plt.plot(hist,marker='o')
         plt.show()
-        n_clusters=eval(input("current cluster size is %d"%n_clusters))
+        n_clusters=eval(input("current cluster size is %d    "%n_clusters))
 
     #saving result
     print("saving clustering result")

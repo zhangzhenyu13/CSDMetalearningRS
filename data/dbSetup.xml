@@ -1,5 +1,5 @@
 <config>
-    <host>192.168.7.111</host>
+    <host>127.0.0.1</host>
     <port>3306</port>
     <dbname>topcoder</dbname>
     <user>root</user>
