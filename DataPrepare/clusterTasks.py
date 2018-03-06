@@ -273,9 +273,9 @@ def splitData(X,taskid,choice=2,ratio=0.9):
             testX[taskid[i]]=X[i].tolist()
 
     with open("../data/clusterResult/taskVec_train" + str(choice) + ".json", "w") as f:
-        json.dump(trainX, f)
+        json.dump(trainX, f,ensure_ascii=False)
     with open("../data/clusterResult/taskVec_test" + str(choice) + ".json", "w") as f:
-        json.dump(testX, f)
+        json.dump(testX, f,ensure_ascii=False)
 def loadCluster(Train=False,choice=1):
     if Train:
         print("loading training data")

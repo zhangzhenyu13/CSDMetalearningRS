@@ -4,7 +4,7 @@ from DataPrepare.ConnectDB import *
 from multiprocessing import Condition,Queue,Pipe
 from scipy import sparse
 import time
-
+import gc
 def loadclusters(choice):
     f=open("../data/clusterResult/clusters"+str(choice)+".json")
     clusters=json.load(f)
@@ -58,6 +58,8 @@ class DataURS:
         return users
 
     def getRegTasks(self,user):
+        if len(self.activeReg)==0:
+            return np.array([])
         indices=np.where(self.activeReg[:,0]==user)[0]
         if len(indices)>0:
             tasks=self.activeReg[indices][:,1]
@@ -66,6 +68,8 @@ class DataURS:
         return tasks
 
     def getSubTasks(self,user):
+        if len(self.activeSub)==0:
+            return np.array([])
         indices=np.where(self.activeSub[:,0]==user)[0]
         if len(indices)>0:
             tasks=self.activeSub[indices][:,1:4]
@@ -138,13 +142,13 @@ class UserInteraction(multiprocessing.Process):
             com_b /= len(comtasks)
 
             # total avg submit times
-            sub_a = np.mean(subnumA)
-            sub_b = np.mean(subnumB)
+            sub_a = np.sum(subnumA)/len(regtaskA)
+            sub_b = np.sum(subnumB)/len(regtaskB)
 
             # set entry as outperform degree
             userVec.append((self.index,j,(com_a - sub_a) / sub_a))
             userVec.append((j,self.index,(com_b - sub_b) / sub_b))
-
+            #print("Interaction", a, b,(com_a - sub_a) / sub_a,(com_b - sub_b) / sub_b)
 
         self.queue.put(userVec)
         #print("put vec index %d"%self.index)
@@ -168,7 +172,7 @@ def constructGraph(tasks,dataset):
     #statistics for user competition status
     cond=Condition()
 
-    maxProcess=min(n_users,8)
+    maxProcess=min(n_users,20)
     print("running using %d process(es)"%maxProcess)
     pools_process=[]
     finishedSig=Queue()
@@ -192,7 +196,7 @@ def constructGraph(tasks,dataset):
                 t=pools_process[j]
                 #print("checking index of %d"%t.index)
                 if t.index==index:
-                    print("clearing data of cache queue")
+                    #print("clearing data of cache queue")
                     while queue.empty() == False:
                         entries = queue.get()
                         for data in entries:
@@ -217,19 +221,24 @@ def constructGraph(tasks,dataset):
     return (userMatrix.toarray(),users)
 
 if __name__ == '__main__':
+    choice=eval(input("choice= "))
     print("loading data")
-    clusters=loadclusters(2)
+    clusters=loadclusters(choice)
     dataset=DataURS()
 
     for k in clusters.keys():
+        if eval(k)<10:
+            continue
         print("cluster",k,"graph building")
         cluster=clusters[k]
         #print(cluster)
+        cluster=np.array(cluster,dtype=np.int)
         dataset.setActiveCluster(cluster)
         user_m,users=constructGraph(cluster,dataset)
-        with open("../data/graphs/initG_"+str(k)+".json","w") as f:
+        with open("../data/UserGraph/initGraph/initG_"+str(choice)+"_"+str(k)+".json","w") as f:
             data={}
             data["size"]=len(user_m)
             data["users"]=users
             data["data"]=user_m.tolist()
             json.dump(data,f,ensure_ascii=False)
+        gc.collect()

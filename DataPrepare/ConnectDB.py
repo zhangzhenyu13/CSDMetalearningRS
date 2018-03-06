@@ -1,6 +1,4 @@
-import numpy as np
 import xml.dom.minidom as xmlparser
-from torch.utils import data
 import pymysql
 import warnings
 def ConnectDB():
@@ -25,19 +23,6 @@ def testConnect(cur):
 
     for dr in rows:
         print(dr)
-
-class RecordSet(data.Dataset):
-    def __init__(self,sqlquerry):
-        self.conn=ConnectDB()
-        self.cursor=self.conn.cursor()
-        self.data=np.array(self.cursor.execute(sqlquerry))
-
-    def __getitem__(self, index):
-        record=self.data[index]
-        return record
-
-    def __len__(self):
-        return len(self.data)
 
 
 def main():
