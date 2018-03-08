@@ -240,7 +240,7 @@ def scaler(X):
     return minmax.transform(X)
 def concatenateTasks(model,X):
     #weight of topics,techs,languages,postingdate,duration,prize,diffdeg,tasktype
-    w=[1.0,2.0,1.5,1.0,1.0,3.0,3.0,6.0]
+    w=[1.0,2.0,1.5,4.0,3.0,1.0,4.0,2.0]
     X_techs=scaler(model.countFeatures(model.techs))
     X_lans=scaler(model.countFeatures(model.lan))
     X_startdate=scaler(model.startdate)
@@ -251,26 +251,34 @@ def concatenateTasks(model,X):
     #print(X_techs[:3])
     X=np.concatenate((w[0]*X,w[1]*X_techs),axis=1)
     X=np.concatenate((X,w[2]*X_lans),axis=1)
-    X=np.concatenate((X,w[3]*X_startdate),axis=1)
-    X=np.concatenate((X,w[4]*X_duration),axis=1)
-    X=np.concatenate((X,w[5]*X_prize),axis=1)
-    X=np.concatenate((X,w[6]*X_diffdeg),axis=1)
-    X=np.concatenate((X,w[7]*X_tasktype),axis=1)
-
+    X=np.concatenate((X,w[3]*X_tasktype),axis=1)
+    X = np.concatenate((X, w[4] * X_startdate), axis=1)
+    X = np.concatenate((X, w[5] * X_duration), axis=1)
+    X = np.concatenate((X, w[6] * X_prize), axis=1)
+    X = np.concatenate((X, w[7] * X_diffdeg), axis=1)
     return X
-def splitData(X,taskid,choice=2,ratio=0.9):
-    print("saving vec representation of tasks(train/test), ratio=%f"%ratio)
-
-    indices=np.arange(len(X))
-    random.shuffle(indices)
-    trainIndices=indices[:int(ratio*len(X))]
+def splitData(X,taskid,choice=2,ratio=0.8):
+    print("sorting by order of startdate")
+    import Utility.personalizedSort as ps
+    data=np.concatenate((X,np.reshape(taskid,newshape=(len(taskid),1))),axis=1).tolist()
+    m_s=ps.MySort(data)
+    m_s.compare_vec_index=-5
+    data=m_s.mergeSort()
+    data=np.array(data)
+    taskid=data[:,-1]
+    taskid=np.array(taskid,np.int)
+    taskid=np.array(taskid,np.str)
+    print("saving vec representation of tasks(train/test), ratio=%f" % ratio)
+    #descent order of startdate
+    trainSize=int(ratio*len(X))
+    testSize=len(X)-trainSize
     trainX={}
     testX={}
-    for i in range(len(X)):
-        if i in trainIndices:
-            trainX[taskid[i]]=X[i].tolist()
-        else:
-            testX[taskid[i]]=X[i].tolist()
+    for i in range(trainSize):
+        trainX[taskid[i]]=data[i].tolist()[:-1]
+    for i in range(trainSize,trainSize+testSize):
+        testX[taskid[i]]=data[i].tolist()[:-1]
+
 
     with open("../data/clusterResult/taskVec_train" + str(choice) + ".json", "w") as f:
         json.dump(trainX, f,ensure_ascii=False)
@@ -314,7 +322,7 @@ def genResults():
 
     taskid=model.ids
     X = concatenateTasks(model, X)
-    splitData(X,taskid,choice,0.9)
+    splitData(X,taskid,choice,0.8)
     taskid,X=loadCluster(Train=True,choice=choice)
     print("training cluster size=%d"%len(X))
     n_clusters=30

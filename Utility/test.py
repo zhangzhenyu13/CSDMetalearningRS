@@ -1,13 +1,17 @@
 import json
 import os
 import numpy as np
-
+import gc
 if __name__ == '__main__':
 
     files=os.listdir("../data/UserGraph/initGraph/")
     for file in files:
         with open("../data/UserGraph/initGraph/"+file,"r") as f:
+            data=None
+            X=None
+            gc.collect()
             data=json.load(f)
+
             #print(file,data["size"],data["users"])
             X=np.array(data["data"])
             n=np.sum(X!=0)

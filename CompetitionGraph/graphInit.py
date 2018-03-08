@@ -5,6 +5,7 @@ from multiprocessing import Condition,Queue,Pipe
 from scipy import sparse
 import time
 import gc
+import numpy as np
 def loadclusters(choice):
     f=open("../data/clusterResult/clusters"+str(choice)+".json")
     clusters=json.load(f)
@@ -227,8 +228,6 @@ if __name__ == '__main__':
     dataset=DataURS()
 
     for k in clusters.keys():
-        if eval(k)<10:
-            continue
         print("cluster",k,"graph building")
         cluster=clusters[k]
         #print(cluster)

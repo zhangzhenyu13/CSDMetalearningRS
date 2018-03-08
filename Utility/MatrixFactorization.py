@@ -1,6 +1,6 @@
 import numpy as np
 import json,os,time
-
+from sklearn.decomposition import NMF
 def loadGraph(gfile):
     f = open("../data/UserGraph/initGraph/"+gfile,"r")
     graphFile=json.load(f)
@@ -11,7 +11,7 @@ def loadGraph(gfile):
     resultMatrix = np.array(graphMatrix)
     return resultMatrix,size
 
-def matrix_factorization(R, P, Q, K, steps=50000, alpha=0.0002, beta=0.02):
+def matrix_factorization_demo(R, P, Q, K, steps=50000, alpha=0.0002, beta=0.02):
 
     for step in range(steps):
         t0=time.time()
@@ -35,6 +35,14 @@ def matrix_factorization(R, P, Q, K, steps=50000, alpha=0.0002, beta=0.02):
         if e < 0.001:
             break
     return P, Q
+def matrix_factorization(R,K):
+    M,N=R.shape
+    P=np.random.rand(M,K)
+    Q=np.random.rand(K,N)
+    model=NMF(n_components=2, init='random', random_state=0)
+    model.fit_transform(R)
+    return P,Q
+
 if __name__ == '__main__':
     gfiles=os.listdir("../data/UserGraph/initGraph/")
 
