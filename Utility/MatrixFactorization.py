@@ -11,7 +11,7 @@ def loadGraph(gfile):
     resultMatrix = np.array(graphMatrix)
     return resultMatrix,size
 
-def matrix_factorization_demo(R, P, Q, K, steps=50000, alpha=0.0002, beta=0.02):
+def matrix_factorization_demo(R, P, Q, K, steps=500000, alpha=0.0002, beta=0.02):
 
     for step in range(steps):
         t0=time.time()
@@ -29,7 +29,9 @@ def matrix_factorization_demo(R, P, Q, K, steps=50000, alpha=0.0002, beta=0.02):
             for j in range(n):
                 if R[i,j]!=0:
                     e+=pow(R[i,j]-eR[i,j],2)
-        if (step+1)%1==0:
+                    for k in range(K):
+                        e = e + (beta / 2) * (pow(P[i][k], 2) + pow(Q[k][j], 2))
+        if (step+1)%1000==0:
 
             print("step %d,e=%f, time=%ds"%(step+1,e,time.time()-t0))
         if e < 0.001:
@@ -44,43 +46,25 @@ def matrix_factorization(R,K):
     return P,Q
 
 if __name__ == '__main__':
-    gfiles=os.listdir("../data/UserGraph/initGraph/")
 
-    for gfile in gfiles:
-        t0=time.time()
-        print("fill in",gfile)
-        result_m,size = loadGraph(gfile)
-        K=int(0.6*size)
-        P = np.random.rand(size, K)
-        Q = np.random.rand(K, size)
-        P,Q=matrix_factorization(result_m,P,Q,K)
-        print("finished in %ds"%(time.time()-t0))
-        data={}
-        data["P"]=P
-        data["Q"]=Q
-        with open("../data/UserGraph/mfGraph/mf"+gfile[4:],"w") as f:
-            json.dump(data,f,ensure_ascii=False)
-
-    R = [
-        [5, 3, 0, 1],
-        [4, 0, 0, 1],
-        [1, 1, 0, 5],
-        [1, 0, 0, 4],
-        [0, 1, 5, 4],
-    ]
+    R = [[5, 3, 0, 1,8],
+        [4, 0, 0, 1,0],
+        [1, -1, 0, 5,0],
+        [1, 0, 0, -4,5],
+        [0, 1, -5, 4,1.4]]
 
     R = np.array(R,dtype=np.float32)
     R=-R
 
     N = len(R)
     M = len(R[0])
-    K = 2
+    K = 3
 
     P = np.random.rand(N, K)
-    Q = np.random.rand(M, K)
+    Q = np.random.rand(K,M)
 
-    nP, nQ = matrix_factorization(R, P, Q, K)
-    nR = np.dot(nP, nQ.T)
+    nP, nQ = matrix_factorization_demo(R, P, Q, K)
+    nR = np.dot(nP, nQ)
 
     print(R)
     print(nR)

@@ -4,9 +4,9 @@ import numpy as np
 import gc
 if __name__ == '__main__':
 
-    files=os.listdir("../data/UserGraph/initGraph/")
+    files=os.listdir("../data/UserGraph/fullGraph/")
     for file in files:
-        with open("../data/UserGraph/initGraph/"+file,"r") as f:
+        with open("../data/UserGraph/fullGraph/"+file,"r") as f:
             data=None
             X=None
             gc.collect()
@@ -16,5 +16,6 @@ if __name__ == '__main__':
             X=np.array(data["data"])
             n=np.sum(X!=0)
             p=np.sum(X>0)
-            print(p,n,n/X.size,np.min(X))
+            print(file,data["n_users"])
+            print(p,n,n/X.size,np.min(X),np.max(X),np.mean(X[np.where(X!=0)]),np.mean(X[np.where(X>0)]),np.mean(X[np.where(X<0)]))
 
