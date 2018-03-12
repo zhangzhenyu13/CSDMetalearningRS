@@ -5,7 +5,7 @@ import numpy as np
 import random
 class MySort:
     def __init__(self,A):
-        self.compare_vec_index = 0
+        self.compare_vec_index = -1
         self.A=A
     def compare_list(self,d1,d2):
         index=self.compare_vec_index

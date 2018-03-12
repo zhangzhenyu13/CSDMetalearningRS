@@ -20,16 +20,75 @@ import json
 import pickle
 import copy
 import gc
-import random
 gc.collect()
 warnings.filterwarnings("ignore")
 ##############################################################################
+def onehotFeatures(data,threshold_num=5,threshhold_ration=0.01):
+    '''
+
+    :param data:str data
+    :return: one-hot vector representation
+    '''
+    c = {}
+    maxK=None
+    for r in data:
+        if r is None:
+            continue
+        xs = r.split(",")
+        for x in xs:
+            if x in c.keys():
+                c[x] += 1
+            else:
+                c[x] = 1
+            if maxK is None:
+                maxK=x
+            else:
+                if c[x]>c[maxK]:
+                    maxK=x
+    rmKs=[]
+    for k in c.keys():
+        if c[k]<threshold_num or c[k]<c[maxK]*threshhold_ration:
+            rmKs.append(k)
+    for k in rmKs:
+        del c[k]
+    c=c.keys()
+    i_c = {}
+    count = 0
+    for i in c:
+        i_c[i] = count
+        count += 1
+    X = sparse.dok_matrix((len(data), count))
+    row = 0
+    for r in data:
+
+        if r is None:
+            row += 1
+            continue
+
+        xs = r.split(",")
+        for x in xs:
+            if x not in c:
+                continue
+            col = i_c[x]
+            X[row, col] = 1
+        row += 1
+    #print("one-hot feature size=%d"%(len(c)),"removed feature size=%d"%(len(rmKs)))
+    return X.toarray()
+
+def showData(X):
+    import Utility.personalizedSort as ps
+    m_s=ps.MySort(X)
+    m_s.compare_vec_index=-1
+    y=m_s.mergeSort()
+    x=np.arange(len(y))
+    plt.plot(x,np.array(y)[:,0])
+    plt.show()
 
 class Vectorizer:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd = 'select taskid,detail,taskname, duration,technology,languages,prize,postingdate,diffdeg,tasktype from task'
+        sqlcmd = 'select taskid,detail,taskname, duration,technology,languages,prize,postingdate,diffdeg,tasktype from task order by postingdate desc'
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         self.ids=[]
@@ -49,49 +108,45 @@ class Vectorizer:
                 self.docs.append(data[2])
             else:
                 self.docs.append(data[2]+"\n"+data[1])
-
-            self.duration.append([data[3]])
+            if data[3]>50:
+                self.duration.append([50])
+            elif data[3]<1:
+                self.duration.append([1])
+            else:
+                self.duration.append([data[3]])
             self.techs.append(data[4])
             self.lan.append(data[5])
-            if data[6]!='':
-                self.prize.append([np.sum(eval(data[6]))])
-            else:
-                self.prize.append([0.])
 
-            self.startdate.append([data[7]])
-            self.diffdeg.append([data[8]])
+            if data[6]!='':
+                prize=np.sum(eval(data[6]))
+                if prize>6000:
+                    prize=6000
+                if prize<1:
+                    prize=1
+                self.prize.append([prize])
+            else:
+                self.prize.append([1.])
+
+            if data[7]<1:
+                self.startdate.append([1])
+            else:
+                self.startdate.append([data[7]])
+
+            if data[8]>0.6:
+                self.diffdeg.append([0.6])
+            else:
+                self.diffdeg.append([data[8]])
+
             self.tasktype.append(data[9])
         #print(self.ids[:6])
         print("task num=%d" % len(self.ids))
-    def countFeatures(self,data):
-        c=set()
-        for r in data:
-            if r is None:
-                continue
-            xs=r.split(",")
-            for x in xs:
-                c.add(x)
-
-        i_c={}
-        count=0
-        for i in c:
-            i_c[i]=count
-            count+=1
-        X = sparse.dok_matrix((len(data), count))
-        row=0
-        for r in data:
-
-            if r is None:
-                row+=1
-                continue
-
-            xs=r.split(",")
-            for x in xs:
-                col=i_c[x]
-                X[row,col]=1
-            row+=1
-
-        return X.toarray()
+        #showData(self.diffdeg)
+        #showData(self.prize)
+        #showData(np.log(self.prize).tolist())
+        #showData(self.duration)
+        #showData(np.log(self.duration).tolist())
+        #showData(self.startdate)
+        #showData(np.log(self.startdate).tolist())
 
 class LDAFlow(Vectorizer):
     def __init__(self):
@@ -185,7 +240,7 @@ class LSAFlow(Vectorizer):
         svd = TruncatedSVD(self.n_features)
         normalizer = Normalizer(copy=False)
         self.lsa = make_pipeline(svd, normalizer)
-        X = self.lsa.fit_transform(X)
+        self.lsa.fit_transform(X)
         explained_variance = svd.explained_variance_ratio_.sum()
         print("Explained variance of the SVD step: {}%".format(
             int(explained_variance * 100)))
@@ -238,16 +293,38 @@ def scaler(X):
     minmax=preprocessing.MinMaxScaler(feature_range=(0,1))
     minmax.fit_transform(X)
     return minmax.transform(X)
-def concatenateTasks(model,X):
+
+def taskVec(model,X):
+    X_techs = onehotFeatures(model.techs)
+    X_lans = onehotFeatures(model.lan)
+    X_tasktype = onehotFeatures(model.tasktype)
+
+    X_startdate = np.log(model.startdate)
+    X_duration = np.log(model.duration)
+    X_prize = np.log(model.prize)
+    X_diffdeg = model.diffdeg
+
+
+
+    X = np.concatenate((X,X_techs), axis=1)
+    X = np.concatenate((X, X_lans), axis=1)
+    X = np.concatenate((X, X_tasktype), axis=1)
+    X = np.concatenate((X, X_startdate), axis=1)
+    X = np.concatenate((X, X_duration), axis=1)
+    X = np.concatenate((X, X_prize), axis=1)
+    X = np.concatenate((X, X_diffdeg), axis=1)
+    return X
+def weightedTaskVec(model,X):
     #weight of topics,techs,languages,postingdate,duration,prize,diffdeg,tasktype
     w=[1.0,2.0,1.5,4.0,3.0,1.0,4.0,2.0]
-    X_techs=scaler(model.countFeatures(model.techs))
-    X_lans=scaler(model.countFeatures(model.lan))
-    X_startdate=scaler(model.startdate)
+    X_techs=scaler(onehotFeatures(model.techs))
+    X_lans=scaler(onehotFeatures(model.lan))
+    X_tasktype=scaler(onehotFeatures(model.tasktype))
+
+    X_startdate=scaler(np.log(model.startdate))
     X_duration=scaler(model.duration)
     X_prize=scaler(model.prize)
     X_diffdeg=scaler(model.diffdeg)
-    X_tasktype=scaler(model.countFeatures(model.tasktype))
     #print(X_techs[:3])
     X=np.concatenate((w[0]*X,w[1]*X_techs),axis=1)
     X=np.concatenate((X,w[2]*X_lans),axis=1)
@@ -257,33 +334,24 @@ def concatenateTasks(model,X):
     X = np.concatenate((X, w[6] * X_prize), axis=1)
     X = np.concatenate((X, w[7] * X_diffdeg), axis=1)
     return X
-def splitData(X,taskid,choice=2,ratio=0.8):
-    print("sorting by order of startdate")
-    import Utility.personalizedSort as ps
-    data=np.concatenate((X,np.reshape(taskid,newshape=(len(taskid),1))),axis=1).tolist()
-    m_s=ps.MySort(data)
-    m_s.compare_vec_index=-5
-    data=m_s.mergeSort()
-    data=np.array(data)
-    taskid=data[:,-1]
-    taskid=np.array(taskid,np.int)
-    taskid=np.array(taskid,np.str)
+def splitData(X,taskid,choice=1,ratio=0.8):
     print("saving vec representation of tasks(train/test), ratio=%f" % ratio)
     #descent order of startdate
     trainSize=int(ratio*len(X))
-    testSize=len(X)-trainSize
+    n_total=len(X)
     trainX={}
     testX={}
-    for i in range(trainSize):
-        trainX[taskid[i]]=data[i].tolist()[:-1]
-    for i in range(trainSize,trainSize+testSize):
-        testX[taskid[i]]=data[i].tolist()[:-1]
 
+    for i in range(trainSize):
+        trainX[taskid[i]]=X[i].tolist()
+    for i in range(trainSize,n_total):
+        testX[taskid[i]]=X[i].tolist()
 
     with open("../data/clusterResult/taskVec_train" + str(choice) + ".json", "w") as f:
         json.dump(trainX, f,ensure_ascii=False)
     with open("../data/clusterResult/taskVec_test" + str(choice) + ".json", "w") as f:
         json.dump(testX, f,ensure_ascii=False)
+
 def loadCluster(Train=False,choice=1):
     if Train:
         print("loading training data")
@@ -319,19 +387,28 @@ def genResults():
     model.loadModel()
     #model.train_doctopics(model.docs)
     X=model.transformVec(model.docs)
-
+    X=taskVec(model,X)
     taskid=model.ids
-    X = concatenateTasks(model, X)
+    #save vec representaion of all the tasks
+    print("saving all the data to vec representaion")
+    with open("../data/clusterResult/taskVec" + str(choice) + ".json", "w") as f:
+        data={}
+        for i in range(len(taskid)):
+            data[taskid[i]]=X[i].tolist()
+        json.dump(data, f,ensure_ascii=False)
+
     splitData(X,taskid,choice,0.8)
     taskid,X=loadCluster(Train=True,choice=choice)
     print("training cluster size=%d"%len(X))
-    n_clusters=30
+    n_clusters=20
     taskClusters=None
     km=None
     while n_clusters>0:
-        km=KM_cluster(X,n_clusters,minibatch=True)
+        km=KM_cluster(X,n_clusters,minibatch=False)
         print("n_samples: %d, n_features: %d" % X.shape)
         print()
+        with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "wb") as f:
+            pickle.dump(km, f)
 
         result=km.predict(X)
         taskClusters={}
@@ -355,9 +432,8 @@ def genResults():
     with open("../data/clusterResult/clusters" + str(choice) + ".json", "w") as f:
         json.dump(taskClusters, f, ensure_ascii=False)
         f.write("\n")
-    print("saving model kmeans")
-    with open("../data/clusterResult/kmeans"+str(choice)+".pkl","wb") as f:
-        pickle.dump(km,f)
+
+
 
 if __name__ == '__main__':
     genResults()
