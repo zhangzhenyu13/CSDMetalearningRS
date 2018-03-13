@@ -180,7 +180,13 @@ class GlobalSubmitTestInstances:
         tasks=[]
         users=[]
         with open("../data/clusterResult/taskVec"+str(choice)+".data","rb") as f:
-            taskdata=json.load(f)
+            taskdata=pickle.load(f)
+            ids=taskdata["taskids"]
+            X=taskdata["tasks"]
+            taskdata={}
+            for i in range(len(ids)):
+                taskdata[ids[i]]=X[i]
+
         missingtask=0
         missinguser=0
         usernames=[]
@@ -189,17 +195,20 @@ class GlobalSubmitTestInstances:
         submits=[]
         ranks=[]
         t0=time.time()
-        for _ in range(len(regs.taskid)):
-            if (_+1)%10000==0:
-                print(_+1,"of",len(regs.taskid),"in %ds"%(time.time()-t0))
+        for index in range(len(regs.taskid)):
+            if (index+1)%10000==0:
+                print(index+1,"of",len(regs.taskid),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 t0=time.time()
-            id, name, date=self.regdata.taskid[_],self.regdata.username[_],self.regdata.regdate[_]
-            #print("task-user", id, name, date)
-            if str(id) not in taskdata.keys():
+            id, name, date=self.regdata.taskid[index],self.regdata.username[index],self.regdata.regdate[index]
+
+            #print("task-user", id, name, date,type(id),type(list(taskdata.keys())[0]))
+            if id not in taskdata.keys():
                 #print(id,"not in data set")
                 missingtask+=1
                 continue
-            task = taskdata[str(id)]
+
+            task = taskdata[id]
+
             regtasks=self.regdata.getTasks(name,date)
             #print("reg",regtasks)
             if regtasks is None:

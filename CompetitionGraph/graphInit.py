@@ -1,4 +1,4 @@
-import json
+import json,pickle
 import multiprocessing
 from DataPrepare.ConnectDB import *
 from multiprocessing import Condition,Queue,Pipe
@@ -7,8 +7,8 @@ import time
 import gc
 import numpy as np
 def loadclusters(choice):
-    f=open("../data/clusterResult/clusters"+str(choice)+".json")
-    clusters=json.load(f)
+    f=open("../data/clusterResult/clusters"+str(choice)+".data","rb")
+    clusters=pickle.load(f)
     return clusters
 
 #datastructure for reg and sub
