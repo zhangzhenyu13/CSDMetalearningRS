@@ -1,5 +1,7 @@
 .idea/
 data/clusterResult
 data/UserGraph
+data/Instances
+data/saved_ML_models
 *.pyc
 data/*.pkl

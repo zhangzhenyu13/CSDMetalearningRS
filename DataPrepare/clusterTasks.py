@@ -73,7 +73,7 @@ def onehotFeatures(data,threshold_num=5,threshhold_ration=0.01):
             X[row, col] = 1
         row += 1
     #print("one-hot feature size=%d"%(len(c)),"removed feature size=%d"%(len(rmKs)))
-    return X.toarray()
+    return (X.toarray(),len(c))
 
 def showData(X):
     import Utility.personalizedSort as ps
@@ -295,16 +295,16 @@ def scaler(X):
     return minmax.transform(X)
 
 def taskVec(model,X):
-    X_techs = onehotFeatures(model.techs)
-    X_lans = onehotFeatures(model.lan)
-    X_tasktype = onehotFeatures(model.tasktype)
+    X_techs,features1 = onehotFeatures(model.techs)
+    X_lans,features2 = onehotFeatures(model.lan)
+    X_tasktype,features3 = onehotFeatures(model.tasktype)
 
     X_startdate = np.log(model.startdate)
     X_duration = np.log(model.duration)
     X_prize = np.log(model.prize)
     X_diffdeg = model.diffdeg
 
-
+    features_num=(model.n_features,features1,features2,features3)
 
     X = np.concatenate((X,X_techs), axis=1)
     X = np.concatenate((X, X_lans), axis=1)
@@ -313,7 +313,7 @@ def taskVec(model,X):
     X = np.concatenate((X, X_duration), axis=1)
     X = np.concatenate((X, X_prize), axis=1)
     X = np.concatenate((X, X_diffdeg), axis=1)
-    return X
+    return (X,features_num)
 def weightedTaskVec(model,X):
     #weight of topics,techs,languages,postingdate,duration,prize,diffdeg,tasktype
     w=[1.0,2.0,1.5,4.0,3.0,1.0,4.0,2.0]
@@ -334,41 +334,35 @@ def weightedTaskVec(model,X):
     X = np.concatenate((X, w[6] * X_prize), axis=1)
     X = np.concatenate((X, w[7] * X_diffdeg), axis=1)
     return X
-def splitData(X,taskid,choice=1,ratio=0.8):
-    print("saving vec representation of tasks(train/test), ratio=%f" % ratio)
-    #descent order of startdate
-    trainSize=int(ratio*len(X))
-    n_total=len(X)
-    trainX={}
-    testX={}
 
-    for i in range(trainSize):
-        trainX[taskid[i]]=X[i].tolist()
-    for i in range(trainSize,n_total):
-        testX[taskid[i]]=X[i].tolist()
+#save data and load data
+def saveTaskVecData(X,taskid,feature_num,choice=1):
+    data={}
+    data["size"]=len(taskid)
+    data["feature_num"]=feature_num
+    data["taskids"]=taskid
+    data["tasks"]=X
+    with open("../data/clusterResult/taskVec"+str(choice)+".data","wb") as f:
+        pickle.dump(data,f)
 
-    with open("../data/clusterResult/taskVec_train" + str(choice) + ".json", "w") as f:
-        json.dump(trainX, f,ensure_ascii=False)
-    with open("../data/clusterResult/taskVec_test" + str(choice) + ".json", "w") as f:
-        json.dump(testX, f,ensure_ascii=False)
 
-def loadCluster(Train=False,choice=1):
+def loadCluster(Train=False,splitratio=0.8,choice=1):
+    with open("../data/clusterResult/taskVec"+str(choice)+".data","rb") as f:
+        data=pickle.load(f)
+    size=data["size"]
+    taskids=data["taskids"]
+    X=data["tasks"]
+    trainSize=int(size*splitratio)
+
     if Train:
-        print("loading training data")
-        with open("../data/clusterResult/taskVec_train" + str(choice) + ".json", "r") as f:
-            data = json.load(f)
+        X=X[:trainSize]
+        taskids=taskids[:trainSize]
     else:
-        print("loading test data")
-        with open("../data/clusterResult/taskVec_test" + str(choice) + ".json", "r") as f:
-            data = json.load(f)
-    taskid=[]
-    X=[]
-    for k in data.keys():
-        X.append(data[k])
-        taskid.append(k)
+        X=X[trainSize:]
+        taskids=taskids[trainSize:]
 
-    print("loaded data size=%d"%len(taskid))
-    return np.array(taskid),np.array(X)
+    print("loaded data size=%d"%len(taskids))
+    return np.array(taskids),np.array(X)
 
 def genResults():
 
@@ -387,28 +381,24 @@ def genResults():
     model.loadModel()
     #model.train_doctopics(model.docs)
     X=model.transformVec(model.docs)
-    X=taskVec(model,X)
+    X,feature_num=taskVec(model,X)
     taskid=model.ids
     #save vec representaion of all the tasks
-    print("saving all the data to vec representaion")
-    with open("../data/clusterResult/taskVec" + str(choice) + ".json", "w") as f:
-        data={}
-        for i in range(len(taskid)):
-            data[taskid[i]]=X[i].tolist()
-        json.dump(data, f,ensure_ascii=False)
-
-    splitData(X,taskid,choice,0.8)
+    saveTaskVecData(X,taskid,feature_num,choice)
     taskid,X=loadCluster(Train=True,choice=choice)
-    print("training cluster size=%d"%len(X))
+
+    print("training for clustering, tasks size=%d"%len(X))
     n_clusters=20
     taskClusters=None
-    km=None
+
     while n_clusters>0:
         km=KM_cluster(X,n_clusters,minibatch=False)
         print("n_samples: %d, n_features: %d" % X.shape)
         print()
         with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "wb") as f:
             pickle.dump(km, f)
+        with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "rb") as f:
+            km=pickle.load(f)
 
         result=km.predict(X)
         taskClusters={}
@@ -429,9 +419,8 @@ def genResults():
 
     #saving result
     print("saving clustering result")
-    with open("../data/clusterResult/clusters" + str(choice) + ".json", "w") as f:
-        json.dump(taskClusters, f, ensure_ascii=False)
-        f.write("\n")
+    with open("../data/clusterResult/clusters" + str(choice) + ".data", "wb") as f:
+        pickle.dump(taskClusters,f)
 
 
 

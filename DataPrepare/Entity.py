@@ -1,6 +1,6 @@
 from DataPrepare.ConnectDB import *
 import numpy as np
-import json
+import pickle,json
 import copy
 import time
 from DataPrepare.clusterTasks import onehotFeatures,showData
@@ -147,6 +147,15 @@ class Submission:
                 count += len(indices1)
 
         print("sub num=%d"%len(self.taskid))
+    def getResultOfSubmit(self,username,taskid):
+        indices=np.where(self.username==username)[0]
+        if len(indices)==0:
+            return None
+        indices1=np.where(self.taskid[indices]==taskid)[0]
+        if len(indices1)==0:
+            return None
+        indices=indices1+indices[0]
+        return (self.subnum[indices][0],self.finalrank[indices][0])
     def getTasks(self,username,curtime):
         indices=np.where(self.subdate>curtime)[0]
         if len(indices)==0:
@@ -170,10 +179,15 @@ class GlobalSubmitTestInstances:
     def createVec(self,choice=1):
         tasks=[]
         users=[]
-        with open("../data/clusterResult/taskVec"+str(choice)+".json","r") as f:
+        with open("../data/clusterResult/taskVec"+str(choice)+".data","rb") as f:
             taskdata=json.load(f)
         missingtask=0
         missinguser=0
+        usernames=[]
+        taskids=[]
+        dates=[]
+        submits=[]
+        ranks=[]
         t0=time.time()
         for _ in range(len(regs.taskid)):
             if (_+1)%10000==0:
@@ -204,6 +218,7 @@ class GlobalSubmitTestInstances:
                 last_perfromance=0
                 win_recency=commit_recency*2
                 win_frequency=0
+
             else:
                 subID,subNum,subDate,subScore,subrank=subtasks[0],subtasks[1],subtasks[2],subtasks[3],subtasks[4]
                 commit_recency=subDate[len(subDate)-1]
@@ -225,22 +240,45 @@ class GlobalSubmitTestInstances:
                 tenure=regDate[0]
             user=[tenure,participate_recency,participate_frequency,commit_recency,commit_frequency,
                   win_recency,win_frequency,last_perfromance]+skills.tolist()
-            #print(type(id),type(list(taskdata.keys())[0]),type(str(id)),id,str(id))
-            #print(taskdata.keys())
 
+            usernames.append(name)
+            taskids.append(id)
             users.append(user)
             tasks.append(task)
+            dates.append(date)
+            curPerformance=subs.getResultOfSubmit(name,id)
+            #print(curPerformance)
+            if curPerformance is not None:
+                submits.append(curPerformance[0])
+                ranks.append(curPerformance[1])
+            else:
+                submits.append(0)
+                ranks.append(10)
 
-        print("missing task",missingtask,"missing user",missinguser)
+
+        print("missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
-        tasks=np.array(tasks)
-        users=np.array(users)
-        X=np.concatenate((tasks,users),axis=1)
-        return X
+        data={}
+        for i in range(len(taskids)):
+            data["usernames"]=usernames
+            data["taskids"]=taskids
+            data["tasks"]=tasks
+            data["users"]=users
+            data["dates"]=dates
+            data["submits"]=submits
+            data["ranks"]=ranks
+
+        print("saving data")
+        with open("../data/Instances/task_user"+str(choice)+".data","wb") as f:
+            pickle.dump(data,f)
+
+        return data
+
 
 if __name__ == '__main__':
     user=Users()
-    user.skills=onehotFeatures(user.skills)
+    user.skills,features=onehotFeatures(user.skills)
+    print("encoding skills feature_num=",features)
     regs=Registration()
     subs=Submission()
     '''
@@ -260,6 +298,7 @@ if __name__ == '__main__':
 
 
     gInst=GlobalSubmitTestInstances(regs,subs,user)
-    X=gInst.createVec(1)
-    print(X[:3])
+    data=gInst.createVec(1)
+    X=np.concatenate((data["tasks"],data["users"]),axis=1)
+    [print(x) for x in X[:3]]
 
