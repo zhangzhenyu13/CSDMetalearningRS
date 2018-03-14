@@ -25,6 +25,24 @@ class ML_model:
             data["name"]=self.name
             pickle.dump(data,f)
 
+def topKAccuracy(Y_predict,Y_true):
+    '''
+    :return Y[i]=true if ith sample can intersect with each other in Y_predict[i] and Y_true[i]
+                      else return false
+    :param Y_predict:
+    :param Y_true:
+    :return: boolean
+    '''
+    Y=np.zeros(shape=(len(Y_predict)),dtype=np.bool)
+    for i in range(len(Y)):
+        tag=False
+        for  ele in Y_predict:
+            if ele in Y_true:
+                tag=True
+                break
+        Y[i]=tag
+    return Y
+
 class DataSetTopcoder:
     def __init__(self):
         self.dataSet=None
@@ -53,10 +71,15 @@ class DataSetTopcoder:
         self.testLabel=Y[self.trainSize:]
     def CommitClassificationData(self):
         Y=np.array(self.dataSet["submits"])
-        Y=np.array(Y,dtype=np.int)
+        Y=np.array(Y>0,dtype=np.int)
         self.trainLabel=Y[:self.trainSize]
         self.testLabel=Y[self.trainSize:]
     def WinRankData(self):
         Y=np.array(self.dataSet["ranks"])
+        self.trainLabel=Y[:self.trainSize]
+        self.testLabel=Y[self.trainSize:]
+    def WinClassificationData(self):
+        Y=np.array(self.dataSet["ranks"])
+        Y=np.array(Y==0,dtype=np.int)
         self.trainLabel=Y[:self.trainSize]
         self.testLabel=Y[self.trainSize:]

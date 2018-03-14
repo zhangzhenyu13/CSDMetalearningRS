@@ -31,7 +31,15 @@ class DataURS:
         print("regdata size=%d, subdata size=%d"%(len(self.regdata),len(self.subdata)))
 
     def setActiveCluster(self,taskIDs):
+        if taskIDs is None:
+            print("using whole data set(Glabal)")
+            self.activeReg=self.regdata
+            self.activeSub=self.subdata
+            print("ative regtasks size=%d,active subtasks size=%d" % (len(self.activeReg), len(self.activeSub)))
+            return
+
         self.activeTask=taskIDs
+
         self.activeReg=[]
         for taskid in taskIDs:
             i=np.where(self.regdata[:,1]==taskid)[0]
@@ -161,7 +169,9 @@ class UserInteraction(multiprocessing.Process):
         self.outercon.release()
 
 def constructGraph(tasks,dataset):
-
+    if tasks is None:
+        #print(len(dataset.regdata[:,1]),type(dataset.regdata[:,1][0]))
+        tasks=dataset.regdata[:,1]
     print("cluster size=%d"%len(tasks))
     users=dataset.getRegUsers()
     #print(users)
@@ -173,7 +183,7 @@ def constructGraph(tasks,dataset):
     #statistics for user competition status
     cond=Condition()
 
-    maxProcess=min(n_users,20)
+    maxProcess=min(n_users,8)
     print("running using %d process(es)"%maxProcess)
     pools_process=[]
     finishedSig=Queue()
@@ -221,12 +231,24 @@ def constructGraph(tasks,dataset):
 
     return (userMatrix.toarray(),users)
 
+def initGlobalGraph(dataset):
+    print("init Glabal interaction graph")
+    dataset.setActiveCluster(None)
+    user_m,users=constructGraph(None,dataset)
+    with open("../data/UserGraph/initGraph/initG_" + str(choice) + "_Glabal" + ".json", "w") as f:
+        data = {}
+        data["size"] = len(user_m)
+        data["users"] = users
+        data["data"] = user_m.tolist()
+        json.dump(data, f, ensure_ascii=False)
+    exit(100)
+
 if __name__ == '__main__':
     choice=eval(input("choice= "))
     print("loading data")
     clusters=loadclusters(choice)
     dataset=DataURS()
-
+    initGlobalGraph(dataset)
     for k in clusters.keys():
         print("cluster",k,"graph building")
         cluster=clusters[k]

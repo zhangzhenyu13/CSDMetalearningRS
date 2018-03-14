@@ -1,5 +1,6 @@
 from ML_Models.Model_def import *
-from sklearn import svm,linear_model,tree
+from sklearn import svm,linear_model
+from sklearn import ensemble
 from sklearn import metrics
 import time
 
@@ -56,16 +57,17 @@ if __name__ == '__main__':
     model.trainModel()
     model.saveModel()
     model.loadModel()
-    Y_predict=model.predict(data.testX)
-    print("test mse=%f"%(metrics.mean_squared_error(data.testLabel,Y_predict)))
-
+    Y_predict1=model.predict(data.testX)
+    print("test mse=%f"%(metrics.mean_squared_error(data.testLabel,Y_predict1)))
+    print("navie commit probability=",np.sum(data.testLabel>0)/len(data.testLabel),"mean num",np.mean(data.testLabel))
     #classification
-    data.CommitClassificationData()
-    model=TraditionalClassifier(linear_model.SGDClassifier())
+    data.WinClassificationData()
+    model=TraditionalClassifier(ensemble.RandomForestClassifier())
     model.dataSet=data
     model.name="linearClassifierCommit"
     model.trainModel()
     model.saveModel()
     model.loadModel()
-    Y_predict=model.predict(data.testX)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict)))
+    Y_predict2=model.predict(data.testX)
+    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2,normalize=False)))
+
