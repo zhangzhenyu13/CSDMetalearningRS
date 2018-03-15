@@ -2,20 +2,20 @@ import json
 import os
 import numpy as np
 import gc
+from numpy import linalg as LA
 if __name__ == '__main__':
 
-    files=os.listdir("../data/UserGraph/fullGraph/")
+    files=os.listdir("../data/UserGraph/initGraph/")
     for file in files:
-        with open("../data/UserGraph/fullGraph/"+file,"r") as f:
+        with open("../data/UserGraph/initGraph/"+file,"r") as f:
             data=None
             X=None
             gc.collect()
             data=json.load(f)
 
-            #print(file,data["size"],data["users"])
-            X=np.array(data["data"])
-            n=np.sum(X!=0)
-            p=np.sum(X>0)
-            print(file,data["n_users"])
-            print(p,n,n/X.size,np.min(X),np.max(X),np.mean(X[np.where(X!=0)]),np.mean(X[np.where(X>0)]),np.mean(X[np.where(X<0)]))
+            matrix=data["data"]
+            w=LA.eigvals(matrix)
+            #print(w)
+            maxeig=np.max(w)
+            print(file,"max eig=",maxeig,np.real(maxeig))
 

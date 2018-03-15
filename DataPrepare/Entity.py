@@ -171,11 +171,29 @@ class Submission:
         rank=self.finalrank[indices]
         return (ids,subnum,date,score,rank)
 
-class GlobalSubmitTestInstances:
+
+class DataInstances:
     def __init__(self,regdata,subdata,userdata):
         self.regdata=regdata
         self.subdata=subdata
         self.userdata=userdata
+    def setLocality(self,taskIDs,k_no):
+        self.k_no=k_no
+        self.activeReg=[]
+        if taskIDs is None:
+            for i in range(len(self.regdata.taskid)):
+                self.activeReg.append((self.regdata.taskid[i],self.regdata.username[i],self.regdata.regdate[i]))
+
+        else:
+            taskIDs=np.array(taskIDs,dtype=np.int64)
+            for i in range(len(self.regdata.taskid)):
+                indices=np.where(taskIDs==self.regdata.taskid[i])[0]
+                if len(indices)>0:
+                    self.activeReg.append((self.regdata.taskid[i],self.regdata.username[i],self.regdata.regdate[i]))
+
+        print("set locality: regtasks size=%d" % (len(self.activeReg)))
+
+
     def createVec(self,choice=1):
         tasks=[]
         users=[]
@@ -195,11 +213,12 @@ class GlobalSubmitTestInstances:
         submits=[]
         ranks=[]
         t0=time.time()
-        for index in range(len(regs.taskid)):
+
+        for index in range(len(self.activeReg)):
             if (index+1)%10000==0:
-                print(index+1,"of",len(regs.taskid),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                print(index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 t0=time.time()
-            id, name, date=self.regdata.taskid[index],self.regdata.username[index],self.regdata.regdate[index]
+            id, name, date=self.activeReg[index]
 
             #print("task-user", id, name, date,type(id),type(list(taskdata.keys())[0]))
             if id not in taskdata.keys():
@@ -278,8 +297,12 @@ class GlobalSubmitTestInstances:
             data["ranks"]=ranks
 
         print("saving data")
-        with open("../data/Instances/task_user"+str(choice)+".data","wb") as f:
-            pickle.dump(data,f)
+        if self.k_no==-1:
+            with open("../data/Instances/task_user"+str(choice)+".data","wb") as f:
+                pickle.dump(data,f)
+        else:
+            with open("../data/Instances/task_user"+str(choice)+".data"+str(self.k_no),"wb") as f:
+                pickle.dump(data,f)
 
         return data
 
@@ -304,10 +327,18 @@ if __name__ == '__main__':
     showData(x)
     showData(np.log(x).tolist())
     '''
+    choice=1
+    with open("../data/clusterResult/clusters"+str(choice)+".data","rb") as f:
+        clusterdata=pickle.load(f)
 
+    gInst=DataInstances(regs,subs,user)
 
-    gInst=GlobalSubmitTestInstances(regs,subs,user)
-    data=gInst.createVec(1)
-    X=np.concatenate((data["tasks"],data["users"]),axis=1)
-    [print(x) for x in X[:3]]
+    for k in clusterdata.keys():
+        print("creating instances for cluster(%d):"%(len(clusterdata[k])),k)
+        gInst.setLocality(clusterdata[k],k)
+        data=gInst.createVec(choice)
+        X=np.concatenate((data["tasks"],data["users"]),axis=1)
+        print("instances size=",len(X))
+        #[print(x) for x in X[:3]]
+        print()
 

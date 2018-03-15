@@ -3,5 +3,6 @@ data/clusterResult
 data/UserGraph
 data/Instances
 data/saved_ML_models
+data/picture/*
 *.pyc
 data/*.pkl
