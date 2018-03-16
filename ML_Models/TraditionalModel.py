@@ -51,7 +51,7 @@ if __name__ == '__main__':
     data=DataSetTopcoder()
     #regression
     data.CommitRegressionData()
-    model=TraditionalRegressor(linear_model.LinearRegression())
+    model=TraditionalRegressor(svm.NuSVR())
     model.name="linearRegressorCommit"
     model.dataSet=data
     model.trainModel()

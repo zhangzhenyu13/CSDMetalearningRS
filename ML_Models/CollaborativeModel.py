@@ -42,8 +42,12 @@ if __name__ == '__main__':
         model.setLocality(k)
         model.trainModel()
 
+        if len(data.testLabel)==0:
+            print("no data to predict")
+            continue
         Y_predict1 = model.predict(data.testX)
         print("cluster:",k,", test mse=%f" % (metrics.mean_squared_error(data.testLabel, Y_predict1)))
+
     model.saveModel()
     model.loadModel()
-    
+
