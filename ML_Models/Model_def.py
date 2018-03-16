@@ -93,6 +93,8 @@ class DataSetTopcoderCluster:
         self.trainLabel=None
         self.testLabel=None
         self.n_clusters=20
+        self.loadData()
+
     def loadData(self,choice=1):
 
         with open("../data/Instances/task_user_local_train" + str(choice) + ".data" , "rb") as f:
