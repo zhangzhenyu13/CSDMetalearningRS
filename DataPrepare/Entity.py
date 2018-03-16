@@ -3,7 +3,7 @@ import numpy as np
 import pickle,json
 import copy
 import time
-from DataPrepare.clusterTasks import onehotFeatures,showData
+from DataPrepare.clusterTasks import onehotFeatures,showData,loadCluster
 warnings.filterwarnings("ignore")
 class Users:
     def __init__(self):
@@ -177,14 +177,16 @@ class DataInstances:
         self.regdata=regdata
         self.subdata=subdata
         self.userdata=userdata
-    def setLocality(self,taskIDs,k_no):
-        self.k_no=k_no
+    def setLocality(self,taskIDs=None):
+
         self.activeReg=[]
         if taskIDs is None:
+            self.localtasks=None
             for i in range(len(self.regdata.taskid)):
                 self.activeReg.append((self.regdata.taskid[i],self.regdata.username[i],self.regdata.regdate[i]))
 
         else:
+            self.localtasks=taskIDs
             taskIDs=np.array(taskIDs,dtype=np.int64)
             for i in range(len(self.regdata.taskid)):
                 indices=np.where(taskIDs==self.regdata.taskid[i])[0]
@@ -297,11 +299,8 @@ class DataInstances:
             data["ranks"]=ranks
 
         print("saving data")
-        if self.k_no==-1:
+        if self.localtasks is None:
             with open("../data/Instances/task_user"+str(choice)+".data","wb") as f:
-                pickle.dump(data,f)
-        else:
-            with open("../data/Instances/task_user"+str(choice)+".data"+str(self.k_no),"wb") as f:
                 pickle.dump(data,f)
 
         return data
@@ -328,17 +327,66 @@ if __name__ == '__main__':
     showData(np.log(x).tolist())
     '''
     choice=1
-    with open("../data/clusterResult/clusters"+str(choice)+".data","rb") as f:
-        clusterdata=pickle.load(f)
+    local=True
+    print("choice=",choice,"; local clusters=",local)
 
     gInst=DataInstances(regs,subs,user)
 
-    for k in clusterdata.keys():
-        print("creating instances for cluster(%d):"%(len(clusterdata[k])),k)
-        gInst.setLocality(clusterdata[k],k)
-        data=gInst.createVec(choice)
-        X=np.concatenate((data["tasks"],data["users"]),axis=1)
-        print("instances size=",len(X))
-        #[print(x) for x in X[:3]]
-        print()
+    if local:
+        with open("../data/clusterResult/clusters" + str(choice) + ".data", "rb") as f:
+            clusterdata = pickle.load(f)
+        n_clusters = len(clusterdata.keys())
+        keySet=clusterdata.keys()
 
+        # training data
+        dataClusters={}
+        print("creating train Local data")
+        for k in clusterdata.keys():
+            print("creating instances for cluster(%d):"%(len(clusterdata[k])),k)
+            gInst.setLocality(clusterdata[k])
+            data=gInst.createVec(choice)
+            dataClusters[k]=data
+            X=np.concatenate((data["tasks"],data["users"]),axis=1)
+            print("instances size=",len(X))
+            print()
+
+        with open("../data/Instances/task_user_local_train" + str(choice) + ".data" , "wb") as f:
+            pickle.dump(dataClusters, f)
+
+        #testing data
+        dataClusters={}
+
+        print("creating test Local data")
+
+        clusterdata={}
+
+        for k in keySet:
+            clusterdata[k]=[]
+        with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "rb") as f:
+            km=pickle.load(f)
+        taskids,testX=loadCluster(Train=False,choice=choice)
+        result=km.predict(testX)
+        for i in range(len(result)):
+            c_no=result[i]
+            clusterdata[c_no].append(taskids[i])
+
+        for k in clusterdata.keys():
+            print("creating instances for cluster(%d):" % (len(clusterdata[k])), k)
+            gInst.setLocality(clusterdata[k])
+            data = gInst.createVec(choice)
+            dataClusters[k] = data
+            X = np.concatenate((data["tasks"], data["users"]), axis=1)
+            print("instances size=", len(X))
+            print()
+
+        with open("../data/Instances/task_user_local_test" + str(choice) + ".data", "wb") as f:
+            pickle.dump(dataClusters, f)
+
+    else:
+        print("creating global data")
+        gInst.setLocality(None)
+        data = gInst.createVec(choice)
+        X = np.concatenate((data["tasks"], data["users"]), axis=1)
+        print("instances size=", len(X))
+        # [print(x) for x in X[:3]]
+        print()

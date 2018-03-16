@@ -83,3 +83,64 @@ class DataSetTopcoder:
         Y=np.array(Y==0,dtype=np.int)
         self.trainLabel=Y[:self.trainSize]
         self.testLabel=Y[self.trainSize:]
+
+class DataSetTopcoderCluster:
+    def __init__(self):
+        self.dataSetTrain=None
+        self.dataSetTest=None
+        self.trainX=None
+        self.testX=None
+        self.trainLabel=None
+        self.testLabel=None
+        self.n_clusters=20
+    def loadData(self,choice=1):
+
+        with open("../data/Instances/task_user_local_train" + str(choice) + ".data" , "rb") as f:
+            self.dataSetTrain=pickle.load(f)
+        with open("../data/Instances/task_user_local_test" + str(choice) + ".data", "rb") as f:
+            self.dataSetTest=pickle.load(f)
+        with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "rb") as f:
+            self.KM=pickle.load(f)
+
+    def loadClusters(self,k_no):
+        self.k_no=k_no
+
+        data=self.dataSetTrain[self.k_no]
+        users = data["users"]
+        tasks = data["tasks"]
+        X = np.concatenate((tasks, users), axis=1)
+        self.trainX=X
+
+        data=self.dataSetTest[self.k_no]
+        users = data["users"]
+        tasks = data["tasks"]
+        X = np.concatenate((tasks, users), axis=1)
+        self.testX = X
+
+    def CommitRegressionData(self):
+        data=self.dataSetTrain[self.k_no]
+        Y=np.array(data["submits"])
+        self.trainLabel=Y
+
+        data = self.dataSetTest[self.k_no]
+        Y = np.array(data["submits"])
+        self.testLabel = Y
+
+    def CommitClassificationData(self):
+        self.CommitRegressionData()
+        self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
+        self.testLabel = np.array(self.testLabel>0,dtype=np.int)
+
+    def WinRankData(self):
+        data = self.dataSetTrain[self.k_no]
+        Y=np.array(data["ranks"])
+        self.trainLabel=Y
+
+        data = self.dataSetTest[self.k_no]
+        Y = np.array(data["ranks"])
+        self.testLabel = Y
+
+    def WinClassificationData(self):
+        self.WinRankData()
+        self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
+        self.testLabel=np.array(self.testLabel==0,dtype=np.int)
