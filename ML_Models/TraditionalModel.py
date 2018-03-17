@@ -49,6 +49,8 @@ class TraditionalClassifier(ML_model):
 if __name__ == '__main__':
 
     data=DataSetTopcoder()
+
+    '''
     #regression
     data.CommitRegressionData()
     model=TraditionalRegressor(svm.NuSVR())
@@ -60,14 +62,18 @@ if __name__ == '__main__':
     Y_predict1=model.predict(data.testX)
     print("test mse=%f"%(metrics.mean_squared_error(data.testLabel,Y_predict1)))
     print("navie commit probability=",np.sum(data.testLabel>0)/len(data.testLabel),"mean num",np.mean(data.testLabel))
+    '''
+
     #classification
-    data.WinClassificationData()
+    data.CommitClassificationData()
     model=TraditionalClassifier(ensemble.RandomForestClassifier())
     model.dataSet=data
-    model.name="linearClassifierCommit"
+    model.name="RFC"
     model.trainModel()
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2,normalize=False)))
-
+    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2,normalize=True)))
+    print()
+    print("Confusion matrix ")
+    print(metrics.confusion_matrix(data.testLabel,Y_predict2))

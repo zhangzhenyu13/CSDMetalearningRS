@@ -146,3 +146,15 @@ class DataSetTopcoderCluster:
         self.WinRankData()
         self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
         self.testLabel=np.array(self.testLabel==0,dtype=np.int)
+
+
+if __name__ == '__main__':
+    data = DataSetTopcoder()
+    data.CommitClassificationData()
+    from pandas import DataFrame as frame
+    data_train = frame(data.trainX)
+    data_train["Class"] = data.trainLabel
+    data_train.to_csv("trainData.csv")
+    data_test = frame(data.testX)
+    data_test["Class"] = data.testLabel
+    data_test.to_csv("testData.csv")

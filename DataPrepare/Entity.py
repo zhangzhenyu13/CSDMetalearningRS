@@ -3,7 +3,7 @@ import numpy as np
 import pickle,json
 import copy
 import time
-from DataPrepare.clusterTasks import onehotFeatures,showData,loadCluster
+from DataPrepare.clusterTasks import onehotFeatures,showData,loadCluster,Vectorizer
 warnings.filterwarnings("ignore")
 class Users:
     def __init__(self):
@@ -40,6 +40,9 @@ class Users:
 
         print("users num=%d"%len(self.name))
 
+    def getUsers(self):
+        names=self.name#[np.where(self.submissionNum>0)]
+        return names
 
     def getInfo(self,username):
         index=np.where(self.name==username)[0]
@@ -90,6 +93,12 @@ class Registration:
         ids=self.taskid[indices]
         date=self.regdate[indices]
         return (ids,date)
+    def getUsers(self,taskid):
+        indices=np.where(self.taskid==taskid)[0]
+        if len(indices)==0:
+            return None
+        taskUsers=self.username[indices]
+        return taskUsers
 
 class Submission:
     def __init__(self):
@@ -171,12 +180,32 @@ class Submission:
         rank=self.finalrank[indices]
         return (ids,subnum,date,score,rank)
 
+class Tasks:
+    def __init__(self):
+        self.taskIDs=[]
+        self.postingdate=[]
+        self.loadData()
+    def loadData(self):
+        conn = ConnectDB()
+        cur = conn.cursor()
+        sqlcmd="select taskid, postingdate from task where postingdate <3650 and postingdate>=0 order by postingDate desc;"
+        cur.execute(sqlcmd)
+        dataset = cur.fetchall()
+        for data in dataset:
+            self.taskIDs.append(data[0])
+            self.postingdate.append(data[1])
+
+        self.taskIDs=np.array(self.taskIDs)
+        self.postingdate=np.log(np.array(self.postingdate,dtype=np.int))
+        print("task item size=",len(self.taskIDs))
+
 
 class DataInstances:
     def __init__(self,regdata,subdata,userdata):
         self.regdata=regdata
         self.subdata=subdata
         self.userdata=userdata
+
     def setLocality(self,taskIDs=None):
 
         self.activeReg=[]
@@ -196,9 +225,139 @@ class DataInstances:
         print("set locality: regtasks size=%d" % (len(self.activeReg)))
 
 
-    def createVec(self,choice=1):
+    def createRegInstances(self,choice=1):
+        tasks = []
+        users = []
+        usernames = []
+        taskids = []
+        dates = []
+        regists = []
+
+        taskIndex=Tasks()
+        userIndex=self.userdata.getUsers()
+        #print(taskIndex.taskIDs[0],taskIndex.postingdate[0])
+        #print(userIndex[0])
+        missingtask = 0
+        missinguser = 0
+
+        t0 = time.time()
+
+        print("construct Regist instances with %d tasks and %d users"%(len(taskIndex.taskIDs),len(userIndex)))
+        with open("../data/clusterResult/taskVec" + str(choice) + ".data", "rb") as f:
+            taskdata = pickle.load(f)
+            ids = taskdata["taskids"]
+            X = taskdata["tasks"]
+            print("task vec data size=%d"%(len(ids)),taskdata["size"])
+            taskdata = {}
+            for i in range(len(ids)):
+                taskdata[ids[i]] = X[i]
+
+        for index in range(len(taskIndex.taskIDs)):
+            if (index+1)%100==0:
+                print(index+1,"of",len(taskIndex.taskIDs),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                t0=time.time()
+
+            id=taskIndex.taskIDs[index]
+            date=taskIndex.postingdate[index]
+
+            taskUsers=self.regdata.getUsers(id)
+            if taskUsers is None:
+                taskUsers=[]
+
+            for name in userIndex:
+
+                # print("task-user", id, name, date,type(id),type(list(taskdata.keys())[0]))
+                if id not in taskdata.keys():
+                    #print(id,"not in task vec data set")
+                    missingtask += 1
+                    continue
+
+                task = taskdata[id]
+
+                regtasks = self.regdata.getTasks(name, date)
+                # print("reg",regtasks)
+                if regtasks is None:
+                    #print("user",name,"has no reg history")
+                    missinguser += 1
+                    continue
+
+                regID, regDate = regtasks[0], regtasks[1]
+                participate_recency = regDate[len(regDate) - 1]
+                date_interval = max(1, regDate[0] - regDate[len(regDate) - 1])
+                participate_frequency = len(regID) / date_interval
+
+                subtasks = self.subdata.getTasks(name, date)
+                # print("sub",subtasks)
+                if subtasks is None:
+                    commit_recency = regDate[0] * 2
+                    commit_frequency = 0
+                    last_perfromance = 0
+                    win_recency = commit_recency * 2
+                    win_frequency = 0
+
+                else:
+                    subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], \
+                                                                subtasks[4]
+                    commit_recency = subDate[len(subDate) - 1]
+                    commit_frequency = np.sum(subNum) / date_interval
+                    last_perfromance = subScore[len(subScore) - 1]
+                    win_recency = commit_recency * 2
+                    for i in range(1, len(subID) + 1):
+                        if subrank[-i] == 0:
+                            win_recency = subDate[-i]
+                    win_indices = np.where(subrank == 0)[0]
+                    if len(win_indices) > 0:
+                        win_frequency = len(win_indices) / date_interval
+                    else:
+                        win_frequency = 0
+
+                tenure, skills = self.userdata.getInfo(name)
+                # print("user",tenure,skills)
+                if tenure is None:
+                    tenure = regDate[0]
+                user = [tenure, participate_recency, participate_frequency, commit_recency, commit_frequency,
+                        win_recency, win_frequency, last_perfromance] + skills.tolist()
+
+                usernames.append(name)
+                taskids.append(id)
+                users.append(user)
+                tasks.append(task)
+                dates.append(date)
+
+                if name in taskUsers:
+                    regists.append(1)
+                else:
+                    regists.append(0)
+
+
+        print("missing task", missingtask, "missing user", missinguser, "instances size", len(taskids))
+        print()
+        data = {}
+        data["usernames"] = usernames
+        data["taskids"] = taskids
+        data["tasks"] = tasks
+        data["users"] = users
+        data["dates"] = dates
+        data["regists"]=regists
+
+
+        print("saving data")
+
+        with open("../data/Instances/task_userReg" + str(choice) + ".data", "wb") as f:
+            pickle.dump(data, f)
+
+        return data
+
+    def createRegisteredInstances(self,choice=1):
+
         tasks=[]
         users=[]
+        usernames = []
+        taskids = []
+        dates = []
+        submits = []
+        ranks = []
+
         with open("../data/clusterResult/taskVec"+str(choice)+".data","rb") as f:
             taskdata=pickle.load(f)
             ids=taskdata["taskids"]
@@ -210,11 +369,7 @@ class DataInstances:
 
         missingtask=0
         missinguser=0
-        usernames=[]
-        taskids=[]
-        dates=[]
-        submits=[]
-        ranks=[]
+
         t0=time.time()
 
         for index in range(len(self.activeReg)):
@@ -277,7 +432,7 @@ class DataInstances:
             users.append(user)
             tasks.append(task)
             dates.append(date)
-            curPerformance=subs.getResultOfSubmit(name,id)
+            curPerformance=self.subdata.getResultOfSubmit(name,id)
             #print(curPerformance)
             if curPerformance is not None:
                 submits.append(curPerformance[0])
@@ -290,6 +445,16 @@ class DataInstances:
         print("missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
         data={}
+        if len(usernames)==0:
+            usernames=np.array([])
+            taskids=np.array([])
+            tasks=np.array([[]])
+            users=np.array([[]])
+            dates=np.array([])
+            submits=np.array([[]])
+            ranks=np.array([])
+
+
         data["usernames"] = usernames
         data["taskids"] = taskids
         data["tasks"] = tasks
@@ -305,12 +470,12 @@ class DataInstances:
 
         return data
 
-if __name__ == '__main__':
-    user=Users()
-    user.skills,features=onehotFeatures(user.skills)
-    print("encoding skills feature_num=",features)
-    regs=Registration()
-    subs=Submission()
+def genRegisteredInstances():
+    user = Users()
+    user.skills, features = onehotFeatures(user.skills)
+    print("encoding skills feature_num=", features)
+    regs = Registration()
+    subs = Submission()
     '''
     x=np.array(user.memberage).reshape((len(user.memberage),1)).tolist()
     showData(x)
@@ -325,61 +490,63 @@ if __name__ == '__main__':
     showData(x)
     showData(np.log(x).tolist())
     '''
-    choice=1
-    local=True
-    print("choice=",choice,"; local clusters=",local)
+    choice = 1
+    local = True
+    print("choice=", choice, "; local clusters=", local)
 
-    gInst=DataInstances(regs,subs,user)
+    gInst = DataInstances(regs, subs, user)
 
     if local:
-        trainMode=False
-        testMode=True
+        trainMode = False
+        testMode = True
 
         with open("../data/clusterResult/clusters" + str(choice) + ".data", "rb") as f:
             clusterdata = pickle.load(f)
         n_clusters = len(clusterdata.keys())
-        keySet=clusterdata.keys()
+        keySet = clusterdata.keys()
 
         if trainMode:
             # training data
-            dataClusters={}
+            dataClusters = {}
             print("creating train Local data")
             for k in clusterdata.keys():
-                print("creating instances for cluster(%d):"%(len(clusterdata[k])),k)
+                print("creating instances for cluster(%d):" % (len(clusterdata[k])), k)
                 gInst.setLocality(clusterdata[k])
-                data=gInst.createVec(choice)
-                dataClusters[k]=data
-                X=np.concatenate((data["tasks"],data["users"]),axis=1)
-                print("instances size=",len(X))
+                data = gInst.createRegisteredInstances(choice)
+                dataClusters[k] = data
+                X = np.concatenate((data["tasks"], data["users"]), axis=1)
+                print("instances size=", len(X))
                 print()
 
-            with open("../data/Instances/task_user_local_train" + str(choice) + ".data" , "wb") as f:
+            with open("../data/Instances/task_user_local_train" + str(choice) + ".data", "wb") as f:
                 pickle.dump(dataClusters, f)
 
         if testMode:
-            #testing data
-            dataClusters={}
+            # testing data
+            dataClusters = {}
 
             print("creating test Local data")
 
-            clusterdata={}
+            clusterdata = {}
 
             for k in keySet:
-                clusterdata[k]=[]
+                clusterdata[k] = []
             with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "rb") as f:
-                km=pickle.load(f)
-            taskids,testX=loadCluster(Train=False,choice=choice)
-            result=km.predict(testX)
+                km = pickle.load(f)
+            taskids, testX = loadCluster(Train=False, choice=choice)
+            result = km.predict(testX)
             for i in range(len(result)):
-                c_no=result[i]
+                c_no = result[i]
                 clusterdata[c_no].append(taskids[i])
 
             for k in clusterdata.keys():
                 print("creating instances for cluster(%d):" % (len(clusterdata[k])), k)
                 gInst.setLocality(clusterdata[k])
-                data = gInst.createVec(choice)
+                data = gInst.createRegisteredInstances(choice)
                 dataClusters[k] = data
+
                 X = np.concatenate((data["tasks"], data["users"]), axis=1)
+
                 print("instances size=", len(X))
                 print()
 
@@ -389,8 +556,26 @@ if __name__ == '__main__':
     else:
         print("creating global data")
         gInst.setLocality(None)
-        data = gInst.createVec(choice)
+        data = gInst.createRegisteredInstances(choice)
         X = np.concatenate((data["tasks"], data["users"]), axis=1)
         print("instances size=", len(X))
         # [print(x) for x in X[:3]]
         print()
+
+def genWholeUserSet():
+    user = Users()
+    user.skills, features = onehotFeatures(user.skills)
+    print("encoding skills feature_num=", features)
+    regs = Registration()
+    subs = Submission()
+    choice=1
+    gInst = DataInstances(regs, subs, user)
+    data = gInst.createRegInstances(choice)
+    X = np.concatenate((data["tasks"], data["users"]), axis=1)
+    print("instances size=", len(X))
+    # [print(x) for x in X[:3]]
+    print()
+
+if __name__ == '__main__':
+    #genRegisteredInstances()
+    genWholeUserSet()
