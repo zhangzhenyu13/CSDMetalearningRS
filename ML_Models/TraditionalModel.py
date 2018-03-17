@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     #classification
     data.CommitClassificationData()
-    model=TraditionalClassifier(ensemble.RandomForestClassifier())
+    model=TraditionalClassifier(ensemble.ExtraTreesClassifier())
     model.dataSet=data
     model.name="RFC"
     model.trainModel()

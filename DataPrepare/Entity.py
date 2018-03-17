@@ -1,10 +1,12 @@
 from DataPrepare.ConnectDB import *
 import numpy as np
-import pickle,json
+import pickle
 import copy
 import time
+import multiprocessing
 from DataPrepare.clusterTasks import onehotFeatures,showData,loadCluster,Vectorizer
 warnings.filterwarnings("ignore")
+
 class Users:
     def __init__(self):
         self.loadData()
@@ -41,7 +43,7 @@ class Users:
         print("users num=%d"%len(self.name))
 
     def getUsers(self):
-        names=self.name#[np.where(self.submissionNum>0)]
+        names=self.name[np.where(self.submissionNum>0)]
         return names
 
     def getInfo(self,username):
@@ -188,7 +190,7 @@ class Tasks:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd="select taskid, postingdate from task where postingdate <3650 and postingdate>=0 order by postingDate desc;"
+        sqlcmd="select taskid, postingdate from task where postingdate <1000 and postingdate>=0 order by postingDate desc;"
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         for data in dataset:
@@ -224,7 +226,6 @@ class DataInstances:
 
         print("set locality: regtasks size=%d" % (len(self.activeReg)))
 
-
     def createRegInstances(self,choice=1):
         tasks = []
         users = []
@@ -235,14 +236,13 @@ class DataInstances:
 
         taskIndex=Tasks()
         userIndex=self.userdata.getUsers()
-        #print(taskIndex.taskIDs[0],taskIndex.postingdate[0])
-        #print(userIndex[0])
         missingtask = 0
         missinguser = 0
 
         t0 = time.time()
 
         print("construct Regist instances with %d tasks and %d users"%(len(taskIndex.taskIDs),len(userIndex)))
+
         with open("../data/clusterResult/taskVec" + str(choice) + ".data", "rb") as f:
             taskdata = pickle.load(f)
             ids = taskdata["taskids"]
@@ -266,7 +266,6 @@ class DataInstances:
 
             for name in userIndex:
 
-                # print("task-user", id, name, date,type(id),type(list(taskdata.keys())[0]))
                 if id not in taskdata.keys():
                     #print(id,"not in task vec data set")
                     missingtask += 1
@@ -275,7 +274,6 @@ class DataInstances:
                 task = taskdata[id]
 
                 regtasks = self.regdata.getTasks(name, date)
-                # print("reg",regtasks)
                 if regtasks is None:
                     #print("user",name,"has no reg history")
                     missinguser += 1
@@ -287,7 +285,6 @@ class DataInstances:
                 participate_frequency = len(regID) / date_interval
 
                 subtasks = self.subdata.getTasks(name, date)
-                # print("sub",subtasks)
                 if subtasks is None:
                     commit_recency = regDate[0] * 2
                     commit_frequency = 0
@@ -312,7 +309,6 @@ class DataInstances:
                         win_frequency = 0
 
                 tenure, skills = self.userdata.getInfo(name)
-                # print("user",tenure,skills)
                 if tenure is None:
                     tenure = regDate[0]
                 user = [tenure, participate_recency, participate_frequency, commit_recency, commit_frequency,

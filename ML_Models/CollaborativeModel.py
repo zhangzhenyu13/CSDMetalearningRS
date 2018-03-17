@@ -49,12 +49,14 @@ class CFClassifier(ML_model):
         self.model[self.k_no].fit(self.dataSet.trainX, self.dataSet.trainLabel)
         t1 = time.time()
         accuracy = metrics.accuracy_score(self.dataSet.trainLabel, self.model[self.k_no].predict(self.dataSet.trainX))
-        print("model", self.name, "training finished in %ds" % (t1 - t0), "train mse=%f" % accuracy)
+        print("model", self.name, "training finished in %ds with %d instances" % (t1 - t0,len(self.dataSet.trainLabel)),
+              "train accuracy=%f" % accuracy)
 
 if __name__ == '__main__':
+
     data = DataSetTopcoderCluster()
 
-    model = CFClassifier(data.n_clusters,ensemble.RandomForestClassifier)
+    model = CFClassifier(data.n_clusters,svm.OneClassSVM)
     model.name = "classifier_cluster"
     model.dataSet = data
     for k in range(data.n_clusters):
