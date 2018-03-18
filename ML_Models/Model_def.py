@@ -119,47 +119,39 @@ class DataSetTopcoder:
 
 class DataSetTopcoderCluster:
     def __init__(self):
-        self.dataSetTrain=None
-        self.dataSetTest=None
+        self.dataSet=None
         self.trainX=None
         self.testX=None
         self.trainLabel=None
         self.testLabel=None
-        self.n_clusters=20
+        self.splitRatio=0.8
         self.loadData()
 
     def loadData(self,choice=1):
 
-        with open("../data/Instances/task_user_local_train" + str(choice) + ".data" , "rb") as f:
-            self.dataSetTrain=pickle.load(f)
-        with open("../data/Instances/task_user_local_test" + str(choice) + ".data", "rb") as f:
-            self.dataSetTest=pickle.load(f)
-        with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "rb") as f:
-            self.KM=pickle.load(f)
+        with open("../data/Instances/task_user_local" + str(choice) + ".data" , "rb") as f:
+            self.dataSet=pickle.load(f)
+        self.clusternames=self.dataSet.keys()
 
-    def loadClusters(self,k_no):
-        self.k_no=k_no
+        with open("../data/saved_ML_models/clusteringModel" + str(choice) + ".pkl", "rb") as f:
+            self.clusterModel=pickle.load(f)
 
-        data=self.dataSetTrain[self.k_no]
+    def loadClusters(self,clustername):
+        self.activecluster=clustername
+        data=self.dataSet[self.activecluster]
+
         users = data["users"]
         tasks = data["tasks"]
         X = np.concatenate((tasks, users), axis=1)
-        self.trainX=X
-
-        data=self.dataSetTest[self.k_no]
-        users = data["users"]
-        tasks = data["tasks"]
-        X = np.concatenate((tasks, users), axis=1)
-        self.testX = X
+        self.trainSize=int(self.splitRatio*len(X))
+        self.trainX=X[:self.trainSize]
+        self.testX = X[self.trainSize:]
 
     def CommitRegressionData(self):
-        data=self.dataSetTrain[self.k_no]
+        data=self.dataSet[self.activecluster]
         Y=np.array(data["submits"])
-        self.trainLabel=Y
-
-        data = self.dataSetTest[self.k_no]
-        Y = np.array(data["submits"])
-        self.testLabel = Y
+        self.trainLabel=Y[:self.trainSize]
+        self.testLabel = Y[self.trainSize:]
 
     def CommitClassificationData(self):
         self.CommitRegressionData()
@@ -167,13 +159,10 @@ class DataSetTopcoderCluster:
         self.testLabel = np.array(self.testLabel>0,dtype=np.int)
 
     def WinRankData(self):
-        data = self.dataSetTrain[self.k_no]
+        data = self.dataSet[self.activecluster]
         Y=np.array(data["ranks"])
-        self.trainLabel=Y
-
-        data = self.dataSetTest[self.k_no]
-        Y = np.array(data["ranks"])
-        self.testLabel = Y
+        self.trainLabel=Y[:self.trainSize]
+        self.testLabel = Y[self.trainSize:]
 
     def WinClassificationData(self):
         self.WinRankData()

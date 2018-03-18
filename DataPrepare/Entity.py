@@ -24,6 +24,9 @@ class Users:
         self.submissionNum=[]
         self.winNum=[]
         for data in dataset:
+            if data[4]<1:
+                #those have no submission hoistory is filtered out
+                continue
             self.name.append(data[0])
             if data[1]<1:
                 self.memberage.append(1)
@@ -43,7 +46,7 @@ class Users:
         print("users num=%d"%len(self.name))
 
     def getUsers(self):
-        names=self.name[np.where(self.submissionNum>0)]
+        names=self.name
         return names
 
     def getInfo(self,username):
@@ -372,7 +375,16 @@ class DataInstances:
             for i in range(len(ids)):
                 taskdata[ids[i]] = X[i]
 
-        for index in range(len(taskIndex.taskIDs)):
+        total=len(taskIndex.taskIDs)
+        stepSize=total//8
+        startP=7
+        begin=startP*stepSize
+        end=begin+stepSize
+        if(end+stepSize>total):
+            end=total
+        print(startP,"total=%d"%total,"from %d to %d"%(begin,end))
+
+        for index in range(begin,end):
             if (index+1)%1==0:
                 print(index+1,"of",len(taskIndex.taskIDs),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 t0=time.time()
@@ -380,16 +392,16 @@ class DataInstances:
             id=taskIndex.taskIDs[index]
             date=taskIndex.postingdate[index]
 
+            if id not in taskdata.keys():
+                # print(id,"not in task vec data set")
+                missingtask += 1
+                continue
+
             taskUsers=self.regdata.getUsers(id)
             if taskUsers is None:
                 taskUsers=[]
 
             for name in userIndex:
-
-                if id not in taskdata.keys():
-                    #print(id,"not in task vec data set")
-                    missingtask += 1
-                    continue
 
                 task = taskdata[id]
 
@@ -459,7 +471,7 @@ class DataInstances:
 
         print("saving data")
 
-        with open("../data/Instances/task_userReg" + str(choice) + ".data", "wb") as f:
+        with open("../data/Instances/task_userReg" + str(choice) + ".data"+str(startP), "wb") as f:
             pickle.dump(data, f)
 
         return data
@@ -649,12 +661,17 @@ def genWholeUserSet():
     subs = Submission()
     choice=1
     gInst = DataInstances(regs, subs, user)
+
     data = gInst.createRegInstances(choice)
+    if len(data["tasks"])==0:
+        print("instances size=0")
+        return
     X = np.concatenate((data["tasks"], data["users"]), axis=1)
     print("instances size=", len(X))
     # [print(x) for x in X[:3]]
     print()
 
 if __name__ == '__main__':
-    genRegisteredInstances()
-    #genWholeUserSet()
+    #genRegisteredInstances()
+    genWholeUserSet()
+
