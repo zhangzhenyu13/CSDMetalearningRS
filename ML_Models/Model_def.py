@@ -59,14 +59,19 @@ def labeltoVector(Y_label,labels):
         Y_vec[index][i]=1
 
     return Y_vec,label_dict
+
 def VectortoLabel(Y_vec,label_dict):
     r_label_dict={}
-    for k in label_dict:
+    for k in label_dict.keys():
         r_label_dict[label_dict[k]]=k
-
+    #print(r_label_dict)
     Y_label=np.zeros(shape=len(Y_vec))
     for index in range(len(Y_label)):
-        i=np.where(Y_vec[index]==1)[0][0]
+        i=0
+        for j in range(len(label_dict)):
+            if Y_vec[index][j]>Y_vec[index][i]:
+                i=j
+        #print(i,Y_vec[index],r_label_dict[i])
         Y_label[index]=r_label_dict[i]
 
     return Y_label

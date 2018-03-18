@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from scipy import sparse
-import json
+from ML_Models.Model_def import ML_model
 import pickle
 import copy
 import gc
@@ -25,7 +25,6 @@ warnings.filterwarnings("ignore")
 ##############################################################################
 def onehotFeatures(data,threshold_num=5,threshhold_ration=0.01):
     '''
-
     :param data:str data
     :return: one-hot vector representation
     '''
@@ -85,10 +84,62 @@ def showData(X):
     plt.show()
 
 class Vectorizer:
+    def filterData(self,threshold=100):
+        tasktype_dict={}
+        for i in range(len(self.tasktype)):
+            t=self.tasktype[i]
+            if t is None:
+                continue
+            if t in tasktype_dict.keys():
+                tasktype_dict[t].append(self.ids[i])
+            else:
+                tasktype_dict[t]=[]
+                tasktype_dict[t].append(self.ids[i])
+        rmType=set()
+        rmsize=0
+        keepType={}
+        for k in tasktype_dict.keys():
+            if len(tasktype_dict[k])<threshold:
+                rmType.add(k)
+                rmsize += len(tasktype_dict[k])
+            else:
+                keepType[k]=tasktype_dict[k]
+        with open("../data/clusterResult/tasktypeCluster.data","wb") as f:
+            pickle.dump(keepType,f)
+        with open("../data/clusterResult/tasktypeCluster.data", "rb") as f:
+            keepType=None
+            keepType=pickle.load(f)
+            #for k in keepType.keys():print(k,len(keepType[k]))
+        rmIndices=[]
+        for i in range(len(self.tasktype)):
+            if self.tasktype[i] in rmType:
+                rmIndices.append(i)
+        print("num to remove",len(rmIndices),rmsize)
+        n=len(self.tasktype)
+        for i in range(1,(n+1)):
+            if len(rmIndices)==0:
+                break
+            index=n-i
+
+            if index ==rmIndices[len(rmIndices)-1]:
+                #print("type size",tasktype_dict[self.tasktype[index]])
+                rmIndices.pop()
+                self.ids.pop()
+                self.tasktype.pop()
+                self.docs.pop()
+                self.duration.pop()
+                self.prize.pop()
+                self.techs.pop()
+                self.lan.pop()
+                self.startdate.pop()
+                self.diffdeg.pop()
+        print("after filter,size=",len(self.ids))
+
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd = 'select taskid,detail,taskname, duration,technology,languages,prize,postingdate,diffdeg,tasktype from task order by postingdate desc'
+        sqlcmd = 'select taskid,detail,taskname, duration,technology,languages,prize,postingdate,diffdeg,tasktype from task ' \
+                 'where postingdate<2000 order by postingdate desc'
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         self.ids=[]
@@ -138,7 +189,8 @@ class Vectorizer:
                 self.diffdeg.append([data[8]])
 
             self.tasktype.append(data[9])
-        #print(self.ids[:6])
+
+
         print("task num=%d" % len(self.ids))
         #showData(self.diffdeg)
         #showData(self.prize)
@@ -262,58 +314,47 @@ class LSAFlow(Vectorizer):
 #######################################################################################################################
 
 # Do the actual clustering
-n_clusters=20
+class NavieClusterModel:
+    def predict(self,X):
+        return np.zeros(shape=len(X))
 
-def KM_cluster(X,true_k,minibatch=False):
-    if minibatch:
-        km = MiniBatchKMeans(n_clusters=true_k, init='k-means++', n_init=1,
-                             init_size=1000, batch_size=1000, verbose=True)
-    else:
-        km = KMeans(n_clusters=true_k, init='k-means++', max_iter=100, n_init=1,
-                    verbose=True)
+class ClusteringModel(ML_model):
+    def __init__(self):
+        ML_model.__init__(self)
+        self.model={}
 
-    print("Clustering sparse data with %s" % km)
-    km.fit(X)
-    print()
-    return km
+        with open("../data/clusterResult/tasktypeCluster.data", "rb") as f:
+            self.dataSet = pickle.load(f)
+            print("%d original types" % len(self.dataSet.keys()))
+        taskstypes=self.dataSet.keys()
+        for t in taskstypes:
+            self.model[t]=None
+            self.dataSet[t]=np.array(self.dataSet[t])
 
-#evalute cluster result in several metrics
-def evaluateCluster(X,labels,km):
-    print("Homogeneity: %0.3f" % metrics.homogeneity_score(labels, km.labels_))
-    print("Completeness: %0.3f" % metrics.completeness_score(labels, km.labels_))
-    print("V-measure: %0.3f" % metrics.v_measure_score(labels, km.labels_))
-    print("Adjusted Rand-Index: %.3f"
-          % metrics.adjusted_rand_score(labels, km.labels_))
-    print("Silhouette Coefficient: %0.3f"
-          % metrics.silhouette_score(X, km.labels_, sample_size=1000))
+    def trainCluster(self,X,tasktype,n_clusters=1,minibatch=False):
+        if n_clusters<2:
+            self.model[tasktype]=NavieClusterModel()
+            return
 
-    print()
+        if minibatch:
+            km = MiniBatchKMeans(n_clusters=n_clusters, init='k-means++', n_init=1,
+                                 init_size=1000, batch_size=1000, verbose=True)
+        else:
+            km = KMeans(n_clusters=n_clusters, init='k-means++', max_iter=100, n_init=1,
+                        verbose=True)
+
+        print("Clustering sparse data with %s" % km)
+        km.fit(X)
+        print()
+        self.model[tasktype]=km
+    def predictCluster(self,X,tasktype):
+        return  self.model[tasktype].predict(X)
 
 def scaler(X):
     minmax=preprocessing.MinMaxScaler(feature_range=(0,1))
     minmax.fit_transform(X)
     return minmax.transform(X)
 
-def taskVec(model,X):
-    X_techs,features1 = onehotFeatures(model.techs)
-    X_lans,features2 = onehotFeatures(model.lan)
-    X_tasktype,features3 = onehotFeatures(model.tasktype)
-
-    X_startdate = np.log(model.startdate)
-    X_duration = np.log(model.duration)
-    X_prize = np.log(model.prize)
-    X_diffdeg = model.diffdeg
-
-    features_num=(model.n_features,features1,features2,features3)
-
-    X = np.concatenate((X,X_techs), axis=1)
-    X = np.concatenate((X, X_lans), axis=1)
-    X = np.concatenate((X, X_tasktype), axis=1)
-    X = np.concatenate((X, X_startdate), axis=1)
-    X = np.concatenate((X, X_duration), axis=1)
-    X = np.concatenate((X, X_prize), axis=1)
-    X = np.concatenate((X, X_diffdeg), axis=1)
-    return (X,features_num)
 def weightedTaskVec(model,X):
     #weight of topics,techs,languages,postingdate,duration,prize,diffdeg,tasktype
     w=[1.0,2.0,1.5,4.0,3.0,1.0,4.0,2.0]
@@ -335,6 +376,27 @@ def weightedTaskVec(model,X):
     X = np.concatenate((X, w[7] * X_diffdeg), axis=1)
     return X
 
+def taskVec(model,X):
+    X_techs,features1 = onehotFeatures(model.techs)
+    X_lans,features2 = onehotFeatures(model.lan)
+    #X_tasktype,features3 = onehotFeatures(model.tasktype)
+
+    X_startdate = np.log(model.startdate)
+    X_duration = np.log(model.duration)
+    X_prize = np.log(model.prize)
+    X_diffdeg = model.diffdeg
+
+    features_num={"doc_topics":model.n_features,"techs":features1,"languages":features2}
+
+    X = np.concatenate((X,X_techs), axis=1)
+    X = np.concatenate((X, X_lans), axis=1)
+    #X = np.concatenate((X, X_tasktype), axis=1)
+    X = np.concatenate((X, X_startdate), axis=1)
+    X = np.concatenate((X, X_duration), axis=1)
+    X = np.concatenate((X, X_prize), axis=1)
+    X = np.concatenate((X, X_diffdeg), axis=1)
+    return (X,features_num)
+
 #save data and load data
 def saveTaskVecData(X,taskid,feature_num,choice=1):
     data={}
@@ -344,7 +406,6 @@ def saveTaskVecData(X,taskid,feature_num,choice=1):
     data["tasks"]=X
     with open("../data/clusterResult/taskVec"+str(choice)+".data","wb") as f:
         pickle.dump(data,f)
-
 
 def loadCluster(Train=False,splitratio=0.8,choice=1):
     with open("../data/clusterResult/taskVec"+str(choice)+".data","rb") as f:
@@ -378,6 +439,7 @@ def genResults():
         model=lsa
     #load model
     model.loadData()
+    model.filterData(200)
     model.loadModel()
     #model.train_doctopics(model.docs)
     X=model.transformVec(model.docs)
@@ -385,44 +447,51 @@ def genResults():
     taskid=model.ids
     #save vec representaion of all the tasks
     saveTaskVecData(X,taskid,feature_num,choice)
-    taskid,X=loadCluster(Train=True,choice=choice)
+    taskid,X=loadCluster(Train=True,choice=choice,splitratio=1)
 
     print("training for clustering, tasks size=%d"%len(X))
-    n_clusters=20
-    taskClusters=None
+    clusterEXP=500
+    taskClusters={}
+    model=ClusteringModel()
+    model.name="clusteringModel"
+    for k in model.dataSet.keys():
+        n_clusters=len(model.dataSet[k])//clusterEXP
+        localids=model.dataSet[k]
+        localX=[]
+        for i in range(len(taskid)):
+            id=taskid[i]
+            if id in localids:
+                localX.append(X[i])
+        localX=np.array(localX)
+        model.trainCluster(X=localX,tasktype=k,n_clusters=n_clusters,minibatch=False)
 
-    while n_clusters>0:
-        km=KM_cluster(X,n_clusters,minibatch=False)
-        print("n_samples: %d, n_features: %d" % X.shape)
-        print()
-        with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "wb") as f:
-            pickle.dump(km, f)
-        with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "rb") as f:
-            km=pickle.load(f)
+        result=model.predictCluster(localX,k)
+        for j in range(len(result)):
+            r=result[j]
+            t=k+str(r)
+            if t not in taskClusters.keys():
+                taskClusters[t]=[localX[j]]
+            else:
+                taskClusters[t].append(localX[j])
 
-        result=km.predict(X)
-        taskClusters={}
-        for i in range(n_clusters):
-            taskClusters[i]=[]
-        for i in range(len(result)):
-            c_no=result[i]
-            taskClusters[c_no].append(taskid[i])
-
-        #plot result
-        hist=[(k,len(taskClusters[k])) for k in taskClusters.keys()]
-        for i in hist:
-            print(i)
-        plt.plot(hist,marker='o')
-        plt.title("choice=%d"%choice)
-        plt.show()
-        n_clusters=eval(input("current cluster size is %d    "%n_clusters))
-
-    #saving result
+    model.saveModel()
+    model.loadModel()
+    # saving result
     print("saving clustering result")
     with open("../data/clusterResult/clusters" + str(choice) + ".data", "wb") as f:
-        pickle.dump(taskClusters,f)
+        pickle.dump(taskClusters, f)
 
+    with open("../data/clusterResult/clusters" + str(choice) + ".data", "rb") as f:
+        pickle.load(f)
+    #plot result
+    hist = [(k, len(taskClusters[k])) for k in taskClusters.keys()]
+    for i in hist:
+        print(i)
+    plt.plot(hist, marker='o')
+    plt.title("choice=%d" % choice)
+    plt.show()
 
 
 if __name__ == '__main__':
     genResults()
+

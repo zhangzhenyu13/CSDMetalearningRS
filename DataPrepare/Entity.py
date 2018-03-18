@@ -309,7 +309,7 @@ class Tasks:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd="select taskid, postingdate from task where postingdate <1000 and postingdate>=0 order by postingDate desc;"
+        sqlcmd="select taskid, postingdate from task where postingdate <300 and postingdate>=0 order by postingDate desc;"
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         for data in dataset:
