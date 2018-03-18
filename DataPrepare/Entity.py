@@ -309,7 +309,7 @@ class Tasks:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd="select taskid, postingdate from task where postingdate <300 and postingdate>=0 order by postingDate desc;"
+        sqlcmd="select taskid, postingdate from task where postingdate <=600 and postingdate>=0 order by postingDate desc;"
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         for data in dataset:
@@ -478,7 +478,7 @@ class DataInstances:
             taskdata=pickle.load(f)
             ids=taskdata["taskids"]
             X=taskdata["tasks"]
-            #print("task size=%d"%(len(ids)),taskdata["size"])
+            print("task size=%d"%(len(ids)),taskdata["size"])
             taskdata={}
             for i in range(len(ids)):
                 taskdata[ids[i]]=X[i]
@@ -607,67 +607,30 @@ def genRegisteredInstances():
     showData(np.log(x).tolist())
     '''
     choice = 1
-    local = True
+    local = False
     print("choice=", choice, "; local clusters=", local)
 
     gInst = DataInstances(regs, subs, user)
 
     if local:
-        trainMode = False
-        testMode = True
 
         with open("../data/clusterResult/clusters" + str(choice) + ".data", "rb") as f:
             clusterdata = pickle.load(f)
-        n_clusters = len(clusterdata.keys())
-        keySet = clusterdata.keys()
+            taskClusters=clusterdata["tasks"]
+            taskidClusters=clusterdata["taskids"]
+        dataClusters = {}
+        print("creating train Local data")
+        for k in taskClusters.keys():
+            print("creating instances for cluster(%d):" % (len(taskidClusters[k])), k)
+            gInst.setLocality(taskidClusters[k])
+            data = gInst.createRegisteredInstances(choice)
+            dataClusters[k] = data
+            X = np.concatenate((data["tasks"], data["users"]), axis=1)
+            print("instances size=", len(X))
+            print()
 
-        if trainMode:
-            # training data
-            dataClusters = {}
-            print("creating train Local data")
-            for k in clusterdata.keys():
-                print("creating instances for cluster(%d):" % (len(clusterdata[k])), k)
-                gInst.setLocality(clusterdata[k])
-                data = gInst.createRegisteredInstances(choice)
-                dataClusters[k] = data
-                X = np.concatenate((data["tasks"], data["users"]), axis=1)
-                print("instances size=", len(X))
-                print()
-
-            with open("../data/Instances/task_user_local_train" + str(choice) + ".data", "wb") as f:
-                pickle.dump(dataClusters, f)
-
-        if testMode:
-            # testing data
-            dataClusters = {}
-
-            print("creating test Local data")
-
-            clusterdata = {}
-
-            for k in keySet:
-                clusterdata[k] = []
-            with open("../data/clusterResult/kmeans" + str(choice) + ".pkl", "rb") as f:
-                km = pickle.load(f)
-            taskids, testX = loadCluster(Train=False, choice=choice)
-            result = km.predict(testX)
-            for i in range(len(result)):
-                c_no = result[i]
-                clusterdata[c_no].append(taskids[i])
-
-            for k in clusterdata.keys():
-                print("creating instances for cluster(%d):" % (len(clusterdata[k])), k)
-                gInst.setLocality(clusterdata[k])
-                data = gInst.createRegisteredInstances(choice)
-                dataClusters[k] = data
-
-                X = np.concatenate((data["tasks"], data["users"]), axis=1)
-
-                print("instances size=", len(X))
-                print()
-
-            with open("../data/Instances/task_user_local_test" + str(choice) + ".data", "wb") as f:
-                pickle.dump(dataClusters, f)
+        with open("../data/Instances/task_user_local" + str(choice) + ".data", "wb") as f:
+            pickle.dump(dataClusters, f)
 
     else:
         print("creating global data")
@@ -693,5 +656,5 @@ def genWholeUserSet():
     print()
 
 if __name__ == '__main__':
-    #genRegisteredInstances()
-    genWholeUserSet()
+    genRegisteredInstances()
+    #genWholeUserSet()

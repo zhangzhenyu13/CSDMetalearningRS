@@ -452,16 +452,19 @@ def genResults():
     print("training for clustering, tasks size=%d"%len(X))
     clusterEXP=500
     taskClusters={}
+    IDClusters={}
     model=ClusteringModel()
     model.name="clusteringModel"
     for k in model.dataSet.keys():
         n_clusters=len(model.dataSet[k])//clusterEXP
         localids=model.dataSet[k]
         localX=[]
+        localIDs=[]
         for i in range(len(taskid)):
             id=taskid[i]
             if id in localids:
                 localX.append(X[i])
+                localIDs.append(id)
         localX=np.array(localX)
         model.trainCluster(X=localX,tasktype=k,n_clusters=n_clusters,minibatch=False)
 
@@ -471,18 +474,23 @@ def genResults():
             t=k+str(r)
             if t not in taskClusters.keys():
                 taskClusters[t]=[localX[j]]
+                IDClusters[t]=[localIDs[j]]
             else:
                 taskClusters[t].append(localX[j])
+                IDClusters[t].append(localIDs[j])
 
     model.saveModel()
     model.loadModel()
     # saving result
     print("saving clustering result")
     with open("../data/clusterResult/clusters" + str(choice) + ".data", "wb") as f:
-        pickle.dump(taskClusters, f)
+        data={"tasks":taskClusters,"taskids":IDClusters}
+        pickle.dump(data, f)
 
     with open("../data/clusterResult/clusters" + str(choice) + ".data", "rb") as f:
-        pickle.load(f)
+        data=pickle.load(f)
+        taskClusters=data["tasks"]
+        taskidClusters=data["taskids"]
     #plot result
     hist = [(k, len(taskClusters[k])) for k in taskClusters.keys()]
     for i in hist:
