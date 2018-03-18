@@ -64,6 +64,7 @@ class Users:
 class Registration:
     def __init__(self):
         self.loadData()
+
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
@@ -99,8 +100,52 @@ class Registration:
         indices=np.where(self.taskid==taskid)[0]
         if len(indices)==0:
             return None
+        #print(indices)
+        #print(len(self.username))
         taskUsers=self.username[indices]
         return taskUsers
+    def setActiveTaskUser(self,taskids=None,usernames=None):
+
+        if taskids is not None:
+            activeID = []
+            activeName = []
+            activeDate = []
+            for id in taskids:
+                indices=np.where(self.taskid==id)[0]
+                if len(indices)==0:
+                    continue
+                else:
+                    ids=self.taskid[indices].tolist()
+                    dates=self.regdate[indices].tolist()
+                    names=self.username[indices].tolist()
+                    activeID=activeID+ids
+                    activeName=activeName+names
+                    activeDate=activeDate+dates
+
+            self.taskid=np.array(activeID)
+            self.username=np.array(activeName)
+            self.regdate=np.array(activeDate)
+
+        if usernames is not None:
+            activeID = []
+            activeName = []
+            activeDate = []
+            for name in usernames:
+                indices=np.where(self.username==name)[0]
+                if len(indices)==0:
+                    continue
+                else:
+                    ids = self.taskid[indices].tolist()
+                    dates = self.regdate[indices].tolist()
+                    names = self.username[indices].tolist()
+                    activeID = activeID + ids
+                    activeName = activeName + names
+                    activeDate = activeDate + dates
+            self.taskid = np.array(activeID)
+            self.username = np.array(activeName)
+            self.regdate = np.array(activeDate)
+        #data active
+        print("active reg data set size=",len(self.taskid))
 
 class Submission:
     def __init__(self):
@@ -182,6 +227,80 @@ class Submission:
         rank=self.finalrank[indices]
         return (ids,subnum,date,score,rank)
 
+    def setActiveTaskUser(self, taskids=None, usernames=None):
+
+        if taskids is not None:
+            activeID = []
+            activeName = []
+            activeDate = []
+            activeNum=[]
+            activeScore=[]
+            activeRank=[]
+
+            for id in taskids:
+                indices = np.where(self.taskid == id)[0]
+                if len(indices) == 0:
+                    continue
+                else:
+                    ids = self.taskid[indices].tolist()
+                    dates = self.subdate[indices].tolist()
+                    names = self.username[indices].tolist()
+                    nums=self.subnum[indices].tolist()
+                    scores=self.score[indices].tolist()
+                    ranks=self.finalrank[indices].tolist()
+
+                    activeID = activeID + ids
+                    activeName = activeName + names
+                    activeDate = activeDate + dates
+                    activeNum=activeNum+nums
+                    activeScore=activeScore+scores
+                    activeRank=activeRank+ranks
+
+            self.taskid = np.array(activeID)
+            self.username = np.array(activeName)
+            self.subdate = np.array(activeDate)
+            self.subnum=np.array(activeNum)
+            self.score=np.array(activeScore)
+            self.finalrank=np.array(activeRank)
+
+        if usernames is not None:
+            activeID = []
+            activeName = []
+            activeDate = []
+            activeNum = []
+            activeScore = []
+            activeRank = []
+            for name in usernames:
+                indices = np.where(self.username == name)[0]
+                if len(indices) == 0:
+                    continue
+                else:
+                    #print(self.taskid)
+                    #print(indices)
+                    ids = self.taskid[indices].tolist()
+                    dates = self.subdate[indices].tolist()
+                    names = self.username[indices].tolist()
+                    nums = self.subnum[indices].tolist()
+                    scores = self.score[indices].tolist()
+                    ranks = self.finalrank[indices].tolist()
+
+                    activeID = activeID + ids
+                    activeName = activeName + names
+                    activeDate = activeDate + dates
+                    activeNum = activeNum + nums
+                    activeScore = activeScore + scores
+                    activeRank = activeRank + ranks
+
+            self.taskid = np.array(activeID)
+            self.username = np.array(activeName)
+            self.subdate = np.array(activeDate)
+            self.subnum = np.array(activeNum)
+            self.score = np.array(activeScore)
+            self.finalrank = np.array(activeRank)
+
+        # data active
+        print("active sub data set size=", len(self.taskid))
+
 class Tasks:
     def __init__(self):
         self.taskIDs=[]
@@ -240,7 +359,8 @@ class DataInstances:
         missinguser = 0
 
         t0 = time.time()
-
+        self.regdata.setActiveTaskUser(usernames=userIndex)
+        self.subdata.setActiveTaskUser(usernames=userIndex)
         print("construct Regist instances with %d tasks and %d users"%(len(taskIndex.taskIDs),len(userIndex)))
 
         with open("../data/clusterResult/taskVec" + str(choice) + ".data", "rb") as f:
@@ -253,7 +373,7 @@ class DataInstances:
                 taskdata[ids[i]] = X[i]
 
         for index in range(len(taskIndex.taskIDs)):
-            if (index+1)%100==0:
+            if (index+1)%1==0:
                 print(index+1,"of",len(taskIndex.taskIDs),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 t0=time.time()
 

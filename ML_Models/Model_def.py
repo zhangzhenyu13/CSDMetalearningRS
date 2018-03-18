@@ -43,6 +43,34 @@ def topKAccuracy(Y_predict,Y_true):
         Y[i]=tag
     return Y
 
+def labeltoVector(Y_label,labels):
+    labels=list(labels)
+    number=len(labels)
+    label_dict={}
+
+    for i in range(len(labels)):
+        label_dict[labels[i]]=i
+
+    Y_vec=np.zeros(shape=(len(Y_label),number))
+
+    for index  in range(len(Y_label)):
+        y=Y_label[index]
+        i=label_dict[y]
+        Y_vec[index][i]=1
+
+    return Y_vec,label_dict
+def VectortoLabel(Y_vec,label_dict):
+    r_label_dict={}
+    for k in label_dict:
+        r_label_dict[label_dict[k]]=k
+
+    Y_label=np.zeros(shape=len(Y_vec))
+    for index in range(len(Y_label)):
+        i=np.where(Y_vec[index]==1)[0][0]
+        Y_label[index]=r_label_dict[i]
+
+    return Y_label
+
 class DataSetTopcoder:
     def __init__(self):
         self.dataSet=None
