@@ -376,7 +376,7 @@ class DataInstances:
                 taskdata[ids[i]] = X[i]
 
         total=len(taskIndex.taskIDs)
-        stepSize=total//6
+        stepSize=total//8
         startP=4
         begin=startP*stepSize
         end=begin+stepSize

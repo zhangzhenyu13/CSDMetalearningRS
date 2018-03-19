@@ -1,9 +1,10 @@
 from ML_Models.Model_def import *
-from sklearn import svm,linear_model
+from sklearn import svm,linear_model,neighbors
 from sklearn import ensemble
 from sklearn import metrics
 import time
-
+import matplotlib.pyplot as plt
+import pandas as pd
 class CFRegressor(ML_model):
     def __init__(self,neighborhoods,regressor):
         ML_model.__init__(self)
@@ -29,6 +30,10 @@ class CFRegressor(ML_model):
         print("model", self.name, "training finished in %ds" % (t1 - t0), "train mse=%f" % mse)
 
 class CFClassifier(ML_model):
+    def ModelTuning(self):
+        self.selection={
+            "UI Prototype Competition0.0":ensemble.RandomForestClassifier
+        }
     def __init__(self,neighborhoods,classifier):
         ML_model.__init__(self)
 
@@ -51,20 +56,27 @@ class CFClassifier(ML_model):
         accuracy = metrics.accuracy_score(self.dataSet.trainLabel, self.model[self.neighborhood].predict(self.dataSet.trainX))
         print("model", self.name, "training finished in %ds with %d instances" % (t1 - t0,len(self.dataSet.trainLabel)),
               "train accuracy=%f" % accuracy)
-
+        return accuracy
 if __name__ == '__main__':
 
-    data = DataSetTopcoderCluster()
+    data = DataSetTopcoderCluster(splitraio=0.7)
 
-    model = CFClassifier(data.clusternames,svm.OneClassSVM)
+    model = CFClassifier(data.clusternames,neighbors.KNeighborsClassifier)
+
     model.name = "classifier_cluster"
     model.dataSet = data
+    y=[]
+    count=0
+    sum=0
+    sum2=0
+
+    assess=classificationAssess(model.name)
     for k in data.clusternames:
         data.loadClusters(k)
         # regression
         data.CommitClassificationData()
         model.setLocality(k)
-        model.trainModel()
+        train_acc=model.trainModel()
 
         print("test size=",len(data.testLabel))
         if len(data.testLabel)<2:
@@ -72,9 +84,21 @@ if __name__ == '__main__':
             print()
             continue
         Y_predict1 = model.predict(data.testX)
-        print("cluster:",k,", test accuracy=%f" % (metrics.accuracy_score(data.testLabel, Y_predict1)))
+        accuracy=metrics.accuracy_score(data.testLabel, Y_predict1)
+        print("cluster:",k,", test accuracy=%f" % accuracy)
+        cfm=metrics.confusion_matrix(data.testLabel,Y_predict1)
+        print(cfm)
         print()
 
+        y.append(accuracy)
+        sum+=accuracy*len(data.testLabel)
+        count+=len(data.testLabel)
+        sum2+=accuracy
+        record=(k,len(data.trainLabel),len(data.testLabel),train_acc,accuracy,cfm)
+        assess.addValue(record)
+    plt.plot(np.arange(len(y)),y,marker='o')
+    assess.saveData()
+    plt.show()
     model.saveModel()
     model.loadModel()
-
+    print("average accuracy=",sum2/len(data.clusternames),"weighted average accuracy=",sum/count)

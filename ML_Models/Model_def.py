@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+import pandas as pd
 class ML_model:
     def __init__(self):
         self.model=None
@@ -76,14 +77,36 @@ def VectortoLabel(Y_vec,label_dict):
 
     return Y_label
 
+class classificationAssess:
+    def __init__(self,filename):
+        self.runpath = "../data/runResults/" + filename + ".txt"
+        self.data = {"clsuter": [], "train_acc": [], "test_acc": [],
+                     "train_size": [], "test_size": [],
+                     "recall":[],"precision":[]}
+
+    def addValue(self,record):
+        self.data["clsuter"].append(record[0])
+        self.data["train_size"].append(record[1])
+        self.data["test_size"].append(record[2])
+        self.data["train_acc"].append(record[3])
+        self.data["test_acc"].append(record[4])
+        cfm=record[5]
+        recall=cfm[0][0]/(cfm[0][0]+cfm[0][1])
+        precision=cfm[0][0]/(cfm[1][0]+cfm[0][0])
+        self.data["precision"].append(recall)
+        self.data["recall"].append(precision)
+    def saveData(self):
+        self.data = pd.DataFrame(self.data,columns=["cluster","train_size","test_size","train_acc","test_acc","recall","precision"])
+        self.data.to_csv(self.runpath)
+
 class DataSetTopcoder:
-    def __init__(self):
+    def __init__(self,splitratio=0.8):
         self.dataSet=None
         self.trainX=None
         self.trainLabel=None
         self.testX=None
         self.testLabel=None
-        self.splitRatio=0.8
+        self.splitRatio=splitratio
         self.loadData()
 
     def loadData(self,choice=1):
@@ -118,13 +141,13 @@ class DataSetTopcoder:
         self.testLabel=Y[self.trainSize:]
 
 class DataSetTopcoderCluster:
-    def __init__(self):
+    def __init__(self,splitraio=0.8):
         self.dataSet=None
         self.trainX=None
         self.testX=None
         self.trainLabel=None
         self.testLabel=None
-        self.splitRatio=0.8
+        self.splitRatio=splitraio
         self.loadData()
 
     def loadData(self,choice=1):
@@ -133,8 +156,8 @@ class DataSetTopcoderCluster:
             self.dataSet=pickle.load(f)
         self.clusternames=self.dataSet.keys()
 
-        with open("../data/saved_ML_models/clusteringModel" + str(choice) + ".pkl", "rb") as f:
-            self.clusterModel=pickle.load(f)
+        #with open("../data/saved_ML_models/clusteringModel" + str(choice) + ".pkl", "rb") as f:
+        #    self.clusterModel=pickle.load(f)
 
     def loadClusters(self,clustername):
         self.activecluster=clustername

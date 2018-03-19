@@ -454,7 +454,7 @@ def genResults():
     taskClusters={}
     IDClusters={}
     model=ClusteringModel()
-    model.name="clusteringModel"
+    model.name="clusteringModel"+str(choice)
     for k in model.dataSet.keys():
         n_clusters=len(model.dataSet[k])//clusterEXP
         localids=model.dataSet[k]

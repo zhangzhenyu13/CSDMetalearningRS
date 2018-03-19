@@ -1,9 +1,10 @@
 from ML_Models.Model_def import *
-from keras import models,layers,optimizers
+from keras import models,layers,optimizers,losses
 import numpy as np
 from sklearn import metrics
 import time
 import matplotlib.pyplot as plt
+
 class DNNRegression(ML_model):
     def __init__(self,dataSet):
         ML_model.__init__(self)
@@ -34,7 +35,7 @@ class DNNRegression(ML_model):
         self.model.add(layers.Dense(units=ouputDim))
 
         opt = optimizers.Adam(lr=0.001)
-        self.model.compile(optimizer=opt, loss='mse')
+        self.model.compile(optimizer=opt, loss=losses.mean_squared_error)
     def trainModel(self):
         print(self.name + " training")
         t0 = time.time()
@@ -147,5 +148,5 @@ def showData(Y_predict,Y_true,content):
     plt.show()
 if __name__ == '__main__':
     data=DataSetTopcoder()
-    #testClassification(data)
-    testRegression(data)
+    testClassification(data)
+    #testRegression(data)
