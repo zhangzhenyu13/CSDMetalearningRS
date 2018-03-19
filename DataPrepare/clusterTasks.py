@@ -407,7 +407,7 @@ def saveTaskVecData(X,taskid,feature_num,choice=1):
     with open("../data/clusterResult/taskVec"+str(choice)+".data","wb") as f:
         pickle.dump(data,f)
 
-def loadCluster(Train=False,splitratio=0.8,choice=1):
+def loadTaskVecData(Train=False,splitratio=0.8,choice=1):
     with open("../data/clusterResult/taskVec"+str(choice)+".data","rb") as f:
         data=pickle.load(f)
     size=data["size"]
@@ -447,7 +447,7 @@ def genResults():
     taskid=model.ids
     #save vec representaion of all the tasks
     saveTaskVecData(X,taskid,feature_num,choice)
-    taskid,X=loadCluster(Train=True,choice=choice,splitratio=1)
+    taskid,X=loadTaskVecData(Train=True,choice=choice,splitratio=1)
 
     print("training for clustering, tasks size=%d"%len(X))
     clusterEXP=500

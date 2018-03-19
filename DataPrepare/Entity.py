@@ -3,8 +3,7 @@ import numpy as np
 import pickle
 import copy
 import time
-import multiprocessing
-from DataPrepare.clusterTasks import onehotFeatures,showData,loadCluster,Vectorizer
+from DataPrepare.clusterTasks import onehotFeatures,showData,loadTaskVecData,Vectorizer
 warnings.filterwarnings("ignore")
 
 class Users:
@@ -377,7 +376,7 @@ class DataInstances:
 
         total=len(taskIndex.taskIDs)
         stepSize=total//8
-        startP=4
+        startP=7
         begin=startP*stepSize
         end=begin+stepSize
         if(end+stepSize>total):
@@ -569,7 +568,6 @@ class DataInstances:
                 submits.append(0)
                 ranks.append(10)
 
-
         print("missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
         data={}
@@ -581,7 +579,6 @@ class DataInstances:
             dates=np.array([])
             submits=np.array([[]])
             ranks=np.array([])
-
 
         data["usernames"] = usernames
         data["taskids"] = taskids

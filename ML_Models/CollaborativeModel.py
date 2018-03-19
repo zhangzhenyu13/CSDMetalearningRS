@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     data = DataSetTopcoderCluster(splitraio=0.7)
 
-    model = CFClassifier(data.clusternames,neighbors.KNeighborsClassifier)
+    model = CFClassifier(data.clusternames,ensemble.RandomForestClassifier)
 
     model.name = "classifier_cluster"
     model.dataSet = data

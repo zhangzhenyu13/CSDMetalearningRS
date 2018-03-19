@@ -7,6 +7,7 @@ from scipy import sparse
 import time
 import gc
 import numpy as np
+
 def loadclusters(choice):
     f=open("../data/clusterResult/clusters"+str(choice)+".data","rb")
     clusters=pickle.load(f)
@@ -14,41 +15,33 @@ def loadclusters(choice):
 
 #datastructure for reg and sub
 class DataURS:
-    def filterUsers(self):
-        users = Users()
-        self.activeUsers = users.getUsers()
+    def filterUsers(self,users=None,change=False):
+        if users is not None:
+            self.activeUsers = users
 
         rmIndices=[]
-        for i in range(len(self.regdata)):
-            if self.regdata[i][0] not in self.activeUsers:
+        for i in range(len(self.activeReg)):
+            if self.activeReg[i][0] not in self.activeUsers:
                 rmIndices.append(i)
-        n=len(self.regdata)
         count=len(rmIndices)
-        for i in range(1,n+1):
-            if len(rmIndices)==0:
-                print("all %d reg filtered"%count)
-                break
-            index=n-i
-            if index == rmIndices[len(rmIndices)-1]:
-                self.regdata=np.delete(self.regdata,index,axis=1)
-                rmIndices.pop()
+
+        self.activeReg=np.delete(self.activeReg,rmIndices,axis=0)
+        print("all %d reg filtered" % count)
 
         rmIndices=[]
-        for i in range(len(self.subdata)):
-            if self.subdata[i][0] not in self.activeUsers:
+        for i in range(len(self.activeSub)):
+            if self.activeSub[i][0] not in self.activeUsers:
                 rmIndices.append(i)
-        n=len(self.subdata)
         count=len(rmIndices)
-        for i in range(1,n+1):
-            if len(rmIndices)==0:
-                print("all %d sub filtered"%count)
-                break
-            index=n-i
-            if index ==rmIndices[len(rmIndices)-1]:
-                self.subdata=np.delete(self.subdata,index,axis=1)
-                rmIndices.pop()
 
-        print("after filtering regdata size=%d, subdata size=%d"%(len(self.regdata),len(self.subdata)))
+        self.activeSub=np.delete(self.activeSub,rmIndices,axis=0)
+        print("all %d sub filtered" % count)
+
+        if change:
+            self.subdata=self.activeSub
+            self.regdata=self.activeReg
+
+        print("after filtering active~ regdata size=%d, subdata size=%d"%(len(self.activeReg),len(self.activeSub)))
 
     def __init__(self):
         warnings.filterwarnings("ignore")
@@ -56,17 +49,17 @@ class DataURS:
         conn = ConnectDB()
         cur = conn.cursor()
         #load registration data
-        sqlcmd = "select handle,taskid,regdate from registration"
+        sqlcmd = "select handle,taskid,regdate from registration where regdate<2500"
         cur.execute(sqlcmd)
         self.regdata = np.array(cur.fetchall())
 
         #load submission data
-        sqlcmd="select handle,taskid,subnum,score from submission"
+        sqlcmd="select handle,taskid,subnum,score from submission where submitdate<2500"
         cur.execute(sqlcmd)
         self.subdata=np.array(cur.fetchall())
 
         print("regdata size=%d, subdata size=%d"%(len(self.regdata),len(self.subdata)))
-        self.filterUsers()
+
         # print(type(self.regdata),self.regdata[:10],self.subdata[:10])
 
     def setActiveCluster(self,taskIDs):
@@ -100,8 +93,10 @@ class DataURS:
 
     def getRegUsers(self):
         users = set()
+
         for reg in self.activeReg:
-            users.add(reg[0])
+            if reg[0] in self.activeSub[:,0]:
+                users.add(reg[0])
 
         return users
 
@@ -273,32 +268,43 @@ def constructGraph(tasks,dataset):
 def initGlobalGraph(dataset):
     print("init Glabal interaction graph")
     dataset.setActiveCluster(None)
+
     user_m,users=constructGraph(None,dataset)
-    with open("../data/UserGraph/initGraph/initG_" + str(choice) + "_Glabal" + ".json", "w") as f:
+    with open("../data/UserGraph/initGraph/globalGraph" + str(choice) + ".data", "wb") as f:
         data = {}
         data["size"] = len(user_m)
         data["users"] = users
-        data["data"] = user_m.tolist()
-        json.dump(data, f, ensure_ascii=False)
-    exit(100)
+        data["data"] = user_m
+        pickle.dump(data,f)
 
-if __name__ == '__main__':
-    choice=eval(input("choice= "))
-    print("loading data")
-    clusters=loadclusters(choice)
-    dataset=DataURS()
-    initGlobalGraph(dataset)
-    for k in clusters.keys():
+def initLocalGraph(dataset):
+    dataGraph={}
+    for k in clusters["taskids"].keys():
         print("cluster",k,"graph building")
-        cluster=clusters[k]
+        cluster=clusters["taskids"][k]
         #print(cluster)
         cluster=np.array(cluster,dtype=np.int)
         dataset.setActiveCluster(cluster)
         user_m,users=constructGraph(cluster,dataset)
-        with open("../data/UserGraph/initGraph/initG_"+str(choice)+"_"+str(k)+".json","w") as f:
-            data={}
-            data["size"]=len(user_m)
-            data["users"]=users
-            data["data"]=user_m.tolist()
-            json.dump(data,f,ensure_ascii=False)
+
+        data={}
+        data["size"]=len(user_m)
+        data["users"]=users
+        data["data"]=user_m
+        dataGraph[k]=data
         gc.collect()
+
+    with open("../data/UserGraph/initGraph/localGraph"+str(choice)+".data","wb") as f:
+        pickle.dump(dataGraph,f)
+
+if __name__ == '__main__':
+    choice=eval(input("choice= "))
+    print("loading data")
+    users = Users().getUsers()
+
+    clusters=loadclusters(choice)
+    dataset=DataURS()
+    dataset.setActiveCluster(None)
+    dataset.filterUsers(users,change=True)
+    initGlobalGraph(dataset)
+    initLocalGraph(dataset)

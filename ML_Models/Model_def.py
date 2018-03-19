@@ -44,57 +44,39 @@ def topKAccuracy(Y_predict,Y_true):
         Y[i]=tag
     return Y
 
-def labeltoVector(Y_label,labels):
-    labels=list(labels)
-    number=len(labels)
-    label_dict={}
-
-    for i in range(len(labels)):
-        label_dict[labels[i]]=i
-
-    Y_vec=np.zeros(shape=(len(Y_label),number))
-
-    for index  in range(len(Y_label)):
-        y=Y_label[index]
-        i=label_dict[y]
-        Y_vec[index][i]=1
-
-    return Y_vec,label_dict
-
-def VectortoLabel(Y_vec,label_dict):
-    r_label_dict={}
-    for k in label_dict.keys():
-        r_label_dict[label_dict[k]]=k
-    #print(r_label_dict)
-    Y_label=np.zeros(shape=len(Y_vec))
-    for index in range(len(Y_label)):
-        i=0
-        for j in range(len(label_dict)):
-            if Y_vec[index][j]>Y_vec[index][i]:
-                i=j
-        #print(i,Y_vec[index],r_label_dict[i])
-        Y_label[index]=r_label_dict[i]
-
-    return Y_label
-
 class classificationAssess:
     def __init__(self,filename):
         self.runpath = "../data/runResults/" + filename + ".txt"
-        self.data = {"clsuter": [], "train_acc": [], "test_acc": [],
+        self.data = {"cluster": [], "train_acc": [], "test_acc": [],
                      "train_size": [], "test_size": [],
                      "recall":[],"precision":[]}
 
     def addValue(self,record):
-        self.data["clsuter"].append(record[0])
+        #print(record)
+        self.data["cluster"].append(record[0])
         self.data["train_size"].append(record[1])
         self.data["test_size"].append(record[2])
         self.data["train_acc"].append(record[3])
         self.data["test_acc"].append(record[4])
         cfm=record[5]
-        recall=cfm[0][0]/(cfm[0][0]+cfm[0][1])
-        precision=cfm[0][0]/(cfm[1][0]+cfm[0][0])
-        self.data["precision"].append(recall)
-        self.data["recall"].append(precision)
+        if record[4]==1:
+            precision=1
+            recall=1
+        else:
+            if cfm[0][0]==0:
+                if cfm[0][1]==0:
+                    recall=1
+                else:
+                    recall=0
+                if cfm[1][0]==0:
+                    precision=1
+                else:
+                    precision=0
+            else:
+                recall=cfm[0][0]/(cfm[0][0]+cfm[0][1])
+                precision=cfm[0][0]/(cfm[1][0]+cfm[0][0])
+        self.data["precision"].append(precision)
+        self.data["recall"].append(recall)
     def saveData(self):
         self.data = pd.DataFrame(self.data,columns=["cluster","train_size","test_size","train_acc","test_acc","recall","precision"])
         self.data.to_csv(self.runpath)

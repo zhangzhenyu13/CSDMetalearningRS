@@ -1,5 +1,6 @@
 from ML_Models.Model_def import *
 from keras import models,layers,optimizers,losses
+from keras.utils import np_utils
 import numpy as np
 from sklearn import metrics
 import time
@@ -93,7 +94,7 @@ class DNNCLassifier(ML_model):
     def trainModel(self):
         print(self.name+" training")
         t0=time.time()
-        self.model.fit(x=self.dataSet.trainX,y=self.dataSet.trainLabel,epochs=1,batch_size=5000)
+        self.model.fit(x=self.dataSet.trainX,y=self.dataSet.trainLabel,epochs=100,batch_size=500)
         t1=time.time()
         loss,accuracy=self.model.evaluate(x=self.dataSet.trainX,y=self.dataSet.trainLabel,batch_size=10000)
         print("finished in %ds"%(t1-t0),"accuracy=%f"%accuracy,"loss=%f"%loss)
@@ -111,19 +112,19 @@ class DNNCLassifier(ML_model):
 
 def testClassification(data):
     data.CommitClassificationData()
-    data.trainLabel, d1 = labeltoVector(data.trainLabel, (0, 1))
+    data.trainLabel=np_utils.to_categorical(data.trainLabel,num_classes=2)
 
-    print(d1)
     model = DNNCLassifier(dataSet=data)
     model.name = "DNN _lassifier"
     model.trainModel()
     model.saveModel()
     model.loadModel()
     Y_predict2 = model.predict(data.testX)
-    Y_predict2 = VectortoLabel(Y_predict2, d1)
+    Y_predict2=np.argmax(Y_predict2,axis=1)
 
     print("test score=%f" % (metrics.accuracy_score(data.testLabel, Y_predict2, normalize=True)))
     print()
+
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel, Y_predict2))
 def testRegression(data):
@@ -147,6 +148,6 @@ def showData(Y_predict,Y_true,content):
     plt.title("test and real "+content)
     plt.show()
 if __name__ == '__main__':
-    data=DataSetTopcoder()
+    data=DataSetTopcoder(splitratio=0.7)
     testClassification(data)
     #testRegression(data)
