@@ -1,7 +1,8 @@
 import json,pickle
 import multiprocessing
 from DataPrepare.ConnectDB import *
-from multiprocessing import Condition,Queue,Pipe
+from DataPrepare.Entity import Users
+from multiprocessing import Condition,Queue
 from scipy import sparse
 import time
 import gc
@@ -13,6 +14,42 @@ def loadclusters(choice):
 
 #datastructure for reg and sub
 class DataURS:
+    def filterUsers(self):
+        users = Users()
+        self.activeUsers = users.getUsers()
+
+        rmIndices=[]
+        for i in range(len(self.regdata)):
+            if self.regdata[i][0] not in self.activeUsers:
+                rmIndices.append(i)
+        n=len(self.regdata)
+        count=len(rmIndices)
+        for i in range(1,n+1):
+            if len(rmIndices)==0:
+                print("all %d reg filtered"%count)
+                break
+            index=n-i
+            if index == rmIndices[len(rmIndices)-1]:
+                self.regdata=np.delete(self.regdata,index,axis=1)
+                rmIndices.pop()
+
+        rmIndices=[]
+        for i in range(len(self.subdata)):
+            if self.subdata[i][0] not in self.activeUsers:
+                rmIndices.append(i)
+        n=len(self.subdata)
+        count=len(rmIndices)
+        for i in range(1,n+1):
+            if len(rmIndices)==0:
+                print("all %d sub filtered"%count)
+                break
+            index=n-i
+            if index ==rmIndices[len(rmIndices)-1]:
+                self.subdata=np.delete(self.subdata,index,axis=1)
+                rmIndices.pop()
+
+        print("after filtering regdata size=%d, subdata size=%d"%(len(self.regdata),len(self.subdata)))
+
     def __init__(self):
         warnings.filterwarnings("ignore")
 
@@ -27,8 +64,10 @@ class DataURS:
         sqlcmd="select handle,taskid,subnum,score from submission"
         cur.execute(sqlcmd)
         self.subdata=np.array(cur.fetchall())
-        #print(type(self.regdata),self.regdata[:10],self.subdata[:10])
+
         print("regdata size=%d, subdata size=%d"%(len(self.regdata),len(self.subdata)))
+        self.filterUsers()
+        # print(type(self.regdata),self.regdata[:10],self.subdata[:10])
 
     def setActiveCluster(self,taskIDs):
         if taskIDs is None:

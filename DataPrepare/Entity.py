@@ -71,7 +71,7 @@ class Registration:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd = 'select taskid, handle,regdate from registration order by regdate desc'
+        sqlcmd = 'select taskid, handle,regdate from registration where regdate<2500 order by regdate desc'
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         self.taskid=[]
@@ -156,7 +156,7 @@ class Submission:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd = 'select taskid,handle,subnum,submitdate,score from submission order by submitdate desc'
+        sqlcmd = 'select taskid,handle,subnum,submitdate,score from submission where submitdate<2500 order by submitdate desc'
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         self.taskid=[]
@@ -376,8 +376,8 @@ class DataInstances:
                 taskdata[ids[i]] = X[i]
 
         total=len(taskIndex.taskIDs)
-        stepSize=total//8
-        startP=7
+        stepSize=total//6
+        startP=4
         begin=startP*stepSize
         end=begin+stepSize
         if(end+stepSize>total):
@@ -619,7 +619,7 @@ def genRegisteredInstances():
     showData(np.log(x).tolist())
     '''
     choice = 1
-    local = False
+    local = True
     print("choice=", choice, "; local clusters=", local)
 
     gInst = DataInstances(regs, subs, user)
