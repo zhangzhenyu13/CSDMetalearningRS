@@ -120,6 +120,9 @@ class DataURS:
             tasks=np.array([])
         return tasks
 
+    def getAvgSubNum(self,user):
+        tasks=self.getSubTasks(user)
+        return np.sum(tasks[:,1])/len(self.getRegTasks(user))
 
 class UserInteraction(multiprocessing.Process):
     def __init__(self,index,outercon,dataset,users,queue,fsig):
@@ -270,11 +273,16 @@ def initGlobalGraph(dataset):
     dataset.setActiveCluster(None)
 
     user_m,users=constructGraph(None,dataset)
+    subdata = []
+    for i in range(len(users)):
+        subdata.append(dataset.getAvgSubNum(users[i]))
+    subdata = np.array(subdata)
     with open("../data/UserGraph/initGraph/globalGraph" + str(choice) + ".data", "wb") as f:
         data = {}
         data["size"] = len(user_m)
         data["users"] = users
         data["data"] = user_m
+        data["avgsubnum"]=subdata
         pickle.dump(data,f)
 
 def initLocalGraph(dataset):
@@ -286,11 +294,15 @@ def initLocalGraph(dataset):
         cluster=np.array(cluster,dtype=np.int)
         dataset.setActiveCluster(cluster)
         user_m,users=constructGraph(cluster,dataset)
-
+        subdata=[]
+        for i in range(len(users)):
+            subdata.append(dataset.getAvgSubNum(users[i]))
+        subdata=np.array(subdata)
         data={}
         data["size"]=len(user_m)
         data["users"]=users
         data["data"]=user_m
+        data["avgsubnum"]=subdata
         dataGraph[k]=data
         gc.collect()
 
@@ -306,5 +318,5 @@ if __name__ == '__main__':
     dataset=DataURS()
     dataset.setActiveCluster(None)
     dataset.filterUsers(users,change=True)
-    initGlobalGraph(dataset)
+    #initGlobalGraph(dataset)
     initLocalGraph(dataset)
