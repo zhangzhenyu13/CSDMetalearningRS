@@ -4,6 +4,7 @@ data/UserGraph
 data/Instances
 data/saved_ML_models
 data/pictures
+data/runResults
 *.pyc
 *.pkl
 *.json
