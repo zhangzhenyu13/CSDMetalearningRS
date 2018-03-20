@@ -48,8 +48,8 @@ class TraditionalClassifier(ML_model):
 #test the performance
 if __name__ == '__main__':
 
-    data=DataSetTopcoder()
-
+    #data=DataSetTopcoder()
+    data=DataSetTopCoderReg()
     '''
     #regression
     data.CommitRegressionData()
@@ -65,10 +65,10 @@ if __name__ == '__main__':
     '''
 
     #classification
-    data.CommitClassificationData()
+    #data.CommitClassificationData()
     model=TraditionalClassifier(ensemble.ExtraTreesClassifier())
     model.dataSet=data
-    model.name="RFC"
+    model.name="global classifier reg"
     model.trainModel()
     model.saveModel()
     model.loadModel()

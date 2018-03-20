@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 import copy
 import time
+import gc
 from DataPrepare.clusterTasks import onehotFeatures,showData,loadTaskVecData,Vectorizer
 warnings.filterwarnings("ignore")
 
@@ -374,16 +375,12 @@ class DataInstances:
             for i in range(len(ids)):
                 taskdata[ids[i]] = X[i]
 
-        total=len(taskIndex.taskIDs)
-        stepSize=total//8
-        startP=7
-        begin=startP*stepSize
-        end=begin+stepSize
-        if(end+stepSize>total):
-            end=total
-        print(startP,"total=%d"%total,"from %d to %d"%(begin,end))
 
-        for index in range(begin,end):
+        begin=0
+        end=0
+
+        for index in range(len(taskIndex.taskIDs)):
+            end+=1
             if (index+1)%1==0:
                 print(index+1,"of",len(taskIndex.taskIDs),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 t0=time.time()
@@ -457,8 +454,30 @@ class DataInstances:
                     regists.append(0)
 
 
-        print("missing task", missingtask, "missing user", missinguser, "instances size", len(taskids))
-        print()
+            if len(taskids)>1000000:
+                print("saving data")
+                data = {}
+                data["usernames"] = usernames
+                data["taskids"] = taskids
+                data["tasks"] = tasks
+                data["users"] = users
+                data["dates"] = dates
+                data["regists"]=regists
+
+                with open("../data/Instances/regsdata/task_userReg" + str(choice) + ".data"+str(begin)+"_"+str(end), "wb") as f:
+
+                    pickle.dump(data, f)
+                    begin=end
+
+                data={}
+                tasks = []
+                users = []
+                usernames = []
+                taskids = []
+                dates = []
+                regists = []
+                gc.collect()
+
         data = {}
         data["usernames"] = usernames
         data["taskids"] = taskids
@@ -467,10 +486,12 @@ class DataInstances:
         data["dates"] = dates
         data["regists"]=regists
 
+        print("missing task", missingtask, "missing user", missinguser, "instances size", len(taskids))
+        print()
 
         print("saving data")
 
-        with open("../data/Instances/task_userReg" + str(choice) + ".data"+str(startP), "wb") as f:
+        with open("../data/Instances/regsdata/task_userReg" + str(choice) + ".data"+str(begin)+"_"+str(end), "wb") as f:
             pickle.dump(data, f)
 
         return data

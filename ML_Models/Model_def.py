@@ -122,6 +122,30 @@ class DataSetTopcoder:
         self.trainLabel=Y[:self.trainSize]
         self.testLabel=Y[self.trainSize:]
 
+class DataSetTopCoderReg:
+    def __init__(self,splitratio=0.8):
+        self.dataSet = None
+        self.trainX = None
+        self.trainLabel = None
+        self.testX = None
+        self.testLabel = None
+        self.splitRatio = splitratio
+        self.loadData()
+    def loadData(self,choice=1):
+        with open("../data/Instances/regsdata/task_userReg"+str(choice)+".data0_165","rb") as f:
+            self.dataSet=pickle.load(f)
+        users=self.dataSet["users"]
+        tasks=self.dataSet["tasks"]
+        regists=np.array(self.dataSet["regists"])
+        X=np.concatenate((tasks,users),axis=1)
+        self.trainSize=int(self.splitRatio*len(X))
+        self.trainX=X[:self.trainSize]
+        self.testX=X[self.trainSize:]
+        self.trainLabel=regists[:self.trainSize]
+        self.testLabel=regists[self.trainSize:]
+        print("feature length for user(%d) and task(%d) is %d"%(len(users[0]),len(tasks[0]),len(X[0])))
+        print("loaded all the instances, size=%d"%len(X),"trainSize=%d"%self.trainSize)
+
 class DataSetTopcoderCluster:
     def __init__(self,splitraio=0.8):
         self.dataSet=None
