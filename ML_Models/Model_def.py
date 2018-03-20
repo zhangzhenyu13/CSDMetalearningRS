@@ -49,17 +49,9 @@ class classificationAssess:
         self.runpath = "../data/runResults/" + filename + ".txt"
         self.data = {"cluster": [], "train_acc": [], "test_acc": [],
                      "train_size": [], "test_size": [],
-                     "recall":[],"precision":[]}
-
-    def addValue(self,record):
-        #print(record)
-        self.data["cluster"].append(record[0])
-        self.data["train_size"].append(record[1])
-        self.data["test_size"].append(record[2])
-        self.data["train_acc"].append(record[3])
-        self.data["test_acc"].append(record[4])
-        cfm=record[5]
-        if record[4]==1:
+                     "recall":[],"precision":[],"model_name":[]}
+    def processCFM(self,cfm,acc):
+        if acc==1:
             precision=1
             recall=1
         else:
@@ -75,20 +67,34 @@ class classificationAssess:
             else:
                 recall=cfm[0][0]/(cfm[0][0]+cfm[0][1])
                 precision=cfm[0][0]/(cfm[1][0]+cfm[0][0])
+        return recall,precision
+    def addValue(self,record):
+        #print(record)
+        self.data["cluster"].append(record[0])
+        self.data["train_size"].append(record[1])
+        self.data["test_size"].append(record[2])
+        self.data["train_acc"].append(record[3])
+        self.data["test_acc"].append(record[4])
+        cfm=record[5]
+        recall,precision=self.processCFM(cfm,record[4])
         self.data["precision"].append(precision)
         self.data["recall"].append(recall)
+        self.data["model_name"].append(record[6])
     def saveData(self):
         self.data = pd.DataFrame(self.data,columns=["cluster","train_size","test_size","train_acc","test_acc","recall","precision"])
         self.data.to_csv(self.runpath)
 
 class DataSetTopcoder:
-    def __init__(self,splitratio=0.8):
+    def __init__(self,splitratio=0.8,validateratio=0.1):
         self.dataSet=None
         self.trainX=None
         self.trainLabel=None
         self.testX=None
         self.testLabel=None
+        self.validateX=None
+        self.validateLabel=None
         self.splitRatio=splitratio
+        self.validateRatio=validateratio
         self.loadData()
 
     def loadData(self,choice=1):
@@ -98,38 +104,45 @@ class DataSetTopcoder:
         tasks=self.dataSet["tasks"]
         X=np.concatenate((tasks,users),axis=1)
         self.trainSize=int(self.splitRatio*len(X))
-        self.trainX=X[:self.trainSize]
+        self.validateSize=int(self.validateRatio*self.trainSize)
+        self.trainX=X[:self.trainSize-self.validateSize]
+        self.validateX=X[self.trainSize-self.validateSize:self.trainSize]
         self.testX=X[self.trainSize:]
         print("feature length for user(%d) and task(%d) is %d"%(len(users[0]),len(tasks[0]),len(X[0])))
-        print("loaded all the instances, size=%d"%len(X),"trainSize=%d"%self.trainSize)
+        print("loaded all the instances, size=%d"%len(X),"trainSize=%d, validateSize=%d"%(self.trainSize,self.validateSize))
 
     def CommitRegressionData(self):
         Y=np.array(self.dataSet["submits"])
-        self.trainLabel=Y[:self.trainSize]
+        self.trainLabel=Y[:self.trainSize-self.validateSize]
+        self.validateLabel=Y[self.trainSize-self.validateSize:self.trainSize]
         self.testLabel=Y[self.trainSize:]
     def CommitClassificationData(self):
-        Y=np.array(self.dataSet["submits"])
-        Y=np.array(Y>0,dtype=np.int)
-        self.trainLabel=Y[:self.trainSize]
-        self.testLabel=Y[self.trainSize:]
+        self.CommitRegressionData()
+        self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
+        self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
+        self.testLabel=np.array(self.testLabel>0,dtype=np.int)
     def WinRankData(self):
         Y=np.array(self.dataSet["ranks"])
-        self.trainLabel=Y[:self.trainSize]
+        self.trainLabel=Y[:self.trainSize-self.validateSize]
+        self.validateLabel=Y[self.trainSize-self.validateSize:self.trainSize]
         self.testLabel=Y[self.trainSize:]
     def WinClassificationData(self):
-        Y=np.array(self.dataSet["ranks"])
-        Y=np.array(Y==0,dtype=np.int)
-        self.trainLabel=Y[:self.trainSize]
-        self.testLabel=Y[self.trainSize:]
+        self.WinRankData()
+        self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
+        self.validateLabel=np.array(self.validateLabel==0,dtype=np.int)
+        self.testLabel=np.array(self.testLabel==0,dtype=np.int)
 
 class DataSetTopCoderReg:
-    def __init__(self,splitratio=0.8):
+    def __init__(self,splitratio=0.8,validateratio=0.1):
         self.dataSet = None
         self.trainX = None
         self.trainLabel = None
+        self.validateX=None
+        self.validateLabel=None
         self.testX = None
         self.testLabel = None
         self.splitRatio = splitratio
+        self.validateRatio=validateratio
         self.loadData()
     def loadData(self,choice=1):
         with open("../data/Instances/regsdata/task_userReg"+str(choice)+".data0_165","rb") as f:
@@ -139,21 +152,27 @@ class DataSetTopCoderReg:
         regists=np.array(self.dataSet["regists"])
         X=np.concatenate((tasks,users),axis=1)
         self.trainSize=int(self.splitRatio*len(X))
-        self.trainX=X[:self.trainSize]
+        self.validateSize=int(self.validateRatio*self.trainSize)
+        self.trainX=X[:self.trainSize-self.validateSize]
+        self.validateX=X[self.trainSize-self.validateSize:self.trainSize]
         self.testX=X[self.trainSize:]
-        self.trainLabel=regists[:self.trainSize]
+        self.trainLabel=regists[:self.trainSize-self.validateSize]
+        self.validateLabel=regists[self.trainSize-self.validateSize:self.trainSize]
         self.testLabel=regists[self.trainSize:]
         print("feature length for user(%d) and task(%d) is %d"%(len(users[0]),len(tasks[0]),len(X[0])))
-        print("loaded all the instances, size=%d"%len(X),"trainSize=%d"%self.trainSize)
+        print("loaded all the instances, size=%d"%len(X),"trainSize=%d, validateSize=%d"%(self.trainSize,self.validateSize))
 
 class DataSetTopcoderCluster:
-    def __init__(self,splitraio=0.8):
+    def __init__(self,splitraio=0.8,validateratio=0.1):
         self.dataSet=None
         self.trainX=None
+        self.validateX=None
         self.testX=None
         self.trainLabel=None
+        self.validateLabel=None
         self.testLabel=None
         self.splitRatio=splitraio
+        self.validateRatio=validateratio
         self.loadData()
 
     def loadData(self,choice=1):
@@ -173,29 +192,37 @@ class DataSetTopcoderCluster:
         tasks = data["tasks"]
         X = np.concatenate((tasks, users), axis=1)
         self.trainSize=int(self.splitRatio*len(X))
-        self.trainX=X[:self.trainSize]
+        self.validateSize=int(self.validateRatio*self.trainSize)
+        self.trainX=X[:self.trainSize-self.validateSize]
+        self.validateX=X[self.trainSize-self.validateSize:self.trainSize]
         self.testX = X[self.trainSize:]
+
+        print("data(%s) set size=%d, trainSize=%d, validateSize=%d"%(self.activecluster,len(X),self.trainSize,self.validateSize))
 
     def CommitRegressionData(self):
         data=self.dataSet[self.activecluster]
         Y=np.array(data["submits"])
-        self.trainLabel=Y[:self.trainSize]
+        self.trainLabel=Y[:self.trainSize-self.validateSize]
+        self.validateLabel=Y[self.trainSize-self.validateSize:self.trainSize]
         self.testLabel = Y[self.trainSize:]
 
     def CommitClassificationData(self):
         self.CommitRegressionData()
         self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
+        self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
         self.testLabel = np.array(self.testLabel>0,dtype=np.int)
 
     def WinRankData(self):
         data = self.dataSet[self.activecluster]
         Y=np.array(data["ranks"])
-        self.trainLabel=Y[:self.trainSize]
+        self.trainLabel=Y[:self.trainSize-self.validateSize]
+        self.validateLabel=Y[self.trainSize-self.validateSize:self.trainSize]
         self.testLabel = Y[self.trainSize:]
 
     def WinClassificationData(self):
         self.WinRankData()
         self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
+        self.validateLabel=np.array(self.validateLabel==0,dtype=np.int)
         self.testLabel=np.array(self.testLabel==0,dtype=np.int)
 
 
