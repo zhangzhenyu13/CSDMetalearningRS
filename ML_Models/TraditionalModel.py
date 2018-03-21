@@ -1,5 +1,5 @@
 from ML_Models.Model_def import *
-from sklearn import svm,linear_model
+from sklearn import svm,linear_model,naive_bayes,tree
 from sklearn import ensemble
 from sklearn import metrics
 import time
@@ -30,6 +30,15 @@ class TraditionalRegressor(ML_model):
         print("model",self.name,"training finished in %ds"%(t1-t0),"train mse=%f"%mse)
 
 class TraditionalClassifier(ML_model):
+    def ModelTuning(self):
+        candite_selection = {
+            "RandomFrorest": ensemble.RandomForestClassifier(),
+            "ExtraForest": ensemble.ExtraTreesClassifier(),
+            "AdaBoost": ensemble.AdaBoostClassifier(),
+            "GradientBoost": ensemble.GradientBoostingClassifier(),
+            "SVM": svm.SVC(C=0.9)
+        }
+        return candite_selection
     def __init__(self,classifier):
         ML_model.__init__(self)
         self.model=classifier
@@ -40,7 +49,19 @@ class TraditionalClassifier(ML_model):
     def trainModel(self):
         print("training")
         t0=time.time()
-        self.model.fit(self.dataSet.trainX,self.dataSet.trainLabel)
+        candidate_model=self.ModelTuning()
+        max_acc=0
+        sel_model=None
+        for key in candidate_model.keys():
+            self.model=candidate_model[key]
+            if self.model is not None:
+                self.model.fit(self.dataSet.trainX,self.dataSet.trainLabel)
+                acc=metrics.accuracy_score(self.dataSet.validateLabel,self.model.predict(self.dataSet.validateX))
+                print(key,acc)
+                if acc>max_acc:
+                    sel_model=self.model
+                    max_acc=acc
+        self.model=sel_model
         t1=time.time()
         score=metrics.accuracy_score(self.dataSet.trainLabel,self.model.predict(self.dataSet.trainX))
         print("model",self.name,"trainning finished in %ds"%(t1-t0),"train score=%f"%score)
@@ -48,8 +69,8 @@ class TraditionalClassifier(ML_model):
 #test the performance
 if __name__ == '__main__':
 
-    #data=DataSetTopcoder()
-    data=DataSetTopCoderReg()
+    data=DataSetTopcoder()
+    #data=DataSetTopCoderReg()
     '''
     #regression
     data.CommitRegressionData()
@@ -65,10 +86,10 @@ if __name__ == '__main__':
     '''
 
     #classification
-    #data.CommitClassificationData()
+    data.CommitClassificationData()
     model=TraditionalClassifier(ensemble.ExtraTreesClassifier())
     model.dataSet=data
-    model.name="global classifier reg"
+    model.name="global classifier sub"
     model.trainModel()
     model.saveModel()
     model.loadModel()
