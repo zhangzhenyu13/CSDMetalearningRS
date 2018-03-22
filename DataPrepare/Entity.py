@@ -38,7 +38,7 @@ class Users:
             self.winNum.append(data[5])
         self.name=np.array(self.name)
         self.skills=np.array(self.skills)
-        self.memberage=self.memberage
+        self.memberage=np.array(self.memberage)
         self.competitionNum=np.array(self.competitionNum)
         self.submissionNum=np.array(self.submissionNum)
         self.winNum=np.array(self.winNum)
@@ -52,6 +52,7 @@ class Users:
     def getInfo(self,username):
         index=np.where(self.name==username)[0]
         if len(index)>0:
+            #print(index,self.memberage[index][0],self.skills[index][0])
             return (self.memberage[index][0],self.skills[index][0])
         else:
             return (None,None)
@@ -71,7 +72,7 @@ class Registration:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd = 'select taskid, handle,regdate from registration where order by regdate desc'
+        sqlcmd = 'select taskid, handle,regdate from registration order by regdate desc'
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         self.taskid=[]
@@ -156,7 +157,7 @@ class Submission:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd = 'select taskid,handle,subnum,submitdate,score from submission where order by submitdate desc'
+        sqlcmd = 'select taskid,handle,subnum,submitdate,score from submission order by submitdate desc'
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         self.taskid=[]
@@ -350,7 +351,7 @@ class DataInstances:
 
     def loadActiveUsers(self):
         print("loading history of active users")
-        with open("../data/Instances/UserHistory/activeUsers2500.data", "rb") as f:
+        with open("../data/Instances/UserHistory/activeUsers.data", "rb") as f:
             act_userData = pickle.load(f)
 
         self.act_userData=act_userData
@@ -658,7 +659,7 @@ def genRegisteredInstances(gInst):
 
     choice = 2
     local = 0
-    print("choice=", choice, "; local clusters=", local)
+    print("choice=", choice, "; local status=", local)
 
     if local>0:
         if local==1:
@@ -678,9 +679,12 @@ def genRegisteredInstances(gInst):
             X = np.concatenate((data["tasks"], data["users"]), axis=1)
             print("instances size=", len(X))
             print()
-
-        with open("../data/Instances/task_user_local" + str(choice) + ".data", "wb") as f:
-            pickle.dump(dataClusters, f)
+        if local==1:
+            with open("../data/Instances/task_user_local" + str(choice) + ".data", "wb") as f:
+                pickle.dump(dataClusters, f)
+        else:
+            with open("../data/Instances/task_user_type.data", "wb") as f:
+                pickle.dump(dataClusters, f)
 
     else:
         print("creating global data")
@@ -714,15 +718,15 @@ def genActiveUserHistory(usernames,regdata,subdata):
             continue
         subids, subnum, subdates, score, rank = subdata.getUserHistory(username)
         winindices=np.where(rank==0)[0]
-        if len(winindices)==0:
+        if len(winindices)==0 or np.sum(subnum)<5:
             continue
         userData[username] = {"regtasks": [regids, regdates],
                               "subtasks": [subids, subnum, subdates, score, rank]}
-        print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
-              len(userData[username]["regtasks"][0]))
+        #print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
+        #      len(userData[username]["regtasks"][0]))
 
     print("saving history of %d active users" % len(userData))
-    with open("../data/Instances/UserHistory/activeUsers2500.data", "wb") as f:
+    with open("../data/Instances/UserHistory/activeUsers.data", "wb") as f:
         pickle.dump(userData, f)
 
 if __name__ == '__main__':
@@ -731,9 +735,10 @@ if __name__ == '__main__':
     print("encoding skills feature_num=", features)
     regs = Registration()
     subs = Submission()
+    genActiveUserHistory(user.getUsers(),regs,subs)
+
     gInst = DataInstances(regs, subs, user)
     gInst.loadActiveUsers()
-    genActiveUserHistory(user.getUsers(),regs,subs)
     genRegisteredInstances(gInst)
     #genWholeUserSet(gInst)
 
