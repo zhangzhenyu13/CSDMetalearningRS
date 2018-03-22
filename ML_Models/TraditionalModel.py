@@ -3,15 +3,7 @@ from sklearn import svm,linear_model,naive_bayes,tree
 from sklearn import ensemble
 from sklearn import metrics
 import time
-
-#define set of regressor
-regressor={
-    "svr":svm.SVR()
-}
-#define set of classifier
-classifier={
-    "svc":svm.SVC()
-}
+import matplotlib.pyplot as plt
 #model container
 class TraditionalRegressor(ML_model):
     def __init__(self,regressor):
@@ -39,9 +31,8 @@ class TraditionalClassifier(ML_model):
             "SVM": svm.SVC(C=0.9)
         }
         return candite_selection
-    def __init__(self,classifier):
+    def __init__(self):
         ML_model.__init__(self)
-        self.model=classifier
     def predict(self,X):
         print(self.name,"is predicting")
         Y=self.model.predict(X)
@@ -56,7 +47,9 @@ class TraditionalClassifier(ML_model):
             self.model=candidate_model[key]
             if self.model is not None:
                 self.model.fit(self.dataSet.trainX,self.dataSet.trainLabel)
-                acc=metrics.accuracy_score(self.dataSet.validateLabel,self.model.predict(self.dataSet.validateX))
+                v_predict=self.model.predict(self.dataSet.validateX)
+
+                acc=metrics.accuracy_score(self.dataSet.validateLabel,v_predict)
                 print(key,acc)
                 if acc>max_acc:
                     sel_model=self.model
@@ -87,7 +80,7 @@ if __name__ == '__main__':
 
     #classification
     data.CommitClassificationData()
-    model=TraditionalClassifier(ensemble.ExtraTreesClassifier())
+    model=TraditionalClassifier()
     model.dataSet=data
     model.name="global classifier sub"
     model.trainModel()

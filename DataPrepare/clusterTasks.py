@@ -103,7 +103,7 @@ class Vectorizer:
             pickle.dump(keepType,f)
         with open("../data/clusterResult/tasktypeCluster.data", "rb") as f:
             keepType=pickle.load(f)
-            for k in keepType.keys():print(k,len(keepType[k]))
+            for k in keepType.keys():print(k,",",len(keepType[k]))
 
         rmIndices=[]
         for i in range(len(self.tasktype)):
@@ -236,7 +236,7 @@ class LDAFlow(Vectorizer):
         doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in docs]
         self.lda = gensim.models.LdaModel(doc_term_matrix, num_topics=self.n_features, id2word=self.dictionary)
         print("LDA built in %fs" % (time.time() - t0))
-        with open("../data/ldamodel.pkl","wb") as f:
+        with open("../data/saved_ML_models/ldamodel.pkl","wb") as f:
             model={}
             model["n_features"]=self.n_features
             model["dict"]=self.dictionary
@@ -244,7 +244,7 @@ class LDAFlow(Vectorizer):
             pickle.dump(model,f)
     def loadModel(self):
         print("loading lda model")
-        with open("../data/ldamodel.pkl","rb") as f:
+        with open("../data/saved_ML_models/ldamodel.pkl","rb") as f:
             model=pickle.load(f)
             self.n_features=model["n_features"]
             self.dictionary=model["dict"]

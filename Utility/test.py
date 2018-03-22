@@ -6,7 +6,7 @@ from numpy import linalg as LA
 import matplotlib.pyplot as plt
 
 def testReg():
-    with open("/home/bird/Desktop/regsdata/task_userReg1.data0_165","rb") as f:
+    with open("../data/Instances/regsdata/task_userReg2.data0","rb") as f:
         data=pickle.load(f)
 
         taskids=data["taskids"]
@@ -50,7 +50,7 @@ def testSub():
         print(sub[1000:1020])
         plt.plot(np.arange(len(sub)),sub)
         plt.show()
-        exit()
+        #exit()
     id =taskids[0]
     p=0
     i=0
@@ -89,5 +89,5 @@ def scanID():
 
 if __name__ == '__main__':
     #testSub()
-    #testReg()
-    scanID()
+    testReg()
+    #scanID()
