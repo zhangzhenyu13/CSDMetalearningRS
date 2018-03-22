@@ -413,8 +413,8 @@ def genResults():
     #load model
     model.loadData()
     model.filterData(100)
-    #model.loadModel()
-    model.train_doctopics(model.docs)
+    model.loadModel()
+    #model.train_doctopics(model.docs)
     docX=model.transformVec(model.docs)
     X,feature_num=taskVec(model,docX)
     taskid=model.ids

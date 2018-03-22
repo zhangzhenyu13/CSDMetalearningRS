@@ -4,6 +4,7 @@ import pickle
 import copy
 import time
 import gc
+from Utility.personalizedSort import  MySort
 from DataPrepare.clusterTasks import onehotFeatures,showData,loadTaskVecData,Vectorizer
 warnings.filterwarnings("ignore")
 
@@ -189,22 +190,56 @@ class Submission:
         self.score=np.array(self.score)
         self.finalrank =np.zeros(shape=len(self.taskid))
         #assign ranking for each task
+        #count=0
+
         taskset=set(self.taskid)
+        #print("init %d taskid"%len(taskset))
         for id in taskset:
+            #if (count+1)%1000==0:
+            #    print("init rank %d/%d"%(count+1,len(taskset)))
+            #    count+=1
             indices=np.where(self.taskid==id)[0]
             scores=copy.deepcopy(self.score[indices])
-            count=0
-            step=0
-            #print(len(indices),scores)
-            while count<10 and step<len(scores):
-                step+=1
-                max_score=np.max(scores)
-                indices1=np.where(scores>=max_score)[0]
-                #print(max_score, count,indices1)
-                scores[indices1]=-1
-                indices2=indices1+indices[0]
-                self.finalrank[indices2]=count
-                count += len(indices1)
+            X=[]
+            for i in range(len(scores)):
+                X.append((indices[i],scores[i]))
+                #print(X[i])
+            m_s=MySort(X)
+            m_s.compare_vec_index=-1
+            X=m_s.mergeSort()
+            #print("after sort")
+            #for i in range(len(X)):
+            #    print(X[i])
+            #print()
+            p=0
+            rank=0
+            while rank<10 and p<len(X):
+                if X[p][1]==0:
+                    break
+                for j in range(p,len(X)):
+                    if X[j][1]!=X[p][1]:
+                        for i in range(p,j):
+                            self.finalrank[X[p][0]]=rank
+                        rank+=j-p
+                        p=j
+                        break
+                    if j==len(X)-1:
+                        for i in range(p,len(X)):
+                            self.finalrank[X[p][0]]=rank
+                        rank+=len(X)-p
+                        p=len(X)
+                        break
+                if p==len(X)-1:
+                    if rank>10:
+                        rank=10
+                    self.finalrank[X[p][0]]=rank
+                    p+=1
+                    break
+
+            if p<len(X):
+                for j in range(p,len(X)):
+                    self.finalrank[X[j][0]]=10
+
 
         print("sub num=%d"%len(self.taskid))
     def getResultOfSubmit(self,username,taskid):
@@ -658,7 +693,7 @@ def genRegisteredInstances(gInst):
     '''
 
     choice = 2
-    local = 0
+    local = 2
     print("choice=", choice, "; local status=", local)
 
     if local>0:
@@ -718,7 +753,7 @@ def genActiveUserHistory(usernames,regdata,subdata):
             continue
         subids, subnum, subdates, score, rank = subdata.getUserHistory(username)
         winindices=np.where(rank==0)[0]
-        if len(winindices)==0 or np.sum(subnum)<5:
+        if len(winindices)==0 and np.sum(subnum)<5:
             continue
         userData[username] = {"regtasks": [regids, regdates],
                               "subtasks": [subids, subnum, subdates, score, rank]}
@@ -735,7 +770,7 @@ if __name__ == '__main__':
     print("encoding skills feature_num=", features)
     regs = Registration()
     subs = Submission()
-    genActiveUserHistory(user.getUsers(),regs,subs)
+    #genActiveUserHistory(user.getUsers(),regs,subs)
 
     gInst = DataInstances(regs, subs, user)
     gInst.loadActiveUsers()
