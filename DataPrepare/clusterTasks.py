@@ -23,13 +23,12 @@ import gc
 gc.collect()
 warnings.filterwarnings("ignore")
 ##############################################################################
-def onehotFeatures(data,threshold_num=5,threshhold_ration=0.01):
+def onehotFeatures(data,threshold_num=5):
     '''
     :param data:str data
     :return: one-hot vector representation
     '''
     c = {}
-    maxK=None
     for r in data:
         if r is None:
             continue
@@ -39,14 +38,10 @@ def onehotFeatures(data,threshold_num=5,threshhold_ration=0.01):
                 c[x] += 1
             else:
                 c[x] = 1
-            if maxK is None:
-                maxK=x
-            else:
-                if c[x]>c[maxK]:
-                    maxK=x
+
     rmKs=[]
     for k in c.keys():
-        if c[k]<threshold_num or c[k]<c[maxK]*threshhold_ration:
+        if c[k]<threshold_num :
             rmKs.append(k)
     for k in rmKs:
         del c[k]
@@ -139,7 +134,7 @@ class Vectorizer:
         conn = ConnectDB()
         cur = conn.cursor()
         sqlcmd = 'select taskid,detail,taskname, duration,technology,languages,prize,postingdate,diffdeg,tasktype from task ' \
-                 'where postingdate<2000 order by postingdate desc'
+                 ' order by postingdate desc'
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         self.ids=[]
@@ -153,12 +148,10 @@ class Vectorizer:
         self.tasktype=[]
         for data in dataset:
             #print(data)
-            self.ids.append(data[0])
-
             if data[1] is None:
-                self.docs.append(data[2])
-            else:
-                self.docs.append(data[2]+"\n"+data[1])
+                continue
+            self.ids.append(data[0])
+            self.docs.append(data[2]+"\n"+data[1])
             if data[3]>50:
                 self.duration.append([50])
             elif data[3]<1:
@@ -202,7 +195,7 @@ class Vectorizer:
 
 class LDAFlow(Vectorizer):
     def __init__(self):
-        self.n_features=200
+        self.n_features=1000
 
     def cleanDocs(self,docs_o):
         docs=copy.deepcopy(docs_o)
@@ -275,7 +268,7 @@ def IDF(n_features):
 
 class LSAFlow(Vectorizer):
     def __init__(self):
-        self.n_features=200
+        self.n_features=1000
 
     def transformVec(self,docs):
         X=IDF(self.n_features*10).fit_transform(docs)
@@ -314,9 +307,6 @@ class LSAFlow(Vectorizer):
 #######################################################################################################################
 
 # Do the actual clustering
-class NavieClusterModel:
-    def predict(self,X):
-        return np.zeros(shape=len(X))
 
 class ClusteringModel(ML_model):
     def __init__(self):
@@ -332,9 +322,6 @@ class ClusteringModel(ML_model):
             self.dataSet[t]=np.array(self.dataSet[t])
 
     def trainCluster(self,X,tasktype,n_clusters=1,minibatch=False):
-        if n_clusters<2:
-            self.model[tasktype]=NavieClusterModel()
-            return
 
         if minibatch:
             km = MiniBatchKMeans(n_clusters=n_clusters, init='k-means++', n_init=1,
@@ -350,47 +337,33 @@ class ClusteringModel(ML_model):
     def predictCluster(self,X,tasktype):
         return  self.model[tasktype].predict(X)
 
-def scaler(X):
-    minmax=preprocessing.MinMaxScaler(feature_range=(0,1))
-    minmax.fit_transform(X)
-    return minmax.transform(X)
 
-def weightedTaskVec(model,X):
-    #weight of topics,techs,languages,postingdate,duration,prize,diffdeg,tasktype
-    w=[1.0,2.0,1.5,4.0,3.0,1.0,4.0,2.0]
-    X_techs=scaler(onehotFeatures(model.techs))
-    X_lans=scaler(onehotFeatures(model.lan))
-    X_tasktype=scaler(onehotFeatures(model.tasktype))
+def clusterVec(model,docX):
+    #weight of topics,techs,languages,postingdate,duration,prize,diffdeg
+    X_techs,_=onehotFeatures(model.techs)
+    X_lans,_=onehotFeatures(model.lan)
 
-    X_startdate=scaler(np.log(model.startdate))
-    X_duration=scaler(model.duration)
-    X_prize=scaler(model.prize)
-    X_diffdeg=scaler(model.diffdeg)
-    #print(X_techs[:3])
-    X=np.concatenate((w[0]*X,w[1]*X_techs),axis=1)
-    X=np.concatenate((X,w[2]*X_lans),axis=1)
-    X=np.concatenate((X,w[3]*X_tasktype),axis=1)
-    X = np.concatenate((X, w[4] * X_startdate), axis=1)
-    X = np.concatenate((X, w[5] * X_duration), axis=1)
-    X = np.concatenate((X, w[6] * X_prize), axis=1)
-    X = np.concatenate((X, w[7] * X_diffdeg), axis=1)
+    print(X_techs.shape,docX.shape)
+    X=np.concatenate((docX,X_techs),axis=1)
+    X=np.concatenate((X,X_lans),axis=1)
+
     return X
 
-def taskVec(model,X):
+def taskVec(model,docX):
     X_techs,features1 = onehotFeatures(model.techs)
     X_lans,features2 = onehotFeatures(model.lan)
-    #X_tasktype,features3 = onehotFeatures(model.tasktype)
 
-    X_startdate = np.log(model.startdate)
-    X_duration = np.log(model.duration)
-    X_prize = np.log(model.prize)
-    X_diffdeg = model.diffdeg
+    print("techs/lans",features1,features2)
+
+    X_startdate = model.startdate
+    X_duration = model.duration
+    X_prize = model.prize
+    X_diffdeg =model.diffdeg
 
     features_num={"doc_topics":model.n_features,"techs":features1,"languages":features2}
 
-    X = np.concatenate((X,X_techs), axis=1)
+    X = np.concatenate((docX,X_techs), axis=1)
     X = np.concatenate((X, X_lans), axis=1)
-    #X = np.concatenate((X, X_tasktype), axis=1)
     X = np.concatenate((X, X_startdate), axis=1)
     X = np.concatenate((X, X_duration), axis=1)
     X = np.concatenate((X, X_prize), axis=1)
@@ -439,24 +412,24 @@ def genResults():
         model=lsa
     #load model
     model.loadData()
-    model.filterData(200)
-    model.loadModel()
-    #model.train_doctopics(model.docs)
-    X=model.transformVec(model.docs)
-    X,feature_num=taskVec(model,X)
+    model.filterData(100)
+    #model.loadModel()
+    model.train_doctopics(model.docs)
+    docX=model.transformVec(model.docs)
+    X,feature_num=taskVec(model,docX)
     taskid=model.ids
     #save vec representaion of all the tasks
     saveTaskVecData(X,taskid,feature_num,choice)
-    taskid,X=loadTaskVecData(Train=True,choice=choice,splitratio=1)
+    #cluster task based on its feature
+    X=clusterVec(model,docX)
 
     print("training for clustering, tasks size=%d"%len(X))
-    clusterEXP=500
-    taskClusters={}
+    clusterEXP=1000
     IDClusters={}
     model=ClusteringModel()
     model.name="clusteringModel"+str(choice)
     for k in model.dataSet.keys():
-        n_clusters=len(model.dataSet[k])//clusterEXP
+        n_clusters=max(1,len(model.dataSet[k])//clusterEXP)
         localids=model.dataSet[k]
         localX=[]
         localIDs=[]
@@ -472,11 +445,9 @@ def genResults():
         for j in range(len(result)):
             r=result[j]
             t=k+str(r)
-            if t not in taskClusters.keys():
-                taskClusters[t]=[localX[j]]
+            if t not in IDClusters.keys():
                 IDClusters[t]=[localIDs[j]]
             else:
-                taskClusters[t].append(localX[j])
                 IDClusters[t].append(localIDs[j])
 
     model.saveModel()
@@ -484,18 +455,16 @@ def genResults():
     # saving result
     print("saving clustering result")
     with open("../data/clusterResult/clusters" + str(choice) + ".data", "wb") as f:
-        data={"tasks":taskClusters,"taskids":IDClusters}
-        pickle.dump(data, f)
+        pickle.dump(IDClusters, f)
 
     with open("../data/clusterResult/clusters" + str(choice) + ".data", "rb") as f:
-        data=pickle.load(f)
-        taskClusters=data["tasks"]
-        taskidClusters=data["taskids"]
+        taskidClusters=pickle.load(f)
+
     #plot result
-    hist = [(k, len(taskClusters[k])) for k in taskClusters.keys()]
+    hist = [(k,len(taskidClusters[k])) for k in taskidClusters.keys()]
     for i in hist:
         print(i)
-    plt.plot(hist, marker='o')
+    plt.plot(np.arange(len(hist)),hist, marker='o')
     plt.title("choice=%d" % choice)
     plt.show()
 

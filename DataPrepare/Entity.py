@@ -38,7 +38,7 @@ class Users:
             self.winNum.append(data[5])
         self.name=np.array(self.name)
         self.skills=np.array(self.skills)
-        self.memberage=np.log(self.memberage)
+        self.memberage=self.memberage
         self.competitionNum=np.array(self.competitionNum)
         self.submissionNum=np.array(self.submissionNum)
         self.winNum=np.array(self.winNum)
@@ -71,7 +71,7 @@ class Registration:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd = 'select taskid, handle,regdate from registration where regdate<2500 order by regdate desc'
+        sqlcmd = 'select taskid, handle,regdate from registration where order by regdate desc'
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         self.taskid=[]
@@ -87,7 +87,7 @@ class Registration:
         self.taskid=np.array(self.taskid)
         self.username=np.array(self.username)
 
-        self.regdate=np.log(np.array(self.regdate,dtype=np.int))
+        self.regdate=np.array(self.regdate,dtype=np.int)
         print("registration num=%d"%len(dataset))
     def getUserHistory(self,username):
 
@@ -156,7 +156,7 @@ class Submission:
     def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd = 'select taskid,handle,subnum,submitdate,score from submission where submitdate<2500 order by submitdate desc'
+        sqlcmd = 'select taskid,handle,subnum,submitdate,score from submission where order by submitdate desc'
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         self.taskid=[]
@@ -183,7 +183,7 @@ class Submission:
         self.taskid=np.array(self.taskid)
         self.username=np.array(self.username)
         self.subnum=np.array(self.subnum)
-        self.subdate=np.log(np.array(self.subdate,dtype=np.int))
+        self.subdate=np.array(self.subdate,dtype=np.int)
 
         self.score=np.array(self.score)
         self.finalrank =np.zeros(shape=len(self.taskid))
@@ -228,7 +228,7 @@ class Submission:
         rank=self.finalrank[indices]
         return (ids,subnum,date,score,rank)
 
-    def setActiveTaskUser(self, taskids=None, usernames=None):
+    def setActiveTaskUser(self,taskids=None, usernames=None):
         #set submission entry related with given taskids and usernames
         if taskids is not None:
             activeID = []
@@ -299,6 +299,8 @@ class Submission:
             self.score = np.array(activeScore)
             self.finalrank = np.array(activeRank)
 
+        #sort data date desc
+
         # data active
         print("active sub data set size=", len(self.taskid))
 
@@ -307,10 +309,10 @@ class Tasks:
         self.taskIDs=[]
         self.postingdate=[]
         self.loadData()
-    def loadData(self):
+    def loadData(self,begindate=600):
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd="select taskid, postingdate from task where postingdate <=600 and postingdate>=0 order by postingDate asc;"
+        sqlcmd="select taskid, postingdate from task where postingdate <="+str(begindate)+" and postingdate>=0 order by postingDate asc;"
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         for data in dataset:
@@ -352,9 +354,9 @@ class DataInstances:
             act_userData = pickle.load(f)
 
         self.act_userData=act_userData
-        self.regdata.setActiveTaskUser(usernames=act_userData.keys())
-        self.subdata.setActiveTaskUser(usernames=act_userData.keys())
 
+        #self.regdata.setActiveTaskUser(usernames=act_userData.keys())
+        #self.subdata.setActiveTaskUser(usernames=act_userData.keys())
 
     def createRegInstances(self,choice=1):
         tasks = []
@@ -382,11 +384,10 @@ class DataInstances:
         userData=self.act_userData
         print("construct Regist instances with %d tasks and %d users" % (len(taskIndex.taskIDs), len(userData.keys())))
 
-        begin=0
-        end=0
+        dataSegment=0
 
         for index in range(0,len(taskIndex.taskIDs)):
-            end+=1
+
             if (index+1)%10000==0:
                 print(index+1,"of",len(taskIndex.taskIDs),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 t0=time.time()
@@ -425,39 +426,32 @@ class DataInstances:
                         subtasks[l]=np.delete(subtasks[l],len(subtasks[l])-1,axis=0)
                 userData[name]["subtasks"]=subtasks
 
+                if len(subtasks[0])==0:
+                    missinguser+=1
+                    continue
+
                 #reg history info
                 regID, regDate = regtasks[0], regtasks[1]
-                participate_recency = regDate[len(regDate) - 1]
-                date_interval = max(1, regDate[0] - regDate[len(regDate) - 1])
-                participate_frequency = len(regID) / date_interval
+                date_interval = regDate[0] - date
+                participate_recency = regDate[len(regDate) - 1]-date
+                participate_frequency = len(regID)
 
-                #sub history info
-                if len(subtasks[0])==0:
-                    commit_recency = -1
-                    commit_frequency = 0
-                    last_perfromance = 0
-                    win_recency = -1
-                    win_frequency = 0
+                subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], subtasks[4]
 
-                else:
-                    subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], \
-                                                                subtasks[4]
-                    commit_recency = subDate[len(subDate) - 1]
-                    commit_frequency = np.sum(subNum) / date_interval
-                    last_perfromance = subScore[len(subScore) - 1]
-                    win_recency = -1
-                    for i in range(1, len(subID) + 1):
-                        if subrank[-i] == 0:
-                            win_recency = subDate[-i]
-                    win_indices = np.where(subrank == 0)[0]
-                    if len(win_indices) > 0:
-                        win_frequency = len(win_indices) / date_interval
-                    else:
-                        win_frequency = 0
+                commit_recency = subDate[len(subDate) - 1]-date
+                commit_frequency = np.sum(subNum)
+                last_perfromance = subScore[len(subScore) - 1]
+                last_rank=subrank[len(subrank)-1]
+                win_recency = 2*date_interval
+                for i in range(1, len(subID) + 1):
+                    if subrank[-i] == 0:
+                        win_recency = subDate[-i]
+                        break
+                win_indices = np.where(subrank == 0)[0]
+                win_frequency = len(win_indices)
 
-
-                user = [tenure, participate_recency, participate_frequency, commit_recency, commit_frequency,
-                        win_recency, win_frequency, last_perfromance] + skills.tolist()
+                user = [tenure,date_interval, participate_recency, participate_frequency, commit_recency, commit_frequency,
+                        win_recency, win_frequency, last_perfromance,last_rank] + skills.tolist()
 
                 usernames.append(name)
                 taskids.append(id)
@@ -471,7 +465,7 @@ class DataInstances:
                     regists.append(0)
 
 
-            if len(taskids)>1000000:
+            if len(taskids)>2000000:
                 print("saving data")
                 data = {}
                 data["usernames"] = usernames
@@ -481,10 +475,10 @@ class DataInstances:
                 data["dates"] = dates
                 data["regists"]=regists
 
-                with open("../data/Instances/regsdata/task_userReg" + str(choice) + ".data"+str(begin)+"_"+str(end), "wb") as f:
+                with open("../data/Instances/regsdata/task_userReg" + str(choice) + ".data"+str(dataSegment), "wb") as f:
 
                     pickle.dump(data, f)
-                    begin=end
+                    dataSegment+=1
 
                 data={}
                 tasks = []
@@ -508,7 +502,7 @@ class DataInstances:
 
         print("saving data")
 
-        with open("../data/Instances/regsdata/task_userReg" + str(choice) + ".data"+str(begin)+"_"+str(end), "wb") as f:
+        with open("../data/Instances/regsdata/task_userReg" + str(choice) + ".data"+str(dataSegment), "wb") as f:
             pickle.dump(data, f)
 
         return data
@@ -538,7 +532,6 @@ class DataInstances:
 
         missingtask=0
         missinguser=0
-
         t0=time.time()
 
         for index in range(len(self.activeReg)):
@@ -582,66 +575,55 @@ class DataInstances:
                     subtasks[l] = np.delete(subtasks[l], len(subtasks[l]) - 1, axis=0)
             userData[name]["subtasks"] = subtasks
 
+            if len(subtasks[0])==0:
+                missinguser+=1
+                continue
+
+            #performance
+            curPerformance = self.subdata.getResultOfSubmit(name, id)
+            if curPerformance is not None:
+                submits.append(curPerformance[0])
+                ranks.append(curPerformance[1])
+            else:
+                missinguser+=1
+                continue
             #print("reg and sub history of",name,len(regtasks[0]),len(subtasks[0]))
 
             # reg history info
             regID, regDate = regtasks[0], regtasks[1]
-            participate_recency = regDate[len(regDate) - 1]
-            date_interval = max(1, regDate[0] - regDate[len(regDate) - 1])
-            participate_frequency = len(regID) / date_interval
+            date_interval = regDate[0] - date
+            participate_recency = regDate[len(regDate) - 1]-date
+            participate_frequency = len(regID)
 
             # sub history info
-            if len(subtasks[0]) == 0:
-                commit_recency = -1
-                commit_frequency = 0
-                last_perfromance = 0
-                win_recency = -1
-                win_frequency = 0
 
-            else:
-                subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], \
-                                                            subtasks[4]
-                commit_recency = subDate[len(subDate) - 1]
-                commit_frequency = np.sum(subNum) / date_interval
-                last_perfromance = subScore[len(subScore) - 1]
-                win_recency = -1
-                for i in range(1, len(subID) + 1):
-                    if subrank[-i] == 0:
-                        win_recency = subDate[-i]
-                win_indices = np.where(subrank == 0)[0]
-                if len(win_indices) > 0:
-                    win_frequency = len(win_indices) / date_interval
-                else:
-                    win_frequency = 0
+            subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], subtasks[4]
 
+            commit_recency = subDate[len(subDate) - 1]-date
+            commit_frequency = np.sum(subNum)
+            last_perfromance = subScore[len(subScore) - 1]
+            last_rank=subScore[len(subrank)-1]
+            win_recency = 2*date_interval
+            for i in range(1, len(subID) + 1):
+                if subrank[-i] == 0:
+                    win_recency = subDate[-i]
+                    break
+            win_indices = np.where(subrank == 0)[0]
+            win_frequency = len(win_indices)
 
-            user=[tenure,participate_recency,participate_frequency,commit_recency,commit_frequency,
-                  win_recency,win_frequency,last_perfromance]+skills.tolist()
+            user=[tenure,date_interval,participate_recency,participate_frequency,commit_recency,commit_frequency,
+                  win_recency,win_frequency,last_perfromance,last_rank]+skills.tolist()
 
             usernames.append(name)
             taskids.append(id)
             users.append(user)
             tasks.append(task)
             dates.append(date)
-            curPerformance=self.subdata.getResultOfSubmit(name,id)
-            if curPerformance is not None:
-                submits.append(curPerformance[0])
-                ranks.append(curPerformance[1])
-            else:
-                submits.append(0)
-                ranks.append(10)
+
 
         print("missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
         data={}
-        if len(usernames)==0:
-            usernames=np.array([])
-            taskids=np.array([])
-            tasks=np.array([[]])
-            users=np.array([[]])
-            dates=np.array([])
-            submits=np.array([[]])
-            ranks=np.array([])
 
         data["usernames"] = usernames
         data["taskids"] = taskids
@@ -651,10 +633,9 @@ class DataInstances:
         data["submits"] = submits
         data["ranks"] = ranks
 
-        print("saving data")
-        if self.localtasks is None:
-            with open("../data/Instances/task_user"+str(choice)+".data","wb") as f:
-                pickle.dump(data,f)
+        for key in data.keys():
+            data[key].reverse()
+
 
         return data
 
@@ -675,19 +656,21 @@ def genRegisteredInstances(gInst):
     showData(np.log(x).tolist())
     '''
 
-    choice = 1
-    local = False
+    choice = 2
+    local = 0
     print("choice=", choice, "; local clusters=", local)
 
-    if local:
+    if local>0:
+        if local==1:
+            with open("../data/clusterResult/clusters" + str(choice) + ".data", "rb") as f:
+                taskidClusters = pickle.load(f)
+        else:
+            with open("../data/clusterResult/tasktypeCluster.data", "rb") as f:
+                taskidClusters = pickle.load(f)
 
-        with open("../data/clusterResult/clusters" + str(choice) + ".data", "rb") as f:
-            clusterdata = pickle.load(f)
-            taskClusters=clusterdata["tasks"]
-            taskidClusters=clusterdata["taskids"]
         dataClusters = {}
         print("creating train Local data")
-        for k in taskClusters.keys():
+        for k in taskidClusters.keys():
             print("creating instances for cluster(%d):" % (len(taskidClusters[k])), k)
             gInst.setLocality(taskidClusters[k])
             data = gInst.createRegisteredInstances(choice)
@@ -706,6 +689,9 @@ def genRegisteredInstances(gInst):
         X = np.concatenate((data["tasks"], data["users"]), axis=1)
         print("instances size=", len(X))
         print()
+
+        with open("../data/Instances/task_user" + str(choice) + ".data", "wb") as f:
+            pickle.dump(data, f)
 
 def genWholeUserSet(gInst):
 
@@ -727,6 +713,9 @@ def genActiveUserHistory(usernames,regdata,subdata):
         if len(regids) == 0:
             continue
         subids, subnum, subdates, score, rank = subdata.getUserHistory(username)
+        winindices=np.where(rank==0)[0]
+        if len(winindices)==0:
+            continue
         userData[username] = {"regtasks": [regids, regdates],
                               "subtasks": [subids, subnum, subdates, score, rank]}
         print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
@@ -744,7 +733,7 @@ if __name__ == '__main__':
     subs = Submission()
     gInst = DataInstances(regs, subs, user)
     gInst.loadActiveUsers()
-    #genActiveUserHistory(user.getUsers(),regs,subs)
+    genActiveUserHistory(user.getUsers(),regs,subs)
     genRegisteredInstances(gInst)
     #genWholeUserSet(gInst)
 

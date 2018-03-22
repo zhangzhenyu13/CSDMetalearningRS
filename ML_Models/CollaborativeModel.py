@@ -38,11 +38,8 @@ class CFClassifier(ML_model):
             "ExtraForest":ensemble.ExtraTreesClassifier(),
             "AdaBoost":ensemble.AdaBoostClassifier(),
             "GradientBoost":ensemble.GradientBoostingClassifier(),
-            "Voting":ensemble.VotingClassifier(estimators=(("lr",linear_model.LogisticRegression()),
-                                                           ("rf",ensemble.RandomForestClassifier()),
-                                                           ("gnb",naive_bayes.GaussianNB()))),
             "Bagging":ensemble.BaggingClassifier(),
-            "GNB":naive_bayes.GaussianNB()
+            "SVM":svm.SVC()
         }
         return candite_selection
     def __init__(self,neighborhoods,name):
