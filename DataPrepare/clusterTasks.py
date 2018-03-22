@@ -102,9 +102,9 @@ class Vectorizer:
         with open("../data/clusterResult/tasktypeCluster.data","wb") as f:
             pickle.dump(keepType,f)
         with open("../data/clusterResult/tasktypeCluster.data", "rb") as f:
-            keepType=None
             keepType=pickle.load(f)
-            #for k in keepType.keys():print(k,len(keepType[k]))
+            for k in keepType.keys():print(k,len(keepType[k]))
+
         rmIndices=[]
         for i in range(len(self.tasktype)):
             if self.tasktype[i] in rmType:
@@ -119,15 +119,15 @@ class Vectorizer:
             if index ==rmIndices[len(rmIndices)-1]:
                 #print("type size",tasktype_dict[self.tasktype[index]])
                 rmIndices.pop()
-                self.ids.pop()
-                self.tasktype.pop()
-                self.docs.pop()
-                self.duration.pop()
-                self.prize.pop()
-                self.techs.pop()
-                self.lan.pop()
-                self.startdate.pop()
-                self.diffdeg.pop()
+                del self.ids[index]
+                del self.tasktype[index]
+                del self.docs[index]
+                del self.duration[index]
+                del self.prize[index]
+                del self.techs[index]
+                del self.lan[index]
+                del self.startdate[index]
+                del self.diffdeg[index]
         print("after filter,size=",len(self.ids))
 
     def loadData(self):
@@ -291,7 +291,7 @@ class LSAFlow(Vectorizer):
             int(explained_variance * 100)))
 
         print("LSA built in %fs" % (time.time() - t0))
-        with open("../data/lsamodel.pkl","wb") as f:
+        with open("../data/saved_ML_models/lsamodel.pkl","wb") as f:
             model={}
             model["n_features"]=self.n_features
             model["lsa"]=self.lsa
@@ -299,7 +299,7 @@ class LSAFlow(Vectorizer):
 
     def loadModel(self):
         print("loading lsa model")
-        with open("../data/lsamodel.pkl","rb") as f:
+        with open("../data/saved_ML_models/lsamodel.pkl","rb") as f:
             model=pickle.load(f)
             self.n_features=model["n_features"]
             self.lsa=model["lsa"]
