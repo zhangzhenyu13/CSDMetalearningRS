@@ -422,6 +422,7 @@ class ActiveUserHistory:
         print("loading history of active users")
         with open("../data/Instances/UserHistory/activeUsers"+self.tag[mode]+".data", "rb") as f:
             act_userData = pickle.load(f)
+
         return act_userData
 
 class DataInstances:
@@ -456,12 +457,12 @@ class DataInstances:
         submits = []
         ranks = []
         scores=[]
-
+        regists=[]
         taskdata=self.taskIndex.taskdata
 
-        userData=self.subdata.loadActiveUserHistory(mode=0)
+        userData=self.userdata.loadActiveUserHistory(mode=0)
 
-        print("construct Registered instances with %d tasks and %d users" % (len(taskdata), len(userData.keys())))
+        print("construct registration history based instances with %d tasks and %d users" % (len(taskdata), len(userData.keys())))
 
         missingtask=0
         missinguser=0
@@ -470,6 +471,7 @@ class DataInstances:
         for index in range(len(self.activeReg)):
             if (index+1)%10000==0:
                 print(index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                print("registered size=%d"%np.sum(regists),"total size=%d"%(len(regists)))
                 t0=time.time()
 
             id,date=self.activeReg[index]
@@ -484,7 +486,7 @@ class DataInstances:
 
             for name in userData.keys():
 
-                tenure, skills = userData["tenure"],userData["skills"]
+                tenure, skills = userData[name]["tenure"],userData[name]["skills"]
 
                 if tenure is None:
                     #no such user in user data
@@ -502,6 +504,11 @@ class DataInstances:
                     missinguser += 1
                     continue
 
+                if name in reg_usernams:
+                    regists.append(1)
+                else:
+                    regists.append(0)
+
                 #performance
                 curPerformance = self.subdata.getResultOfSubmit(name, id)
                 if curPerformance is not None:
@@ -513,7 +520,7 @@ class DataInstances:
                     ranks.append(10)
                     scores.append(0)
 
-                print("reg and sub history of",name,len(regtasks[0]))
+                #print("reg history of",name,len(regtasks[0]))
 
                 # reg history info
                 regID, regDate = regtasks[0], regtasks[1]
@@ -543,6 +550,7 @@ class DataInstances:
         data["submits"] = submits
         data["ranks"] = ranks
         data["scores"]=scores
+        data["regists"]=regists
 
         for key in data.keys():
             data[key].reverse()
@@ -558,20 +566,22 @@ class DataInstances:
         submits = []
         ranks = []
         scores=[]
+        regists=[]
 
         taskdata=self.taskIndex.taskdata
 
         userData=self.userdata.loadActiveUserHistory(mode=1)
 
-        print("construct Registered instances with %d tasks and %d users" % (len(taskdata), len(userData.keys())))
+        print("construct submission history based instances with %d tasks and %d users" % (len(taskdata), len(userData.keys())))
 
         missingtask=0
         missinguser=0
         t0=time.time()
 
         for index in range(len(self.activeReg)):
-            if (index+1)%10000==0:
+            if (index+1)%100==0:
                 print(index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                print("registered size=%d"%np.sum(regists),"total size=%d"%(len(regists)))
                 t0=time.time()
 
             id,date=self.activeReg[index]
@@ -586,7 +596,7 @@ class DataInstances:
                 continue
             for name in userData.keys():
 
-                tenure, skills = userData["tenure"],userData["skills"]
+                tenure, skills = userData[name]["tenure"],userData[name]["skills"]
 
                 if tenure is None:
                     #no such user in user data
@@ -615,6 +625,10 @@ class DataInstances:
                     missinguser+=1
                     continue
 
+                if name in reg_usernams:
+                    regists.append(1)
+                else:
+                    regists.append(0)
                 #performance
                 curPerformance = self.subdata.getResultOfSubmit(name, id)
                 if curPerformance is not None:
@@ -664,6 +678,7 @@ class DataInstances:
         data["submits"] = submits
         data["ranks"] = ranks
         data["scores"]=scores
+        data["regists"]=regists
 
         for key in data.keys():
             data[key].reverse()
@@ -679,12 +694,13 @@ class DataInstances:
         submits = []
         ranks = []
         scores=[]
+        regists=[]
 
         taskdata=self.taskIndex.taskdata
 
         userData=self.userdata.loadActiveUserHistory(mode=2)
 
-        print("construct Registered instances with %d tasks and %d users" % (len(taskdata), len(userData.keys())))
+        print("construct winning history based instances with %d tasks and %d users" % (len(taskdata), len(userData.keys())))
 
         missingtask=0
         missinguser=0
@@ -693,6 +709,7 @@ class DataInstances:
         for index in range(len(self.activeReg)):
             if (index+1)%10000==0:
                 print(index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                print("registered size=%d"%np.sum(regists),"total size=%d"%(len(regists)))
                 t0=time.time()
 
             id,date=self.activeReg[index]
@@ -707,7 +724,7 @@ class DataInstances:
                 continue
             for name in userData.keys():
 
-                tenure, skills = userData["tenure"],userData["skills"]
+                tenure, skills = userData[name]["tenure"],userData[name]["skills"]
 
                 if tenure is None:
                     #no such user in user data
@@ -735,7 +752,6 @@ class DataInstances:
                 if len(subtasks[0])==0:
                     missinguser+=1
                     continue
-
 
                 #print("reg and sub history of",name,len(regtasks[0]),len(subtasks[0]))
 
@@ -773,6 +789,11 @@ class DataInstances:
                 tasks.append(task)
                 dates.append(date)
 
+                if name in reg_usernams:
+                    regists.append(1)
+                else:
+                    regists.append(0)
+
                 #performance
                 curPerformance = self.subdata.getResultOfSubmit(name, id)
                 if curPerformance is not None:
@@ -796,12 +817,14 @@ class DataInstances:
         data["submits"] = submits
         data["ranks"] = ranks
         data["scores"]=scores
+        data["regists"]=regists
 
         for key in data.keys():
             data[key].reverse()
             data[key]=np.array(data[key])
         return data
 
+#add tasktype info to global
 def addTaskInfo(taskids,X):
     with open(filep.getClusterFilePath(local=2,choice=1), "rb") as f:
         dataSet = pickle.load(f)
@@ -820,7 +843,7 @@ def genRegisteredInstances(gInst):
 
     choice = gInst.taskIndex.choice
     local = 0
-    mode=0
+    mode=2
     print("choice=", choice, "; local status=", local,"mode=",mode)
     genMethod={
         0:gInst.createInstancesWithRegHistoryInfo,
@@ -838,7 +861,7 @@ def genRegisteredInstances(gInst):
         for k in taskidClusters.keys():
             print("creating instances for cluster(%d):" % (len(taskidClusters[k])), k)
             gInst.setLocality(taskidClusters[k])
-            data = genMethod[mode]
+            data = genMethod[mode]()
             dataClusters[k] = data
             print()
 
@@ -848,7 +871,7 @@ def genRegisteredInstances(gInst):
     else:
         print("creating global data")
         gInst.setLocality()
-        data=genMethod[mode]
+        data=genMethod[mode]()
         data["tasks"] = addTaskInfo(taskids=data["taskids"],X=data["tasks"])
         print()
 
