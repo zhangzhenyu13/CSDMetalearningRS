@@ -66,7 +66,6 @@ class CFClassifier(ML_model):
         print("training")
         t0 = time.time()
         max_acc=0
-        tri_model=None
         tuned_model=None
         model_selection=self.ModelTuning()
         for cls in model_selection.keys():
@@ -95,7 +94,9 @@ if __name__ == '__main__':
     sum2=0
 
     for k in data.clusternames:
-        data.loadClusters(k)
+        if data.loadClusters(k)==False:
+            print("not enough data available in this cluster",data.trainSize)
+            continue
         # regression
         data.CommitClassificationData()
         model.setLocality(k)

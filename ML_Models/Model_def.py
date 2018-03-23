@@ -1,11 +1,36 @@
 import pickle
 import numpy as np
 import pandas as pd
+class FilePath:
+    def getInstancesFilePath(self,local,mode,choice):
+        filepath={
+            #(local,mode)
+            (0,0):"../data/Instances/regHistoryBasedData/task_user"+str(choice)+".data",
+            (0,1):"../data/Instances/subHistoryBasedData/task_user"+str(choice)+".data",
+            (0,2):"../data/Instances/winHistoryBasedData/task_user"+str(choice)+".data",
+            (1,0):"../data/Instances/regHistoryBasedData/task_user_clustered"+str(choice)+".data",
+            (1,1):"../data/Instances/subHistoryBasedData/task_user_clustered"+str(choice)+".data",
+            (1,2):"../data/Instances/winHistoryBasedData/task_user_clustered"+str(choice)+".data",
+            (2,0):"../data/Instances/regHistoryBasedData/task_user_typed"+str(choice)+".data",
+            (2,1):"../data/Instances/subHistoryBasedData/task_user_typed"+str(choice)+".data",
+            (2,2):"../data/Instances/winHistoryBasedData/task_user_typed"+str(choice)+".data"
+        }
+        return filepath[(local,mode)]
+    def getClusterFilePath(self,local,choice):
+        filepath={
+            1:"../data/clusterResult/clusters" + str(choice) + ".data",
+            2:"../data/clusterResult/tasktypeCluster.data"
+        }
+        return filepath[local]
+
+filep=FilePath()
+
 class ML_model:
     def __init__(self):
         self.model=None
         self.name=""
         self.dataSet=None
+
     def predict(self,X):
         '''
         predict the result based on given X
@@ -14,13 +39,17 @@ class ML_model:
         '''
     def trainModel(self):
         pass
+    
+    def findPath(self):
+        modelpath="../data/saved_ML_models/"+self.name+".pkl"
+        return modelpath
     def loadModel(self):
-        with open("../data/saved_ML_models/"+self.name+".pkl","rb") as f:
+        with open(self.findPath(),"rb") as f:
             data=pickle.load(f)
             self.model=data["model"]
             self.name=data["name"]
     def saveModel(self):
-        with open("../data/saved_ML_models/"+self.name+".pkl","wb") as f:
+        with open(self.findPath(),"wb") as f:
             data={}
             data["model"]=self.model
             data["name"]=self.name
@@ -84,30 +113,10 @@ class classificationAssess:
         self.data = pd.DataFrame(self.data,columns=["cluster","train_size","test_size","train_acc","test_acc","recall","precision"])
         self.data.to_csv(self.runpath)
 
-class FilePath:
-    def getInstancesFilePath(self,local,mode,choice):
-        filepath={
-            #(local,mode)
-            (0,0):"../data/Instances/regHistoryBasedData/task_user"+str(choice)+".data",
-            (0,1):"../data/Instances/subHistoryBasedData/task_user"+str(choice)+".data",
-            (0,2):"../data/Instances/winHistoryBasedData/task_user"+str(choice)+".data",
-            (1,0):"../data/Instances/regHistoryBasedData/task_user_clustered"+str(choice)+".data",
-            (1,1):"../data/Instances/subHistoryBasedData/task_user_clustered"+str(choice)+".data",
-            (1,2):"../data/Instances/winHistoryBasedData/task_user_clustered"+str(choice)+".data",
-            (2,0):"../data/Instances/regHistoryBasedData/task_user_typed"+str(choice)+".data",
-            (2,1):"../data/Instances/subHistoryBasedData/task_user_typed"+str(choice)+".data",
-            (2,2):"../data/Instances/winHistoryBasedData/task_user_typed"+str(choice)+".data"
-        }
-        return filepath[(local,mode)]
-    def getClusterFilePath(self,local,choice):
-        filepath={
-            1:"../data/clusterResult/clusters" + str(choice) + ".data",
-            2:"../data/clusterResult/tasktypeCluster.data"
-        }
-        return filepath[local]
+
 
 class DataSetTopcoder:
-    def __init__(self,splitratio=0.8,validateratio=0.1):
+    def __init__(self,splitratio=0.8,validateratio=0.1,filepath=None):
         self.dataSet=None
         self.trainX=None
         self.trainLabel=None
@@ -117,10 +126,14 @@ class DataSetTopcoder:
         self.validateLabel=None
         self.splitRatio=splitratio
         self.validateRatio=validateratio
+        #file data
+        self.filepath=filep.getInstancesFilePath(local=0,mode=2,choice=1)
+        if filepath is not None:
+            self.filepath=filepath
         self.loadData()
 
-    def loadData(self,choice=1):
-        with open("../data/Instances/subsdata/task_user"+str(choice)+".data","rb") as f:
+    def loadData(self):
+        with open(self.filepath,"rb") as f:
             self.dataSet=pickle.load(f)
         users=self.dataSet["users"]
         tasks=self.dataSet["tasks"]
@@ -135,6 +148,7 @@ class DataSetTopcoder:
 
     def CommitRegressionData(self):
         Y=np.array(self.dataSet["submits"])
+        Y=Y[np.where(Y)]
         self.trainLabel=Y[:self.trainSize-self.validateSize]
         self.validateLabel=Y[self.trainSize-self.validateSize:self.trainSize]
         self.testLabel=Y[self.trainSize:]
@@ -185,7 +199,7 @@ class DataSetTopCoderReg:
         print("loaded all the instances, size=%d"%len(X),"trainSize=%d, validateSize=%d"%(self.trainSize,self.validateSize))
 
 class DataSetTopcoderCluster:
-    def __init__(self,splitraio=0.8,validateratio=0.1):
+    def __init__(self,splitraio=0.8,validateratio=0.1,filepath=None):
         self.dataSet=None
         self.trainX=None
         self.validateX=None
@@ -195,11 +209,15 @@ class DataSetTopcoderCluster:
         self.testLabel=None
         self.splitRatio=splitraio
         self.validateRatio=validateratio
+        #file data
+        self.filepath=filep.getInstancesFilePath(local=1,mode=2,choice=1)
+        if filepath is not None:
+            self.filepath=filepath
         self.loadData()
 
-    def loadData(self,choice=1):
+    def loadData(self):
 
-        with open("../data/Instances/subsdata/task_user_local" + str(choice) + ".data" , "rb") as f:
+        with open( self.filepath, "rb") as f:
             self.dataSet=pickle.load(f)
         self.clusternames=self.dataSet.keys()
 
@@ -212,6 +230,9 @@ class DataSetTopcoderCluster:
 
         users = data["users"]
         tasks = data["tasks"]
+        if len(users)<20:
+            self.trainSize=0
+            return False
         X = np.concatenate((tasks, users), axis=1)
         self.trainSize=int(self.splitRatio*len(X))
         self.validateSize=int(self.validateRatio*self.trainSize)
@@ -220,6 +241,8 @@ class DataSetTopcoderCluster:
         self.testX = X[self.trainSize:]
 
         print("data(%s) set size=%d, trainSize=%d, validateSize=%d"%(self.activecluster,len(X),self.trainSize,self.validateSize))
+
+        return True
 
     def CommitRegressionData(self):
         data=self.dataSet[self.activecluster]
