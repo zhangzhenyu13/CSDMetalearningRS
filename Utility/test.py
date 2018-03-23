@@ -38,7 +38,7 @@ def testReg():
         p+=1
 
 def testSub():
-    with open("../data/Instances/task_user1.data","rb") as f:
+    with open("../data/Instances/subsdata/task_user1.data","rb") as f:
         data=pickle.load(f)
 
         taskids=data["taskids"]
@@ -88,6 +88,6 @@ def scanID():
 
 
 if __name__ == '__main__':
-    #testSub()
+    testSub()
     testReg()
     #scanID()

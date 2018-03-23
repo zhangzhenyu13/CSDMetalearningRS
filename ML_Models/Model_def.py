@@ -84,6 +84,28 @@ class classificationAssess:
         self.data = pd.DataFrame(self.data,columns=["cluster","train_size","test_size","train_acc","test_acc","recall","precision"])
         self.data.to_csv(self.runpath)
 
+class FilePath:
+    def getInstancesFilePath(self,local,mode,choice):
+        filepath={
+            #(local,mode)
+            (0,0):"../data/Instances/regHistoryBasedData/task_user"+str(choice)+".data",
+            (0,1):"../data/Instances/subHistoryBasedData/task_user"+str(choice)+".data",
+            (0,2):"../data/Instances/winHistoryBasedData/task_user"+str(choice)+".data",
+            (1,0):"../data/Instances/regHistoryBasedData/task_user_clustered"+str(choice)+".data",
+            (1,1):"../data/Instances/subHistoryBasedData/task_user_clustered"+str(choice)+".data",
+            (1,2):"../data/Instances/winHistoryBasedData/task_user_clustered"+str(choice)+".data",
+            (2,0):"../data/Instances/regHistoryBasedData/task_user_typed"+str(choice)+".data",
+            (2,1):"../data/Instances/subHistoryBasedData/task_user_typed"+str(choice)+".data",
+            (2,2):"../data/Instances/winHistoryBasedData/task_user_typed"+str(choice)+".data"
+        }
+        return filepath[(local,mode)]
+    def getClusterFilePath(self,local,choice):
+        filepath={
+            1:"../data/clusterResult/clusters" + str(choice) + ".data",
+            2:"../data/clusterResult/tasktypeCluster.data"
+        }
+        return filepath[local]
+
 class DataSetTopcoder:
     def __init__(self,splitratio=0.8,validateratio=0.1):
         self.dataSet=None
@@ -98,7 +120,7 @@ class DataSetTopcoder:
         self.loadData()
 
     def loadData(self,choice=1):
-        with open("../data/Instances/task_user"+str(choice)+".data","rb") as f:
+        with open("../data/Instances/subsdata/task_user"+str(choice)+".data","rb") as f:
             self.dataSet=pickle.load(f)
         users=self.dataSet["users"]
         tasks=self.dataSet["tasks"]
@@ -177,7 +199,7 @@ class DataSetTopcoderCluster:
 
     def loadData(self,choice=1):
 
-        with open("../data/Instances/task_user_local" + str(choice) + ".data" , "rb") as f:
+        with open("../data/Instances/subsdata/task_user_local" + str(choice) + ".data" , "rb") as f:
             self.dataSet=pickle.load(f)
         self.clusternames=self.dataSet.keys()
 

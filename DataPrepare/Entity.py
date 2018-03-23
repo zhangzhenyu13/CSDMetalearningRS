@@ -3,10 +3,11 @@ import numpy as np
 import pickle
 import copy
 import time
-import gc
+from ML_Models.Model_def import FilePath
 from Utility.personalizedSort import  MySort
-from DataPrepare.clusterTasks import onehotFeatures,showData,loadTaskVecData,Vectorizer
+from DataPrepare.clusterTasks import onehotFeatures
 warnings.filterwarnings("ignore")
+filep=FilePath()
 
 class Users:
     def __init__(self):
@@ -25,9 +26,6 @@ class Users:
         self.submissionNum=[]
         self.winNum=[]
         for data in dataset:
-            if data[4]<1:
-                #those have no submission hoistory is filtered out
-                continue
             self.name.append(data[0])
             if data[1]<1:
                 self.memberage.append(1)
@@ -58,19 +56,12 @@ class Users:
         else:
             return (None,None)
 
-    def transformVec(self):
-        n=len(self.name)
-        X=np.concatenate((self.skills,np.reshape(self.memberage,newshape=(n,1))),axis=1)
-        X=np.concatenate((X,np.reshape(self.winNum,newshape=(n,1))),axis=1)
-        X=np.concatenate((X,np.reshape(self.competitionNum,newshape=(n,1))),axis=1)
-        X=np.concatenate((X,np.reshape(self.submissionNum,newshape=(n,1))),axis=1)
-        return X
 
 class Registration:
-    def __init__(self):
-        self.loadData()
+    def __init__(self,taskIDs):
+        self.loadData(taskIDs)
 
-    def loadData(self):
+    def loadData(self,taskIDs):
         conn = ConnectDB()
         cur = conn.cursor()
         sqlcmd = 'select taskid, handle,regdate from registration order by regdate desc'
@@ -80,6 +71,8 @@ class Registration:
         self.username=[]
         self.regdate=[]
         for data in dataset:
+            if data[0] not in taskIDs:
+                continue
             self.taskid.append(data[0])
             self.username.append(data[1])
             if data[2]<1:
@@ -90,7 +83,8 @@ class Registration:
         self.username=np.array(self.username)
 
         self.regdate=np.array(self.regdate,dtype=np.int)
-        print("registration num=%d"%len(dataset))
+        print("registration num=%d"%len(dataset),"user num=%d"%len(set(self.username)),"task num=%d"%len(set(self.taskid)))
+
     def getUserHistory(self,username):
 
         indices=np.where(self.username==username)[0]
@@ -154,9 +148,9 @@ class Registration:
         print("active reg data set size=",len(self.taskid))
 
 class Submission:
-    def __init__(self):
-        self.loadData()
-    def loadData(self):
+    def __init__(self,taskIDs):
+        self.loadData(taskIDs)
+    def loadData(self,taskIDs):
         conn = ConnectDB()
         cur = conn.cursor()
         sqlcmd = 'select taskid,handle,subnum,submitdate,score from submission order by submitdate desc'
@@ -169,6 +163,8 @@ class Submission:
         self.score=[]
 
         for data in dataset:
+            if data[0] not in taskIDs:
+                continue
             self.taskid.append(data[0])
             self.username.append(data[1])
             self.subnum.append(data[2])
@@ -242,7 +238,8 @@ class Submission:
                     self.finalrank[X[j][0]]=10
 
 
-        print("sub num=%d"%len(self.taskid))
+        print("sub num=%d"%len(self.taskid),"user num=%d"%len(set(self.username)),"task num=%d"%len(set(self.taskid)))
+
     def getResultOfSubmit(self,username,taskid):
         indices=np.where(self.username==username)[0]
         if len(indices)==0:
@@ -352,187 +349,105 @@ class Submission:
         print("active sub data set size=", len(self.taskid))
 
 class Tasks:
-    def __init__(self):
+    def __init__(self,choice=1):
+        with open("../data/clusterResult/taskVec" + str(choice) + ".data", "rb") as f:
+            taskdata = pickle.load(f)
+            ids = taskdata["taskids"]
+            X = taskdata["tasks"]
+            print("task vec data size=%d"%(len(ids)))
+            taskdata = {}
+            for i in range(len(ids)):
+                taskdata[ids[i]] = X[i]
+
+        self.taskdata=taskdata
+        self.choice=choice
         self.taskIDs=[]
         self.postingdate=[]
         self.loadData()
     def loadData(self,begindate=5000):
+
         conn = ConnectDB()
         cur = conn.cursor()
         sqlcmd="select taskid, postingdate from task where postingdate <="+str(begindate)+" and postingdate>=0 order by postingDate asc;"
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         for data in dataset:
+            if data[0] not in self.taskdata.keys():
+                continue
             self.taskIDs.append(data[0])
             self.postingdate.append(data[1])
 
         self.taskIDs=np.array(self.taskIDs)
-        self.postingdate=np.log(np.array(self.postingdate,dtype=np.int))
+        self.postingdate=np.array(self.postingdate,dtype=np.int)
         print("task item size=",len(self.taskIDs))
 
+class ActiveUserHistory:
+    def __init__(self,userdata,regdata,subdata):
+        self.userdata=userdata
+        self.regdata=regdata
+        self.subdata=subdata
+        self.tag={0:"Reg",1:"Sub",2:"Win"}
+
+    def genActiveUserHistory(self,mode=0):
+        user,regdata,subdata=self.userdata,self.regdata,self.subdata
+
+        usernames=user.getUsers()
+        userData = {}
+        for username in usernames:
+            regids, regdates = regdata.getUserHistory(username)
+            if len(regids) == 0:
+                #default for those have registered
+                continue
+            subids, subnum, subdates, score, rank = subdata.getUserHistory(username)
+            winindices=np.where(rank==0)[0]
+            if mode==1 and np.sum(subnum)<1:
+                #for those ever submitted
+                continue
+            if mode==2 and len(winindices)==0:
+                #for those ever won
+                continue
+
+            tenure,skills=user.getInfo(username)
+            userData[username] = {"regtasks": [regids, regdates],
+                                  "subtasks": [subids, subnum, subdates, score, rank],
+                                  "tenure":tenure,"skills":skills}
+            #print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
+            #      len(userData[username]["regtasks"][0]))
+
+        print("saving history of %d active users" % len(userData))
+        with open("../data/Instances/UserHistory/activeUsers"+self.tag[mode]+".data", "wb") as f:
+            pickle.dump(userData, f)
+
+    def loadActiveUserHistory(self,mode=0):
+        print("loading history of active users")
+        with open("../data/Instances/UserHistory/activeUsers"+self.tag[mode]+".data", "rb") as f:
+            act_userData = pickle.load(f)
+        return act_userData
 
 class DataInstances:
-    def __init__(self,regdata,subdata,userdata):
+    def __init__(self,regdata,subdata,userdata,taskIndex):
         self.regdata=regdata
         self.subdata=subdata
         self.userdata=userdata
+        self.taskIndex=taskIndex
 
     def setLocality(self,taskIDs=None):
 
         self.activeReg=[]
+        taskIndex=self.taskIndex
 
         if taskIDs is None:
-            self.localtasks=None
-            self.activeReg=list(set(self.regdata.taskid))
-
+            for i in range(len(taskIndex.taskIDs)):
+                self.activeReg.append((taskIndex.taskIDs[i],taskIndex.postingdate[i]))
         else:
-            self.localtasks=taskIDs
-            self.activeReg=taskIDs
+            for id in taskIDs:
+                indices=np.where(taskIndex.taskIDs==id)[0]
+                if len(indices)>0:
+                    self.activeReg.append((id,taskIndex.postingdate[indices][0]))
 
-        self.activeReg.reverse()
         print("set locality: regtasks size=%d" % (len(self.activeReg)))
 
-    def loadActiveUsers(self):
-        print("loading history of active users")
-        with open("../data/Instances/UserHistory/activeUsers.data", "rb") as f:
-            act_userData = pickle.load(f)
-
-        self.act_userData=act_userData
-
-        #self.regdata.setActiveTaskUser(usernames=act_userData.keys())
-        #self.subdata.setActiveTaskUser(usernames=act_userData.keys())
-
-    def createRegInstances(self,choice=1):
-        tasks = []
-        users = []
-        usernames = []
-        taskids = []
-        dates = []
-        regists = []
-
-        taskIndex=Tasks()
-        missingtask = 0
-        missinguser = 0
-
-        t0 = time.time()
-        with open("../data/clusterResult/taskVec" + str(choice) + ".data", "rb") as f:
-            taskdata = pickle.load(f)
-            ids = taskdata["taskids"]
-            X = taskdata["tasks"]
-            print("task vec data size=%d"%(len(ids)),taskdata["size"])
-            taskdata = {}
-            for i in range(len(ids)):
-                taskdata[ids[i]] = X[i]
-
-        userData=self.act_userData
-        print("construct Regist instances with %d tasks and %d users" % (len(taskIndex.taskIDs), len(userData.keys())))
-
-        for index in range(0,len(taskIndex.taskIDs)):
-
-            if (index+1)%10000==0:
-                print(index+1,"of",len(taskIndex.taskIDs),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
-                t0=time.time()
-
-            id=taskIndex.taskIDs[index]
-            date=taskIndex.postingdate[index]
-
-            if id not in taskdata.keys():
-                missingtask += 1
-                continue
-            task = taskdata[id]
-
-            taskUsers,regDates=self.regdata.getUsers(id)
-            if taskUsers is None:
-                taskUsers=[]
-
-            for j in range(len(taskUsers)):
-                name=taskUsers[j]
-                date=regDates[j]
-
-                if name not in userData.keys():
-                    missinguser+=1
-                    continue
-
-                tenure, skills = self.userdata.getInfo(name)
-                if tenure is None:
-                    #no such user
-                    missinguser+=1
-                    continue
-
-                regtasks = userData[name]["regtasks"]
-                while len(regtasks[0])>0 and regtasks[1][len(regtasks[1])-1]<date:
-                    for l in range(len(regtasks)):
-                        regtasks[l]=np.delete(regtasks[l],len(regtasks[l])-1,axis=0)
-                userData[name]["regtasks"]=regtasks
-
-                if len(regtasks[0])==0:
-                    missinguser += 1
-                    continue
-
-                subtasks = userData[name]["subtasks"]
-                while len(subtasks[0])>0 and subtasks[2][len(subtasks[2])-1]<date:
-                    for l in range(len(subtasks)):
-                        subtasks[l]=np.delete(subtasks[l],len(subtasks[l])-1,axis=0)
-                userData[name]["subtasks"]=subtasks
-
-                if len(subtasks[0])==0:
-                    missinguser+=1
-                    continue
-
-                #reg history info
-                regID, regDate = regtasks[0], regtasks[1]
-                date_interval = regDate[0] - date
-                participate_recency = regDate[len(regDate) - 1]-date
-                participate_frequency = len(regID)
-
-                subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], subtasks[4]
-
-                commit_recency = subDate[len(subDate) - 1]-date
-                commit_frequency = np.sum(subNum)
-                last_perfromance = subScore[len(subScore) - 1]
-                last_rank=subrank[len(subrank)-1]
-                win_recency = 2*date_interval
-                for i in range(1, len(subID) + 1):
-                    if subrank[-i] == 0:
-                        win_recency = subDate[-i]
-                        break
-                win_indices = np.where(subrank == 0)[0]
-                win_frequency = len(win_indices)
-
-                user = [tenure,date_interval, participate_recency, participate_frequency, commit_recency, commit_frequency,
-                        win_recency, win_frequency, last_perfromance,last_rank] + skills.tolist()
-
-                usernames.append(name)
-                taskids.append(id)
-                users.append(user)
-                tasks.append(task)
-                dates.append(date)
-
-                if name in taskUsers:
-                    regists.append(1)
-                else:
-                    regists.append(0)
-
-
-
-        data = {}
-        data["usernames"] = usernames
-        data["taskids"] = taskids
-        data["tasks"] = addTaskInfo(taskids=taskids, X=tasks)
-        data["users"] = users
-        data["dates"] = dates
-        data["regists"]=regists
-
-        for key in data.keys():
-            data[key].reverse()
-
-        print("missing task", missingtask, "missing user", missinguser, "instances size", len(taskids))
-        print()
-
-        return data
-
-    def createRegisteredInstances(self,choice=1):
-
+    def createInstancesWithRegHistoryInfo(self):
         tasks=[]
         users=[]
         usernames = []
@@ -542,16 +457,9 @@ class DataInstances:
         ranks = []
         scores=[]
 
-        with open("../data/clusterResult/taskVec"+str(choice)+".data","rb") as f:
-            taskdata=pickle.load(f)
-            ids=taskdata["taskids"]
-            X=taskdata["tasks"]
-            print("task size=%d"%(len(ids)),taskdata["size"])
-            taskdata={}
-            for i in range(len(ids)):
-                taskdata[ids[i]]=X[i]
+        taskdata=self.taskIndex.taskdata
 
-        userData=self.act_userData
+        userData=self.subdata.loadActiveUserHistory(mode=0)
 
         print("construct Registered instances with %d tasks and %d users" % (len(taskdata), len(userData.keys())))
 
@@ -564,26 +472,122 @@ class DataInstances:
                 print(index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 t0=time.time()
 
-            id=self.activeReg[index]
-            if id not in taskdata.keys():
-                # no task data
-                missingtask += 1
-                continue
+            id,date=self.activeReg[index]
+
             # task data of id
             task = taskdata[id]
 
-            taskUsers,subDates=self.subdata.getUsers()
+            reg_usernams, regDates=self.regdata.getUsers(id)
+            if reg_usernams is None:
+                missingtask+=1
+                continue
 
-            for j in range(len(taskUsers)):
-                name=taskUsers[j]
-                date=subDates[j]
+            for name in userData.keys():
 
-                if name not in userData.keys():
-                    #no history
+                tenure, skills = userData["tenure"],userData["skills"]
+
+                if tenure is None:
+                    #no such user in user data
                     missinguser+=1
                     continue
 
-                tenure, skills = self.userdata.getInfo(name)
+                #get reg and sub history before date for user:name
+                regtasks = userData[name]["regtasks"]
+                while len(regtasks[0]) > 0 and regtasks[1][len(regtasks[1]) - 1] < date:
+                    for l in range(len(regtasks)):
+                        regtasks[l] = np.delete(regtasks[l], len(regtasks[l]) - 1, axis=0)
+                userData[name]["regtasks"] = regtasks
+
+                if len(regtasks[0]) == 0:
+                    missinguser += 1
+                    continue
+
+                #performance
+                curPerformance = self.subdata.getResultOfSubmit(name, id)
+                if curPerformance is not None:
+                    submits.append(curPerformance[0])
+                    ranks.append(curPerformance[1])
+                    scores.append(curPerformance[2])
+                else:
+                    submits.append(0)
+                    ranks.append(10)
+                    scores.append(0)
+
+                print("reg and sub history of",name,len(regtasks[0]))
+
+                # reg history info
+                regID, regDate = regtasks[0], regtasks[1]
+
+                date_interval = regDate[0] - date
+                participate_recency = regDate[len(regDate) - 1]-date
+                participate_frequency = len(regID)
+
+
+                user=[tenure-date,date_interval,participate_recency,participate_frequency]+skills.tolist()
+
+                usernames.append(name)
+                taskids.append(id)
+                users.append(user)
+                tasks.append(task)
+                dates.append(date)
+
+        print("missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
+        print()
+        data={}
+
+        data["usernames"] = usernames
+        data["taskids"] = taskids
+        data["tasks"] = tasks
+        data["users"] = users
+        data["dates"] = dates
+        data["submits"] = submits
+        data["ranks"] = ranks
+        data["scores"]=scores
+
+        for key in data.keys():
+            data[key].reverse()
+            data[key]=np.array(data[key])
+        return data
+
+    def createInstancesWithSubHistoryInfo(self):
+        tasks=[]
+        users=[]
+        usernames = []
+        taskids = []
+        dates = []
+        submits = []
+        ranks = []
+        scores=[]
+
+        taskdata=self.taskIndex.taskdata
+
+        userData=self.userdata.loadActiveUserHistory(mode=1)
+
+        print("construct Registered instances with %d tasks and %d users" % (len(taskdata), len(userData.keys())))
+
+        missingtask=0
+        missinguser=0
+        t0=time.time()
+
+        for index in range(len(self.activeReg)):
+            if (index+1)%10000==0:
+                print(index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                t0=time.time()
+
+            id,date=self.activeReg[index]
+
+            # task data of id
+            task = taskdata[id]
+
+            reg_usernams, regDates=self.regdata.getUsers(id)
+
+            if reg_usernams is None:
+                missingtask+=1
+                continue
+            for name in userData.keys():
+
+                tenure, skills = userData["tenure"],userData["skills"]
+
                 if tenure is None:
                     #no such user in user data
                     missinguser+=1
@@ -618,8 +622,10 @@ class DataInstances:
                     ranks.append(curPerformance[1])
                     scores.append(curPerformance[2])
                 else:
-                    missinguser+=1
-                    continue
+                    submits.append(0)
+                    ranks.append(10)
+                    scores.append(0)
+
                 #print("reg and sub history of",name,len(regtasks[0]),len(subtasks[0]))
 
                 # reg history info
@@ -636,23 +642,15 @@ class DataInstances:
                 commit_frequency = np.sum(subNum)
                 last_perfromance = subScore[len(subScore) - 1]
                 last_rank=subScore[len(subrank)-1]
-                win_recency = 2*date_interval
-                for i in range(1, len(subID) + 1):
-                    if subrank[-i] == 0:
-                        win_recency = subDate[-i]
-                        break
-                win_indices = np.where(subrank == 0)[0]
-                win_frequency = len(win_indices)
 
-                user=[tenure,date_interval,participate_recency,participate_frequency,commit_recency,commit_frequency,
-                      win_recency,win_frequency,last_perfromance,last_rank]+skills.tolist()
+                user=[tenure-date,date_interval,participate_recency,participate_frequency,commit_recency,commit_frequency,
+                      last_perfromance,last_rank]+skills.tolist()
 
                 usernames.append(name)
                 taskids.append(id)
                 users.append(user)
                 tasks.append(task)
                 dates.append(date)
-
 
         print("missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
@@ -669,11 +667,143 @@ class DataInstances:
 
         for key in data.keys():
             data[key].reverse()
+            data[key]=np.array(data[key])
+        return data
 
+    def createInstancesWithWinHistoryInfo(self):
+        tasks=[]
+        users=[]
+        usernames = []
+        taskids = []
+        dates = []
+        submits = []
+        ranks = []
+        scores=[]
+
+        taskdata=self.taskIndex.taskdata
+
+        userData=self.userdata.loadActiveUserHistory(mode=2)
+
+        print("construct Registered instances with %d tasks and %d users" % (len(taskdata), len(userData.keys())))
+
+        missingtask=0
+        missinguser=0
+        t0=time.time()
+
+        for index in range(len(self.activeReg)):
+            if (index+1)%10000==0:
+                print(index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                t0=time.time()
+
+            id,date=self.activeReg[index]
+
+            # task data of id
+            task = taskdata[id]
+
+            reg_usernams, regDates=self.regdata.getUsers(id)
+
+            if reg_usernams is None:
+                missingtask+=1
+                continue
+            for name in userData.keys():
+
+                tenure, skills = userData["tenure"],userData["skills"]
+
+                if tenure is None:
+                    #no such user in user data
+                    missinguser+=1
+                    continue
+
+                #get reg and sub history before date for user:name
+                regtasks = userData[name]["regtasks"]
+                while len(regtasks[0]) > 0 and regtasks[1][len(regtasks[1]) - 1] < date:
+                    for l in range(len(regtasks)):
+                        regtasks[l] = np.delete(regtasks[l], len(regtasks[l]) - 1, axis=0)
+                userData[name]["regtasks"] = regtasks
+
+                if len(regtasks[0]) == 0:
+                    missinguser += 1
+                    continue
+
+
+                subtasks = userData[name]["subtasks"]
+                while len(subtasks[0]) > 0 and subtasks[2][len(subtasks[2]) - 1] < date:
+                    for l in range(len(subtasks)):
+                        subtasks[l] = np.delete(subtasks[l], len(subtasks[l]) - 1, axis=0)
+                userData[name]["subtasks"] = subtasks
+
+                if len(subtasks[0])==0:
+                    missinguser+=1
+                    continue
+
+
+                #print("reg and sub history of",name,len(regtasks[0]),len(subtasks[0]))
+
+                # reg history info
+                regID, regDate = regtasks[0], regtasks[1]
+
+                date_interval = regDate[0] - date
+                participate_recency = regDate[len(regDate) - 1]-date
+                participate_frequency = len(regID)
+
+                # sub history info
+                subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], subtasks[4]
+
+                commit_recency = subDate[len(subDate) - 1]-date
+                commit_frequency = np.sum(subNum)
+                last_perfromance = subScore[len(subScore) - 1]
+                last_rank=subScore[len(subrank)-1]
+                win_indices = np.where(subrank == 0)[0]
+                win_frequency = len(win_indices)
+                if win_frequency==0:
+                    #those without win history are filtered
+                    continue
+                win_recency = -1
+                for i in range(1, len(subID) + 1):
+                    if subrank[-i] == 0:
+                        win_recency = subDate[-i]
+                        break
+
+                user=[tenure,date_interval,participate_recency,participate_frequency,commit_recency,commit_frequency,
+                      win_recency,win_frequency,last_perfromance,last_rank]+skills.tolist()
+
+                usernames.append(name)
+                taskids.append(id)
+                users.append(user)
+                tasks.append(task)
+                dates.append(date)
+
+                #performance
+                curPerformance = self.subdata.getResultOfSubmit(name, id)
+                if curPerformance is not None:
+                    submits.append(curPerformance[0])
+                    ranks.append(curPerformance[1])
+                    scores.append(curPerformance[2])
+                else:
+                    submits.append(0)
+                    ranks.append(10)
+                    scores.append(0)
+
+        print("missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
+        print()
+        data={}
+
+        data["usernames"] = usernames
+        data["taskids"] = taskids
+        data["tasks"] = tasks
+        data["users"] = users
+        data["dates"] = dates
+        data["submits"] = submits
+        data["ranks"] = ranks
+        data["scores"]=scores
+
+        for key in data.keys():
+            data[key].reverse()
+            data[key]=np.array(data[key])
         return data
 
 def addTaskInfo(taskids,X):
-    with open("../data/clusterResult/tasktypeCluster.data", "rb") as f:
+    with open(filep.getClusterFilePath(local=2,choice=1), "rb") as f:
         dataSet = pickle.load(f)
     taskType={}
     for key in dataSet.keys():
@@ -684,112 +814,61 @@ def addTaskInfo(taskids,X):
         typeInfo.append(taskType[id])
     typeInfo,_=onehotFeatures(typeInfo)
     X=np.concatenate((typeInfo,X),axis=1)
-    return X.tolist()
-
+    return X
 
 def genRegisteredInstances(gInst):
 
-    '''
-    x=np.array(user.memberage).reshape((len(user.memberage),1)).tolist()
-    showData(x)
-    showData(np.log(x).tolist())
-    x = np.array(regs.regdate,dtype=np.int).reshape((len(regs.regdate), 1)).tolist()
-    showData(x)
-    showData(np.log(x).tolist())
-    x = np.array(subs.subdate,dtype=np.int).reshape((len(subs.subdate), 1)).tolist()
-    showData(x)
-    showData(np.log(x).tolist())
-    x = np.array(subs.score, dtype=np.int).reshape((len(subs.score), 1)).tolist()
-    showData(x)
-    showData(np.log(x).tolist())
-    '''
-
-    choice = 2
-    local = 2
-    print("choice=", choice, "; local status=", local)
+    choice = gInst.taskIndex.choice
+    local = 0
+    mode=0
+    print("choice=", choice, "; local status=", local,"mode=",mode)
+    genMethod={
+        0:gInst.createInstancesWithRegHistoryInfo,
+        1:gInst.createInstancesWithSubHistoryInfo,
+        2:gInst.createInstancesWithWinHistoryInfo
+    }
 
     if local>0:
-        if local==1:
-            with open("../data/clusterResult/clusters" + str(choice) + ".data", "rb") as f:
-                taskidClusters = pickle.load(f)
-        else:
-            with open("../data/clusterResult/tasktypeCluster.data", "rb") as f:
-                taskidClusters = pickle.load(f)
+
+        with open(filep.getClusterFilePath(local=local,choice=choice), "rb") as f:
+            taskidClusters = pickle.load(f)
 
         dataClusters = {}
         print("creating train Local data")
         for k in taskidClusters.keys():
             print("creating instances for cluster(%d):" % (len(taskidClusters[k])), k)
             gInst.setLocality(taskidClusters[k])
-            data = gInst.createRegisteredInstances(choice)
+            data = genMethod[mode]
             dataClusters[k] = data
-            X = np.concatenate((data["tasks"], data["users"]), axis=1)
-            print("instances size=", len(X))
             print()
-        if local==1:
-            with open("../data/Instances/task_user_local" + str(choice) + ".data", "wb") as f:
-                pickle.dump(dataClusters, f)
-        else:
-            with open("../data/Instances/task_user_type"+str(choice)+".data", "wb") as f:
-                pickle.dump(dataClusters, f)
+
+        with open(filep.getInstancesFilePath(local=local,mode=mode,choice=choice), "wb") as f:
+            pickle.dump(dataClusters, f)
 
     else:
         print("creating global data")
-        gInst.setLocality(None)
-        data = gInst.createRegisteredInstances(choice)
+        gInst.setLocality()
+        data=genMethod[mode]
         data["tasks"] = addTaskInfo(taskids=data["taskids"],X=data["tasks"])
-        X = np.concatenate((data["tasks"], data["users"]), axis=1)
-        print("instances size=", len(X))
         print()
 
-        with open("../data/Instances/task_user" + str(choice) + ".data", "wb") as f:
+        with open(filep.getInstancesFilePath(local=local,mode=mode,choice=choice), "wb") as f:
             pickle.dump(data, f)
 
-def genRegInstances(gInst):
-
-    choice=1
-
-    data = gInst.createRegInstances(choice)
-
-    if len(data["tasks"])==0:
-        print("instances size=0")
-        return
-    X = np.concatenate((data["tasks"], data["users"]), axis=1)
-    print("instances size=", len(X))
-    print()
-    print("saving data")
-    with open("../data/Instances/regsdata/task_userReg" + str(choice) + ".data", "wb") as f:
-        pickle.dump(data, f)
-
-def genActiveUserHistory(usernames,regdata,subdata):
-    userData = {}
-    for username in usernames:
-        regids, regdates = regdata.getUserHistory(username)
-        if len(regids) == 0:
-            continue
-        subids, subnum, subdates, score, rank = subdata.getUserHistory(username)
-        winindices=np.where(rank==0)[0]
-        if len(winindices)==0 and np.sum(subnum)<5:
-            continue
-        userData[username] = {"regtasks": [regids, regdates],
-                              "subtasks": [subids, subnum, subdates, score, rank]}
-        #print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
-        #      len(userData[username]["regtasks"][0]))
-
-    print("saving history of %d active users" % len(userData))
-    with open("../data/Instances/UserHistory/activeUsers.data", "wb") as f:
-        pickle.dump(userData, f)
-
 if __name__ == '__main__':
+    choice=1
+    tasks=Tasks(choice=choice)
+    regs = Registration(tasks.taskIDs)
+    subs = Submission(tasks.taskIDs)
+
     user = Users()
     user.skills, features = onehotFeatures(user.skills)
     print("encoding skills feature_num=", features)
-    regs = Registration()
-    subs = Submission()
-    #genActiveUserHistory(user.getUsers(),regs,subs)
+    users=ActiveUserHistory(userdata=user,regdata=regs,subdata=subs)
 
-    gInst = DataInstances(regs, subs, user)
-    gInst.loadActiveUsers()
-    #genRegisteredInstances(gInst)
-    genWholeUserSet(gInst)
+    for mode in ():
+        users.genActiveUserHistory(mode=mode)
+
+    gInst = DataInstances(userdata=users,regdata=regs,subdata=subs,taskIndex=tasks)
+    genRegisteredInstances(gInst)
 
