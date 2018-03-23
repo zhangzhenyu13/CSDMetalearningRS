@@ -16,7 +16,7 @@ from scipy import sparse
 class LDAFlow:
     def __init__(self):
         self.n_features=1000
-
+        self.name=""
     def cleanDocs(self,docs_o):
         docs=copy.deepcopy(docs_o)
         stop = set(stopwords.words('english'))
@@ -48,7 +48,7 @@ class LDAFlow:
     def train_doctopics(self,docs):
         #print(np.shape(docs),docs[0])
         t0 = time.time()
-
+        print("transfering docs to LDA topics distribution")
         docs = self.cleanDocs(docs)
 
         print("performing LDA ")
@@ -56,20 +56,25 @@ class LDAFlow:
         doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in docs]
         self.lda = gensim.models.LdaModel(doc_term_matrix, num_topics=self.n_features, id2word=self.dictionary)
         print("LDA built in %fs" % (time.time() - t0))
-        with open("../data/saved_ML_models/ldamodel.pkl","wb") as f:
+        with open("../data/saved_ML_models/docModels/"+self.name+"-ldamodel.pkl","wb") as f:
             model={}
             model["n_features"]=self.n_features
             model["dict"]=self.dictionary
             model["lda"]=self.lda
             pickle.dump(model,f)
+        print()
+
+
     def loadModel(self):
         print("loading lda model")
-        with open("../data/saved_ML_models/ldamodel.pkl","rb") as f:
+        with open("../data/saved_ML_models/docModels/"+self.name+"-ldamodel.pkl","rb") as f:
             model=pickle.load(f)
             self.n_features=model["n_features"]
             self.dictionary=model["dict"]
             self.lda=model["lda"]
             print("loaded %d feature model"%self.n_features)
+        print()
+
 #######################################################################################################################
 def hashingIDF(n_features):
     # Perform an IDF normalization on the output of HashingVectorizer
@@ -89,8 +94,9 @@ def IDF(n_features):
 class LSAFlow:
     def __init__(self):
         self.n_features=1000
-
+        self.name=""
     def transformVec(self,docs):
+        print("transfering docs to LSA factors")
         X=IDF(self.n_features*10).fit_transform(docs)
         X = self.lsa.fit_transform(X)
         return X
@@ -111,18 +117,21 @@ class LSAFlow:
             int(explained_variance * 100)))
 
         print("LSA built in %fs" % (time.time() - t0))
-        with open("../data/saved_ML_models/lsamodel.pkl","wb") as f:
+        with open("../data/saved_ML_models/docModels/"+self.name+"-lsamodel.pkl","wb") as f:
             model={}
             model["n_features"]=self.n_features
             model["lsa"]=self.lsa
             pickle.dump(model,f)
+        print()
+
 
     def loadModel(self):
         print("loading lsa model")
-        with open("../data/saved_ML_models/lsamodel.pkl","rb") as f:
+        with open("../data/saved_ML_models/docModels/"+self.name+"-lsamodel.pkl","rb") as f:
             model=pickle.load(f)
             self.n_features=model["n_features"]
             self.lsa=model["lsa"]
-            print("loaded %d feature model"%self.n_features)
+        print("loaded %d feature model"%self.n_features)
+        print()
 
 #######################################################################################################################

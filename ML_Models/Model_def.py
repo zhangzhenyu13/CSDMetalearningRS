@@ -39,7 +39,7 @@ class ML_model:
         '''
     def trainModel(self):
         pass
-    
+
     def findPath(self):
         modelpath="../data/saved_ML_models/"+self.name+".pkl"
         return modelpath

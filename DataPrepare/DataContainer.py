@@ -14,29 +14,33 @@ class TaskDataContainer:
         self.durations=[]
         self.prizes=[]
         self.diffdegs=[]
-        self.taskType=typename
+        self.taskType=typename.replace("/","_")
     def encodingFeature(self,choice):
         self.choice=choice
 
-        docsEncoder={1:LSAFlow,2:LDAFlow}
+        docsEncoder={1:LDAFlow,2:LSAFlow}
         print("encoding docs",self.taskType)
         doc_model=docsEncoder[choice]()
+        doc_model.name=self.taskType
         try:
             doc_model.loadModel()
-        except FileNotFoundError as e:
-            print(e,"now train model")
+        except :
+            print("loading doc model failed, now begin to train the model")
             doc_model.train_doctopics(self.docs)
+        finally:
+            print("model construct finished")
+            print()
 
         self.docs=doc_model.transformVec(self.docs)
         print(self.taskType,"docs shape",self.docs.shape)
 
         print("encoding techs",self.taskType)
-        self.techs=onehotFeatures(self.techs)
-        print(self.taskType,"docs shape",self.techs.shape)
+        self.techs=onehotFeatures(self.techs,threshold_num=5)
+        print(self.taskType,"techs shape",self.techs.shape)
 
         print("encoding lans",self.taskType)
-        self.lans=onehotFeatures(self.lans)
-        print(self.taskType,"docs shape",self.lans.shape)
+        self.lans=onehotFeatures(self.lans,threshold_num=5)
+        print(self.taskType,"lans shape",self.lans.shape)
 
 class Users:
     def __init__(self):

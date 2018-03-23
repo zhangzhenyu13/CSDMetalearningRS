@@ -1,7 +1,7 @@
 .idea/
-data/clusterResult
+data/TaskInstances
 data/UserGraph
-data/Instances
+data/UserInstances
 data/saved_ML_models
 data/pictures
 data/runResults
