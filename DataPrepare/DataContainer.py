@@ -1,8 +1,9 @@
 from ML_Models.DocTopicsModel import LSAFlow,LDAFlow
 from DataPrepare.ConnectDB import ConnectDB
 from Utility.FeatureEncoder import onehotFeatures
+from Utility.personalizedSort import  MySort
 import numpy as np
-import pickle
+import pickle,copy
 
 class TaskDataContainer:
     def __init__(self,typename):
@@ -42,7 +43,96 @@ class TaskDataContainer:
         self.lans=onehotFeatures(self.lans,threshold_num=5)
         print(self.taskType,"lans shape",self.lans.shape)
 
-class Users:
+class UserDataContainer:
+
+    def __init__(self,names,tenure,skills):
+        self.names=np.array(names)
+        self.tenure=np.array(tenure)
+        self.skills=np.array(skills)
+
+        print("User Instances size=%d"%len(self.names))
+
+    def getUserInfo(self,username):
+        index=np.where(self.names==username)[0]
+        if len(index)>0:
+            #print(index,self.memberage[index][0],self.skills[index][0])
+            return (self.tenure[index][0],self.skills[index][0])
+        else:
+            return (None,None)
+
+class RegistrationDataContainer:
+    def __init__(self,tasktype,taskids,usernames,regdates):
+        self.taskids=np.array(taskids)
+        self.names=np.array(usernames)
+        self.regdates=np.array(regdates)
+        self.tasktype=tasktype
+
+        print("user data of",tasktype+",size=%d"%len(self.taskids))
+
+    def getUsers(self,taskid):
+        indices=np.where(self.taskids==taskid)[0]
+        if len(indices)==0:
+            return None,None
+        #print(indices)
+        #print(len(self.username))
+        regUsers=self.names[indices]
+        regDates=self.regdates[indices]
+        return regUsers,regDates
+
+    def getUserHistory(self,username):
+        indices=np.where(self.names==username)[0]
+        if len(indices)==0:
+            return (np.array([]),np.array([]))
+
+        ids=self.taskids[indices]
+        date=self.regdates[indices]
+        return [ids,date]
+
+class SubmissionDataContainer:
+    def __init__(self,tasktype,taskids,uernames,subnums,subdates,scores,finalranks):
+        self.taskids=np.array(taskids)
+        self.names=np.array(uernames)
+        self.subnums=np.array(subnums)
+        self.subdates=np.array(subdates)
+        self.scores=np.array(scores)
+        self.finalranks=np.array(finalranks)
+
+        print("submission data of "+tasktype+", size=%d"%len(self.taskids))
+
+    def getUsers(self,taskid):
+        indices = np.where(self.taskids == taskid)[0]
+        if len(indices) == 0:
+            return None,None
+        # print(indices)
+        # print(len(self.username))
+        subUsers=self.names[indices]
+        subDates=self.subdates[indices]
+        return subUsers,subDates
+
+    def getResultOfSubmit(self,username,taskid):
+        indices=np.where(self.names==username)[0]
+        if len(indices)==0:
+            return None
+        indices1=np.where(self.taskids[indices]==taskid)[0]
+        if len(indices1)==0:
+            return None
+        indices=indices1+indices[0]
+        return [self.subnums[indices][0],self.finalranks[indices][0],self.scores[indices][0]]
+
+    def getUserHistory(self,username):
+        indices=np.where(self.names==username)[0]
+        if len(indices)==0:
+            return (np.array([]),np.array([]),np.array([]),np.array([]),np.array([]))
+
+        ids=self.taskids[indices]
+        subnum=self.subnums[indices]
+        date=self.subdates[indices]
+        score=self.scores[indices]
+        rank=self.finalranks[indices]
+        return (ids,subnum,date,score,rank)
+
+
+class UserData:
     def __init__(self):
         self.loadData()
 
@@ -59,6 +149,7 @@ class Users:
         self.submissionNum=[]
         self.winNum=[]
         for data in dataset:
+
             self.name.append(data[0])
             if data[1]<1:
                 self.memberage.append(1)
@@ -77,24 +168,27 @@ class Users:
 
         print("users num=%d"%len(self.name))
 
-    def getUsers(self):
-        names=self.name
-        return names
+    def getSelUsers(self,usernames):
+        names=[]
+        tenure=[]
+        skills=[]
 
-    def getInfo(self,username):
-        index=np.where(self.name==username)[0]
-        if len(index)>0:
-            #print(index,self.memberage[index][0],self.skills[index][0])
-            return (self.memberage[index][0],self.skills[index][0])
-        else:
-            return (None,None)
+        for i in range(len(self.name)):
+            name=self.name[i]
+            if name in usernames:
+                names.append(name)
+                tenure.append(self.memberage[i])
+                skills.append(self.skills[i])
+
+        return UserDataContainer(names,tenure,skills)
+
 
 
 class Registration:
-    def __init__(self,taskIDs):
-        self.loadData(taskIDs)
+    def __init__(self,):
+        self.loadData()
 
-    def loadData(self,taskIDs):
+    def loadData(self,):
         conn = ConnectDB()
         cur = conn.cursor()
         sqlcmd = 'select taskid, handle,regdate from registration order by regdate desc'
@@ -103,87 +197,40 @@ class Registration:
         self.taskid=[]
         self.username=[]
         self.regdate=[]
+
         for data in dataset:
-            if data[0] not in taskIDs:
-                continue
+
             self.taskid.append(data[0])
             self.username.append(data[1])
             if data[2]<1:
                 self.regdate.append(1)
             else:
                 self.regdate.append(data[2])
+
         self.taskid=np.array(self.taskid)
         self.username=np.array(self.username)
-
         self.regdate=np.array(self.regdate,dtype=np.int)
-        print("registration num=%d"%len(dataset),"user num=%d"%len(set(self.username)),"task num=%d"%len(set(self.taskid)))
 
-    def getUserHistory(self,username):
+        print("reg data num=%d"%len(dataset),"users=%d"%len(set(self.username)),"tasks=%d"%len(set(self.taskid)))
 
-        indices=np.where(self.username==username)[0]
-        if len(indices)==0:
-            return (np.array([]),np.array([]))
+    def getSelRegistration(self,tasktype,taskids):
+        ids=[]
+        names=[]
+        dates=[]
+        for i in range(len(self.taskid)):
+            id=self.taskid[i]
+            if id in taskids:
+                ids.append(self.taskid[i])
+                names.append(self.username[i])
+                dates.append(self.regdate[i])
 
-        ids=self.taskid[indices]
-        date=self.regdate[indices]
-        return [ids,date]
-
-    def getUsers(self,taskid):
-        indices=np.where(self.taskid==taskid)[0]
-        if len(indices)==0:
-            return None,None
-        #print(indices)
-        #print(len(self.username))
-        taskUsers=self.username[indices]
-        regDates=self.regdate[indices]
-        return taskUsers,regDates
-    def setActiveTaskUser(self,taskids=None,usernames=None):
-
-        if taskids is not None:
-            activeID = []
-            activeName = []
-            activeDate = []
-            for id in taskids:
-                indices=np.where(self.taskid==id)[0]
-                if len(indices)==0:
-                    continue
-                else:
-                    ids=self.taskid[indices].tolist()
-                    dates=self.regdate[indices].tolist()
-                    names=self.username[indices].tolist()
-                    activeID=activeID+ids
-                    activeName=activeName+names
-                    activeDate=activeDate+dates
-
-            self.taskid=np.array(activeID)
-            self.username=np.array(activeName)
-            self.regdate=np.array(activeDate)
-
-        if usernames is not None:
-            activeID = []
-            activeName = []
-            activeDate = []
-            for name in usernames:
-                indices=np.where(self.username==name)[0]
-                if len(indices)==0:
-                    continue
-                else:
-                    ids = self.taskid[indices].tolist()
-                    dates = self.regdate[indices].tolist()
-                    names = self.username[indices].tolist()
-                    activeID = activeID + ids
-                    activeName = activeName + names
-                    activeDate = activeDate + dates
-            self.taskid = np.array(activeID)
-            self.username = np.array(activeName)
-            self.regdate = np.array(activeDate)
-        #data active
-        print("active reg data set size=",len(self.taskid))
+        return RegistrationDataContainer(tasktype=tasktype,taskids=ids,usernames=names,regdates=dates)
 
 class Submission:
-    def __init__(self,taskIDs):
-        self.loadData(taskIDs)
-    def loadData(self,taskIDs):
+    def __init__(self):
+        self.loadData()
+
+    def loadData(self):
         conn = ConnectDB()
         cur = conn.cursor()
         sqlcmd = 'select taskid,handle,subnum,submitdate,score from submission order by submitdate desc'
@@ -196,8 +243,7 @@ class Submission:
         self.score=[]
 
         for data in dataset:
-            if data[0] not in taskIDs:
-                continue
+
             self.taskid.append(data[0])
             self.username.append(data[1])
             self.subnum.append(data[2])
@@ -271,127 +317,43 @@ class Submission:
                     self.finalrank[X[j][0]]=10
 
 
-        print("sub num=%d"%len(self.taskid),"user num=%d"%len(set(self.username)),"task num=%d"%len(set(self.taskid)))
+        print("sub data num=%d"%len(self.taskid),"users=%d"%len(set(self.username)),"tasks=%d"%len(set(self.taskid)))
 
-    def getResultOfSubmit(self,username,taskid):
-        indices=np.where(self.username==username)[0]
-        if len(indices)==0:
-            return None
-        indices1=np.where(self.taskid[indices]==taskid)[0]
-        if len(indices1)==0:
-            return None
-        indices=indices1+indices[0]
-        return [self.subnum[indices][0],self.finalrank[indices][0],self.score[indices][0]]
-    def getUsers(self,taskid):
-        indices = np.where(self.taskid == taskid)[0]
-        if len(indices) == 0:
-            return None,None
-        # print(indices)
-        # print(len(self.username))
-        taskUsers=self.username[indices]
-        taskDates=self.subdate[indices]
-        return taskUsers,taskDates
+    def getSelSubmission(self,tasktype,taskids):
+        ids=[]
+        names=[]
+        dates=[]
+        nums=[]
+        scores=[]
+        ranks=[]
 
-    def getUserHistory(self,username):
+        for i in range(len(self.taskid)):
+            id=self.taskid[i]
+            if id in taskids:
+                ids.append(self.taskid[i])
+                names.append(self.username[i])
+                dates.append(self.subdate[i])
+                nums.append(self.subnum[i])
+                scores.append(self.score[i])
+                ranks.append(self.finalrank[i])
 
-        indices=np.where(self.username==username)[0]
-        if len(indices)==0:
-            return (np.array([]),np.array([]),np.array([]),np.array([]),np.array([]))
 
-        ids=self.taskid[indices]
-        subnum=self.subnum[indices]
-        date=self.subdate[indices]
-        score=self.score[indices]
-        rank=self.finalrank[indices]
-        return (ids,subnum,date,score,rank)
+        return SubmissionDataContainer(tasktype=tasktype,taskids=ids,uernames=names,
+                                       subnums=nums,subdates=dates,scores=scores,finalranks=ranks)
 
-    def setActiveTaskUser(self,taskids=None, usernames=None):
-        #set submission entry related with given taskids and usernames
-        if taskids is not None:
-            activeID = []
-            activeName = []
-            activeDate = []
-            activeNum=[]
-            activeScore=[]
-            activeRank=[]
-
-            for id in taskids:
-                indices = np.where(self.taskid == id)[0]
-                if len(indices) == 0:
-                    continue
-                else:
-                    ids = self.taskid[indices].tolist()
-                    dates = self.subdate[indices].tolist()
-                    names = self.username[indices].tolist()
-                    nums=self.subnum[indices].tolist()
-                    scores=self.score[indices].tolist()
-                    ranks=self.finalrank[indices].tolist()
-
-                    activeID = activeID + ids
-                    activeName = activeName + names
-                    activeDate = activeDate + dates
-                    activeNum=activeNum+nums
-                    activeScore=activeScore+scores
-                    activeRank=activeRank+ranks
-
-            self.taskid = np.array(activeID)
-            self.username = np.array(activeName)
-            self.subdate = np.array(activeDate)
-            self.subnum=np.array(activeNum)
-            self.score=np.array(activeScore)
-            self.finalrank=np.array(activeRank)
-
-        if usernames is not None:
-            activeID = []
-            activeName = []
-            activeDate = []
-            activeNum = []
-            activeScore = []
-            activeRank = []
-            for name in usernames:
-                indices = np.where(self.username == name)[0]
-                if len(indices) == 0:
-                    continue
-                else:
-                    #print(self.taskid)
-                    #print(indices)
-                    ids = self.taskid[indices].tolist()
-                    dates = self.subdate[indices].tolist()
-                    names = self.username[indices].tolist()
-                    nums = self.subnum[indices].tolist()
-                    scores = self.score[indices].tolist()
-                    ranks = self.finalrank[indices].tolist()
-
-                    activeID = activeID + ids
-                    activeName = activeName + names
-                    activeDate = activeDate + dates
-                    activeNum = activeNum + nums
-                    activeScore = activeScore + scores
-                    activeRank = activeRank + ranks
-
-            self.taskid = np.array(activeID)
-            self.username = np.array(activeName)
-            self.subdate = np.array(activeDate)
-            self.subnum = np.array(activeNum)
-            self.score = np.array(activeScore)
-            self.finalrank = np.array(activeRank)
-
-        #sort data date desc
-
-        # data active
-        print("active sub data set size=", len(self.taskid))
 
 class Tasks:
-    def __init__(self,choice=1,begindate=5000):
-        with open("../data/clusterResult/taskVec" + str(choice) + ".data", "rb") as f:
+    def __init__(self,tasktype,choice,begindate=5000):
+        with open("../data/TaskInstances/taskDataSet/"+tasktype+"-taskData-" + str(choice) + ".data", "rb") as f:
             taskdata = pickle.load(f)
             ids = taskdata["taskids"]
             X = taskdata["tasks"]
-            print("task vec data size=%d"%(len(ids)))
+            print("Task Instances data size=%d"%(len(ids)))
             taskdata = {}
             for i in range(len(ids)):
                 taskdata[ids[i]] = X[i]
 
+        self.tasktype=tasktype
         self.taskdata=taskdata
         self.choice=choice
         self.taskIDs=[]
@@ -412,7 +374,8 @@ class Tasks:
 
         self.taskIDs=np.array(self.taskIDs)
         self.postingdate=np.array(self.postingdate,dtype=np.int)
-        print("task item size=",len(self.taskIDs))
+
+        print(self.tasktype+": task size="%len(self.taskIDs))
 
 class ActiveUserHistory:
     def __init__(self,userdata,regdata,subdata):
@@ -421,7 +384,7 @@ class ActiveUserHistory:
         self.subdata=subdata
         self.tag={0:"Reg",1:"Sub",2:"Win"}
 
-    def genActiveUserHistory(self,mode=0):
+    def genActiveUserHistory(self,mode,tasktype):
         user,regdata,subdata=self.userdata,self.regdata,self.subdata
 
         usernames=user.getUsers()
@@ -448,12 +411,12 @@ class ActiveUserHistory:
             #      len(userData[username]["regtasks"][0]))
 
         print("saving history of %d active users" % len(userData))
-        with open("../data/Instances/UserHistory/activeUsers"+self.tag[mode]+".data", "wb") as f:
+        with open("../data/Instances/UserHistory/"+tasktype+"-UserHistory"+self.tag[mode]+".data", "wb") as f:
             pickle.dump(userData, f)
 
-    def loadActiveUserHistory(self,mode=0):
+    def loadActiveUserHistory(self,tasktype,mode):
         print("loading history of active users")
-        with open("../data/Instances/UserHistory/activeUsers"+self.tag[mode]+".data", "rb") as f:
-            act_userData = pickle.load(f)
+        with open("../data/Instances/UserHistory/"+tasktype+"-UserHistory-"+self.tag[mode]+".data", "rb") as f:
+            userData = pickle.load(f)
 
-        return act_userData
+        return userData

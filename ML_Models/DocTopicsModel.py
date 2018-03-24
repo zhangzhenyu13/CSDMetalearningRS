@@ -51,7 +51,7 @@ class LDAFlow:
         print("transfering docs to LDA topics distribution")
         docs = self.cleanDocs(docs)
 
-        print("performing LDA ")
+        print("performing LDA(%d features) "%self.n_features)
         self.dictionary = corpora.Dictionary(docs)
         doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in docs]
         self.lda = gensim.models.LdaModel(doc_term_matrix, num_topics=self.n_features, id2word=self.dictionary)

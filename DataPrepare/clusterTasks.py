@@ -170,7 +170,8 @@ def genResultOfTasktype(tasktype,taskdata,choice):
     taskdata=taskdata
     taskdata.encodingFeature(choice)
     docX=taskdata.docs
-    #kernel pca method
+    #kernel pca method test
+    '''
     print()
     print(tasktype,docX.shape,"before kPCA")
     kpca=decomposition.KernelPCA()
@@ -178,6 +179,8 @@ def genResultOfTasktype(tasktype,taskdata,choice):
     print(tasktype,docX.shape,"after kPCA")
     print(tasktype,kpca.coef0)
     print()
+    '''
+
     #save vec representaion of all the tasks
     X=taskVec(taskdata,docX)
     saveTaskVecData(X,taskdata.ids,tasktype,choice)
@@ -226,26 +229,28 @@ def genResultOfTasktype(tasktype,taskdata,choice):
     plt.title(tasktype+",choice=%d" % choice+", size=%d"%len(X))
     plt.xlabel("cluster no")
     plt.ylabel("task instance size")
-    plt.savefig("../data/pictures/TaskClusterPlots/"+tasktype+ "-taskclusters.png")
+    plt.savefig("../data/pictures/TaskClusterPlots/"+tasktype+ "-taskclusters-"+str(choice)+".png")
     plt.gcf().clear()
     print("===========================================================================")
     print()
+
 def genResults():
     dataSet=initDataSet()
     typeinfo=dataSet.keys()
 
     choice=eval(input("1:LDA; 2:LSA \t"))
-
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+    filterThreshold=50
     for t in typeinfo:
         taskdata=dataSet[t]
         tasktype=taskdata.taskType
-        if len(taskdata.ids)<50:
+        if len(taskdata.ids)<filterThreshold:
             continue
-            
-        #print(taskdata.ids);exit(10)
-        #multiprocessing.Process(target=genResultOfTasktype,args=(t,taskdata,choice)).start()
 
-        genResultOfTasktype(tasktype=tasktype,taskdata=taskdata,choice=choice)
+        #print(taskdata.ids);exit(10)
+        multiprocessing.Process(target=genResultOfTasktype,args=(tasktype,taskdata,choice)).start()
+
+        #genResultOfTasktype(tasktype=tasktype,taskdata=taskdata,choice=choice)
 
 
 
