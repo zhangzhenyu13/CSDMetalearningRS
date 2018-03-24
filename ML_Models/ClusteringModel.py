@@ -15,7 +15,7 @@ class ClusteringModel(ML_model):
         else:
             km = KMeans(n_clusters=n_clusters,verbose=False)
 
-        print("Clustering sparse data with %s" % km)
+        #print("Clustering sparse data with %s" % km)
         km.fit(X)
         print()
         self.model=km

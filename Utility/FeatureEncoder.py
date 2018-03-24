@@ -7,7 +7,7 @@ def onehotFeatures(data,threshold_num=5):
     '''
     c = {}
     for r in data:
-        if r is None:
+        if r is None or r=="":
             continue
         xs = r.split(",")
         for x in xs:
@@ -15,7 +15,8 @@ def onehotFeatures(data,threshold_num=5):
                 c[x] += 1
             else:
                 c[x] = 1
-
+    #print(data)
+    #print("doc item",c)
     rmKs=[]
     for k in c.keys():
         if c[k]<threshold_num :
@@ -44,4 +45,5 @@ def onehotFeatures(data,threshold_num=5):
             X[row, col] = 1
         row += 1
     #print("one-hot feature size=%d"%(len(c)),"removed feature size=%d"%(len(rmKs)))
+
     return X.toarray()

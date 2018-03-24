@@ -228,7 +228,8 @@ def genResultOfTasktype(tasktype,taskdata,choice):
     plt.ylabel("task instance size")
     plt.savefig("../data/pictures/TaskClusterPlots/"+tasktype+ "-taskclusters.png")
     plt.gcf().clear()
-
+    print("===========================================================================")
+    print()
 def genResults():
     dataSet=initDataSet()
     typeinfo=dataSet.keys()
@@ -237,10 +238,14 @@ def genResults():
 
     for t in typeinfo:
         taskdata=dataSet[t]
+        tasktype=taskdata.taskType
+        if len(taskdata.ids)<50:
+            continue
+            
         #print(taskdata.ids);exit(10)
         #multiprocessing.Process(target=genResultOfTasktype,args=(t,taskdata,choice)).start()
 
-        genResultOfTasktype(tasktype=t,taskdata=taskdata,choice=choice)
+        genResultOfTasktype(tasktype=tasktype,taskdata=taskdata,choice=choice)
 
 
 

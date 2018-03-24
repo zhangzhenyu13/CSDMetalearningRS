@@ -98,23 +98,24 @@ class LSAFlow:
     def transformVec(self,docs):
         print("transfering docs to LSA factors")
         X=IDF(self.n_features*10).fit_transform(docs)
-        X = self.lsa.fit_transform(X)
+        X = self.lsa.transform(X)
         return X
     def train_doctopics(self,docs):
         t0 = time.time()
 
         X = IDF(self.n_features*10).fit_transform(docs)
-        print("Performing  LSA")
+        X=X.toarray()
+        self.n_features=min(int(0.9*len(X[0])),self.n_features)
+        print("Performing  LSA(%d features)"%self.n_features)
         # Vectorizer results are normalized, which makes KMeans behave as
         # spherical k-means for better results. Since LSA/SVD results are
         # not normalized, we have to redo the normalization.
         svd = TruncatedSVD(self.n_features)
         normalizer = Normalizer(copy=False)
         self.lsa = make_pipeline(svd, normalizer)
-        self.lsa.fit_transform(X)
+        self.lsa=self.lsa.fit(X)
         explained_variance = svd.explained_variance_ratio_.sum()
-        print("Explained variance of the SVD step: {}%".format(
-            int(explained_variance * 100)))
+        print("Explained variance of the SVD step: {}%".format(int(explained_variance * 100)))
 
         print("LSA built in %fs" % (time.time() - t0))
         with open("../data/saved_ML_models/docModels/"+self.name+"-lsamodel.pkl","wb") as f:
