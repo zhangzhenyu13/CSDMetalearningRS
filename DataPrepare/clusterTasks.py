@@ -115,13 +115,13 @@ def initDataSet():
         print()
         typeInfo={}
         for t in dataSet.keys():
-            typeInfo[t]=len(dataSet[t].ids)
+            typeInfo[t]=dataSet[t].ids
         with open("../data/TaskInstances/OriginalTasktype.data","wb") as f:
             pickle.dump(typeInfo,f)
         with open("../data/TaskInstances/OriginalTasktype.data", "rb") as f:
             typeInfo=pickle.load(f)
             total=0
-            for k in typeInfo.keys():print(k,",",typeInfo[k]);total+=typeInfo[k]
+            for k in typeInfo.keys():print(k,",",len(typeInfo[k]));total+=len(typeInfo[k])
 
         print()
         print("task num=%d" % len(ids),total)

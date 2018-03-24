@@ -67,7 +67,7 @@ class RegistrationDataContainer:
         self.regdates=np.array(regdates)
         self.tasktype=tasktype
 
-        print("user data of",tasktype+",size=%d"%len(self.taskids))
+        print("reg data of",tasktype+",size=%d"%len(self.taskids))
 
     def getRegUsers(self,taskid):
         indices=np.where(self.taskids==taskid)[0]
@@ -408,7 +408,7 @@ class UserHistoryGenerator:
                 #for those ever won
                 continue
 
-            tenure,skills=userdata.getInfo(username)
+            tenure,skills=userdata.getUserInfo(username)
             userhistory[username] = {"regtasks": [regids, regdates],
                                   "subtasks": [subids, subnum, subdates, score, rank],
                                   "tenure":tenure,"skills":skills}

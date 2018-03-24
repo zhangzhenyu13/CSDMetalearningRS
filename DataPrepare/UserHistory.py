@@ -545,9 +545,15 @@ def genRegisteredInstances(gInst,cluster,mode,runPID):
         genMethod[mode](filepath=filep.getInstancesFilePath(local=local,mode=mode,choice=choice),verboseNum=100,runPID=runPID)
         print()
 
-def genUserHistoryOfTaskType(userhistory,tasktype):
+def genUserHistoryOfTaskType(taskids,userhistory,tasktype,Users,Regs,Subs):
+
+    regdata=Regs.getSelRegistration(tasktype=tasktype,taskids=taskids)
+    subdata=Subs.getSelSubmission(tasktype=tasktype,taskids=taskids)
+    selnames=regdata.getAllUsers()
+    userdata=Users.getSelUsers(usernames=selnames)
+    userdata.skills=onehotFeatures(userdata.skills)
     for mode in (0,1,2):
-        userhistory.genActiveUserHistory(tasktype=tasktype,mode=mode)
+        userhistory.genActiveUserHistory(userdata=userdata,regdata=regdata,subdata=subdata,mode=mode,tasktype=tasktype)
 
 if __name__ == '__main__':
     #init data set
@@ -557,13 +563,16 @@ if __name__ == '__main__':
     Users=UserData()
     userhistory=UserHistoryGenerator()
     #construct history for users of given tasktype
-    with open("../dataTaskInstances/OriginalTasktype.data","rb") as f:
+    with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
         tasktypes=pickle.load(f)
         for t in tasktypes.keys():
-            if tasktypes[t]<50:
+            if len(tasktypes[t])<50:
                 continue
+
+            taskids=tasktypes[t]
             tasktype=t.replace("/","_")
-            
-            #multiprocessing.Process(target=genUserHistoryOfTaskType,args=(users,tasktype)).start()
+
+            genUserHistoryOfTaskType(taskids=taskids,userhistory=userhistory,tasktype=tasktype,Users=Users,Regs=Regs,Subs=Subs)
+            #multiprocessing.Process(target=genUserHistoryOfTaskType,args=(taskids,userhistory,tasktype,Users,Regs,Subs)).start()
 
 
