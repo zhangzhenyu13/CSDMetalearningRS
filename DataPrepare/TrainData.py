@@ -1,31 +1,57 @@
 import numpy as np
 import pickle
-import time
+import time,gc
+from DataPrepare.DataContainer import *
 
 class DataInstances:
-    def __init__(self,regdata,subdata,userdata,taskIndex):
-        self.regdata=regdata
-        self.subdata=subdata
-        self.userdata=userdata
-        self.taskIndex=taskIndex
+    def __init__(self,tasktype,choice):
+        self.tasktype=tasktype
+        self.choice=choice
+        self.loadData(choice)
 
-    def setLocality(self,taskIDs=None):
+    def loadData(self,choice):
+        #load task data
+        with open("../data/TaskInstances/taskDataSet/"+self.tasktype+"-taskData-"+str(choice)+".data","rb") as f:
+            data=pickle.load(f)
+            tasks=data["tasks"]
+            taskids=data["taskids"]
+            self.taskdata={}
+            for i in range(len(taskids)):
+                self.taskdata[taskids[i]]=tasks[i]
+        #load user data
+        self.userdata=UserHistoryGenerator()
 
-        self.activeReg=[]
-        taskIndex=self.taskIndex
+        #load reg data
+        with open("../data/TaskInstances/RegInfo/"+self.tasktype+"-regs-"+str(choice)+".data","rb") as f:
+            data=pickle.load(f)
+            for k in data.keys():
+                data[k]=data[k].tolist()
+                data[k].reverse()
+            ids=data["taskids"]
+            dates=data["regdates"]
+            #print(dates[:30])
+            names=data["names"]
+            self.regdata=RegistrationDataContainer(tasktype=self.tasktype,taskids=ids,usernames=names,regdates=dates)
+            print("loaded %d reg items"%len(self.regdata.taskids))
 
-        if taskIDs is None:
-            for i in range(len(taskIndex.taskIDs)):
-                self.activeReg.append((taskIndex.taskIDs[i],taskIndex.postingdate[i]))
-        else:
-            for id in taskIDs:
-                indices=np.where(taskIndex.taskIDs==id)[0]
-                if len(indices)>0:
-                    self.activeReg.append((id,taskIndex.postingdate[indices][0]))
+        #load sub data
+        with open("../data/TaskInstances/SubInfo/"+self.tasktype+"-subs-"+str(choice)+".data","rb") as f:
+            data=pickle.load(f)
+            ids=data["taskids"]
+            dates=data["subdates"]
+            #print(dates[:30]);exit(10)
+            names=data["names"]
+            subnums=data["subnums"]
+            scores=data["scores"]
+            ranks=data["finalranks"]
+            self.subdata=SubmissionDataContainer(tasktype=self.tasktype,taskids=ids,usernames=names,
+                                                 subnums=subnums,subdates=dates,scores=scores,finalranks=ranks)
+            print("loaded %d sub items"%len(self.subdata.taskids))
 
-        print("set locality: regtasks size=%d" % (len(self.activeReg)))
+    def createInstancesWithRegHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100,runPID=None):
+        if filepath is None:
+            filepath="../data/TopcoderDataSet/regHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
-    def createInstancesWithRegHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=1000,runPID=None):
         tasks=[]
         users=[]
         usernames = []
@@ -35,30 +61,31 @@ class DataInstances:
         ranks = []
         scores=[]
         regists=[]
-        taskdata=self.taskIndex.taskdata
+        taskdata=self.taskdata
 
-        userData=self.userdata.loadActiveUserHistory(mode=0)
+        userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=0)
 
-        print("runPID",runPID,":","construct registration history based instances with %d tasks and %d users" %
-              (len(taskdata), len(userData.keys())))
+        print(self.tasktype+"=>runPID",runPID,":","construct registration history based instances with %d tasks and %d users" %
+              (len(taskdata.keys()), len(userData.keys())))
 
         missingtask=0
         missinguser=0
         dataSegment=0
         t0=time.time()
 
-        for index in range(len(self.activeReg)):
+        for index in range(len(self.regdata.taskids)):
             if (index+1)%verboseNum==0:
-                print("runPID",runPID,":",index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                print("runPID",runPID,":",index+1,"of",len(self.regdata.taskids),
+                      "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 print("registered =%d/%d"%(np.sum(regists),len(regists)))
                 t0=time.time()
 
-            id,date=self.activeReg[index]
+            id,date=self.regdata.taskids[index],self.regdata.regdates[index]
 
             # task data of id
             task = taskdata[id]
 
-            reg_usernams, regDates=self.regdata.getUsers(id)
+            reg_usernams, regDates=self.regdata.getRegUsers(id)
             if reg_usernams is None:
                 missingtask+=1
                 continue
@@ -117,7 +144,7 @@ class DataInstances:
                 tasks.append(task)
                 dates.append(date)
 
-            if filepath is not None and len(taskids)>threshold:
+            if len(taskids)>threshold:
                 data={}
                 print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
                 data["usernames"] = usernames
@@ -156,17 +183,19 @@ class DataInstances:
         data["scores"]=scores
         data["regists"]=regists
 
-        if filepath is not None:
-            print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
-            with open(filepath+str(dataSegment),"wb") as f:
-                pickle.dump(data,f)
+        print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+        with open(filepath+str(dataSegment),"wb") as f:
+            pickle.dump(data,f)
 
         print("runPID",runPID,":","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
 
         return data
 
-    def createInstancesWithSubHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=1000,runPID=None):
+    def createInstancesWithSubHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100,runPID=None):
+        if filepath is None:
+            filepath="../data/TopcoderDataSet/subHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
+
         tasks=[]
         users=[]
         usernames = []
@@ -177,11 +206,11 @@ class DataInstances:
         scores=[]
         regists=[]
 
-        taskdata=self.taskIndex.taskdata
+        taskdata=self.taskdata
 
-        userData=self.userdata.loadActiveUserHistory(mode=1)
+        userData=self.userdata.loadActiveUserHistory(mode=1,tasktype=self.tasktype)
 
-        print("runPID",runPID,":","construct submission history based instances with %d tasks and %d users" %
+        print(self.tasktype+"=>runPID",runPID,":","construct submission history based instances with %d tasks and %d users" %
               (len(taskdata), len(userData.keys())))
 
         missingtask=0
@@ -189,19 +218,20 @@ class DataInstances:
         dataSegment=0
         t0=time.time()
 
-        for index in range(len(self.activeReg)):
+        for index in range(len(self.regdata.taskids)):
             if (index+1)%verboseNum==0:
-                print("runPID",runPID,":",index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                print("runPID",runPID,":",index+1,"of",len(self.regdata.taskids),
+                      "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 print("registered =%d/%d"%(np.sum(regists),len(regists)))
                 print()
                 t0=time.time()
 
-            id,date=self.activeReg[index]
+            id,date=self.regdata.taskids[index],self.regdata.regdates[index]
 
             # task data of id
             task = taskdata[id]
 
-            reg_usernams, regDates=self.regdata.getUsers(id)
+            reg_usernams, regDates=self.regdata.getRegUsers(id)
 
             if reg_usernams is None:
                 missingtask+=1
@@ -278,7 +308,7 @@ class DataInstances:
                 tasks.append(task)
                 dates.append(date)
 
-            if filepath is not None and len(taskids)>threshold:
+            if len(taskids)>threshold:
                 data={}
                 print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
                 data["usernames"] = usernames
@@ -319,16 +349,19 @@ class DataInstances:
         data["regists"]=regists
 
 
-        if filepath is not None:
-            print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
-            with open(filepath+str(dataSegment),"wb") as f:
-                pickle.dump(data,f)
+
+        print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+        with open(filepath+str(dataSegment),"wb") as f:
+            pickle.dump(data,f)
 
         print("runPID",runPID,":","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
         return data
 
-    def createInstancesWithWinHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=1000,runPID=None):
+    def createInstancesWithWinHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100,runPID=None):
+        if filepath is None:
+            filepath="../data/TopcoderDataSet/winHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
+
         tasks=[]
         users=[]
         usernames = []
@@ -339,11 +372,11 @@ class DataInstances:
         scores=[]
         regists=[]
 
-        taskdata=self.taskIndex.taskdata
+        taskdata=self.taskdata
 
-        userData=self.userdata.loadActiveUserHistory(mode=2)
+        userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=2)
 
-        print("runPID",runPID,":","construct winning history based instances with %d tasks and %d users" %
+        print(self.tasktype+"=>runPID",runPID,":","construct winning history based instances with %d tasks and %d users" %
               (len(taskdata), len(userData.keys())))
 
         missingtask=0
@@ -351,18 +384,19 @@ class DataInstances:
         dataSegment=0
         t0=time.time()
 
-        for index in range(len(self.activeReg)):
+        for index in range(len(self.regdata.taskids)):
             if (index+1)%verboseNum==0:
-                print("runPID",runPID,":",index+1,"of",len(self.activeReg),"current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
+                print("runPID",runPID,":",index+1,"of",len(self.regdata.taskids),
+                      "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 print("registered =%d/%d"%(np.sum(regists),len(regists)))
                 t0=time.time()
 
-            id,date=self.activeReg[index]
+            id,date=self.regdata.taskids[index],self.regdata.regdates[index]
 
             # task data of id
             task = taskdata[id]
 
-            reg_usernams, regDates=self.regdata.getUsers(id)
+            reg_usernams, regDates=self.regdata.getRegUsers(id)
 
             if reg_usernams is None:
                 missingtask+=1
@@ -451,7 +485,7 @@ class DataInstances:
                     ranks.append(10)
                     scores.append(0)
 
-            if filepath is not None and len(taskids)>threshold:
+            if len(taskids)>threshold:
                 data={}
                 print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
                 data["usernames"] = usernames
@@ -491,20 +525,24 @@ class DataInstances:
         data["scores"]=scores
         data["regists"]=regists
 
-        if filepath is not  None:
-            print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
-            with open(filepath+str(dataSegment),"wb") as f:
-                pickle.dump(data,f)
+        print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+        with open(filepath+str(dataSegment),"wb") as f:
+            pickle.dump(data,f)
 
         print("runPID",runPID,":","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
 
-        return data
 
 
-def genRegisteredInstances(gInst,cluster,mode,runPID):
-
-    pass
 if __name__ == '__main__':
+    choice=1
+    with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
+        tasktypes=pickle.load(f)
+        for t in tasktypes.keys():
+            if len(tasktypes[t])<50:
+                continue
 
+            taskids=tasktypes[t]
+            tasktype=t.replace("/","_")
+            DataInstances(tasktype=tasktype,choice=choice).createInstancesWithRegHistoryInfo()
     pass

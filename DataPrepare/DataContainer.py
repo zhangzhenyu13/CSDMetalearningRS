@@ -92,10 +92,12 @@ class RegistrationDataContainer:
         date=self.regdates[indices]
         return [ids,date]
 
+
+
 class SubmissionDataContainer:
-    def __init__(self,tasktype,taskids,uernames,subnums,subdates,scores,finalranks):
+    def __init__(self,tasktype,taskids,usernames,subnums,subdates,scores,finalranks):
         self.taskids=np.array(taskids)
-        self.names=np.array(uernames)
+        self.names=np.array(usernames)
         self.subnums=np.array(subnums)
         self.subdates=np.array(subdates)
         self.scores=np.array(scores)
@@ -346,7 +348,7 @@ class Submission:
                 ranks.append(self.finalrank[i])
 
 
-        return SubmissionDataContainer(tasktype=tasktype,taskids=ids,uernames=names,
+        return SubmissionDataContainer(tasktype=tasktype,taskids=ids,usernames=names,
                                        subnums=nums,subdates=dates,scores=scores,finalranks=ranks)
 
 
@@ -421,7 +423,7 @@ class UserHistoryGenerator:
 
     def loadActiveUserHistory(self,tasktype,mode):
         print("loading history of active users")
-        with open("../data/Instances/UserHistory/"+tasktype+"-UserHistory-"+self.tag[mode]+".data", "rb") as f:
+        with open("../data/UserInstances/UserHistory/"+tasktype+"-UserHistory-"+self.tag[mode]+".data", "rb") as f:
             userData = pickle.load(f)
 
         return userData

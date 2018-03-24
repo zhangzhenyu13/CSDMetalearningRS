@@ -13,6 +13,26 @@ def genUserHistoryOfTaskType(taskids,userhistory,tasktype,Users,Regs,Subs):
     userdata=Users.getSelUsers(usernames=selnames)
     userdata.skills=onehotFeatures(userdata.skills)
 
+    with open("../data/TaskInstances/RegInfo/"+tasktype+"-regs-"+str(choice)+".data","wb") as f:
+        data={}
+        data["taskids"]=regdata.taskids
+        data["regdates"]=regdata.regdates
+        data["names"]=regdata.names
+        pickle.dump(data,f)
+        print("saved %d reg items"%len(regdata.taskids))
+
+    with open("../data/TaskInstances/SubInfo/"+tasktype+"-subs-"+str(choice)+".data","wb") as f:
+        data={}
+        data["taskids"]=subdata.taskids
+        data["subdates"]=subdata.subdates
+        data["names"]=subdata.names
+        data["subnums"]=subdata.subnums
+        data["scores"]=subdata.scores
+        data["finalranks"]=subdata.finalranks
+        pickle.dump(data,f)
+        print("saved %d sub items"%len(subdata.taskids))
+
+    #return
     for mode in (0,1,2):
         userhistory.genActiveUserHistory(userdata=userdata,regdata=regdata,subdata=subdata,mode=mode,tasktype=tasktype)
 
