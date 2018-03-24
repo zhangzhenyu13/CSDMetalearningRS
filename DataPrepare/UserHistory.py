@@ -552,6 +552,7 @@ def genUserHistoryOfTaskType(taskids,userhistory,tasktype,Users,Regs,Subs):
     selnames=regdata.getAllUsers()
     userdata=Users.getSelUsers(usernames=selnames)
     userdata.skills=onehotFeatures(userdata.skills)
+
     for mode in (0,1,2):
         userhistory.genActiveUserHistory(userdata=userdata,regdata=regdata,subdata=subdata,mode=mode,tasktype=tasktype)
 
