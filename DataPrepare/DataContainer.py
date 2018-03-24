@@ -415,8 +415,8 @@ class UserHistoryGenerator:
             #print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
             #      len(userData[username]["regtasks"][0]))
 
-        print("saving history of %d "% len(userhistory),"type="+tasktype)
-        with open("../data/UserInstancesInstances/UserHistory/"+tasktype+"-UserHistory"+self.tag[mode]+".data", "wb") as f:
+        print("saving history of %d users"% len(userhistory),"type="+tasktype)
+        with open("../data/UserInstances/UserHistory/"+tasktype.replace("/","_")+"-UserHistory"+self.tag[mode]+".data", "wb") as f:
             pickle.dump(userhistory, f)
 
     def loadActiveUserHistory(self,tasktype,mode):

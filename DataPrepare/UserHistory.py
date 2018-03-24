@@ -573,7 +573,7 @@ if __name__ == '__main__':
             taskids=tasktypes[t]
             tasktype=t.replace("/","_")
 
-            genUserHistoryOfTaskType(taskids=taskids,userhistory=userhistory,tasktype=tasktype,Users=Users,Regs=Regs,Subs=Subs)
-            #multiprocessing.Process(target=genUserHistoryOfTaskType,args=(taskids,userhistory,tasktype,Users,Regs,Subs)).start()
+            #genUserHistoryOfTaskType(taskids=taskids,userhistory=userhistory,tasktype=tasktype,Users=Users,Regs=Regs,Subs=Subs)
+            multiprocessing.Process(target=genUserHistoryOfTaskType,args=(taskids,userhistory,tasktype,Users,Regs,Subs)).start()
 
 
