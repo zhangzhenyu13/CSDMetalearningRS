@@ -139,7 +139,6 @@ class DataInstances:
                 data["scores"]=scores
                 data["regists"]=regists
                 with open(filepath+str(dataSegment),"wb") as f:
-                    data["tasks"] = addTaskInfo(taskids=data["taskids"],X=data["tasks"])
                     pickle.dump(data,f)
                 #reset for next segment
                 data=None
@@ -169,7 +168,6 @@ class DataInstances:
         if filepath is not None:
             print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
             with open(filepath+str(dataSegment),"wb") as f:
-                data["tasks"] = addTaskInfo(taskids=data["taskids"],X=data["tasks"])
                 pickle.dump(data,f)
 
         print("runPID",runPID,":","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
@@ -302,7 +300,6 @@ class DataInstances:
                 data["scores"]=scores
                 data["regists"]=regists
                 with open(filepath+str(dataSegment),"wb") as f:
-                    data["tasks"] = addTaskInfo(taskids=data["taskids"],X=data["tasks"])
                     pickle.dump(data,f)
                 #reset for next segment
                 data=None
@@ -334,7 +331,6 @@ class DataInstances:
         if filepath is not None:
             print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
             with open(filepath+str(dataSegment),"wb") as f:
-                data["tasks"] = addTaskInfo(taskids=data["taskids"],X=data["tasks"])
                 pickle.dump(data,f)
 
         print("runPID",runPID,":","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
@@ -477,7 +473,6 @@ class DataInstances:
                 data["scores"]=scores
                 data["regists"]=regists
                 with open(filepath+str(dataSegment),"wb") as f:
-                    data["tasks"] = addTaskInfo(taskids=data["taskids"],X=data["tasks"])
                     pickle.dump(data,f)
                 #reset for next segment
                 data=None
@@ -508,7 +503,6 @@ class DataInstances:
         if filepath is not  None:
             print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
             with open(filepath+str(dataSegment),"wb") as f:
-                data["tasks"] = addTaskInfo(taskids=data["taskids"],X=data["tasks"])
                 pickle.dump(data,f)
 
         print("runPID",runPID,":","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
@@ -516,20 +510,6 @@ class DataInstances:
 
         return data
 
-#add tasktype info to global
-def addTaskInfo(taskids,X):
-    with open(filep.getClusterFilePath(local=2,choice=1), "rb") as f:
-        dataSet = pickle.load(f)
-    taskType={}
-    for key in dataSet.keys():
-        for id in dataSet[key]:
-            taskType[id]=key
-    typeInfo=[]
-    for id in taskids:
-        typeInfo.append(taskType[id])
-    typeInfo,_=onehotFeatures(typeInfo)
-    X=np.concatenate((typeInfo,X),axis=1)
-    return X
 
 def genRegisteredInstances(gInst,cluster,mode,runPID):
 
@@ -565,41 +545,25 @@ def genRegisteredInstances(gInst,cluster,mode,runPID):
         genMethod[mode](filepath=filep.getInstancesFilePath(local=local,mode=mode,choice=choice),verboseNum=100,runPID=runPID)
         print()
 
-def genUserHistoryOfTaskType(users,tasktype):
+def genUserHistoryOfTaskType(userhistory,tasktype):
     for mode in (0,1,2):
-        users.genActiveUserHistory(tasktype=tasktype,mode=mode)
+        userhistory.genActiveUserHistory(tasktype=tasktype,mode=mode)
 
 if __name__ == '__main__':
+    #init data set
     choice=1
-    tasks=Tasks(choice=choice)
-    #print(tasks.taskIDs[:10],tasks.postingdate[:10])
-    regs = Registration(tasks.taskIDs)
-    subs = Submission(tasks.taskIDs)
-
-    user = Users()
-    user.skills, features = onehotFeatures(user.skills,threshold_num=100)
-
-    print("encoding skills feature_num=", features)
-    users=ActiveUserHistory(userdata=user,regdata=regs,subdata=subs)
-    #data=users.loadActiveUserHistory(mode=2)
-    #for name in data.keys():
-    #    print(name,data[name]["regtasks"][:10],data[name]["subtasks"],data[name]["tenure"])
-    #exit(10)
-
+    Regs=Registration()
+    Subs=Submission()
+    Users=UserData()
+    userhistory=UserHistoryGenerator()
+    #construct history for users of given tasktype
     with open("../dataTaskInstances/OriginalTasktype.data","rb") as f:
         tasktypes=pickle.load(f)
         for t in tasktypes.keys():
             if tasktypes[t]<50:
                 continue
             tasktype=t.replace("/","_")
-            multiprocessing.Process(target=genUserHistoryOfTaskType,args=(users,tasktype)).start()
+            
+            #multiprocessing.Process(target=genUserHistoryOfTaskType,args=(users,tasktype)).start()
 
-    exit(10)
-
-    gInst = DataInstances(userdata=users,regdata=regs,subdata=subs,taskIndex=tasks)
-    pid=1
-    for local,mode in ((0,0),(0,1),(0,2)):
-        multiprocessing.Process(target=genRegisteredInstances,args=(gInst,local,mode,pid)).start()
-        pid+=1
-        #genRegisteredInstances(gInst,local=local,mode=mode)
 

@@ -69,7 +69,7 @@ class RegistrationDataContainer:
 
         print("user data of",tasktype+",size=%d"%len(self.taskids))
 
-    def getUsers(self,taskid):
+    def getRegUsers(self,taskid):
         indices=np.where(self.taskids==taskid)[0]
         if len(indices)==0:
             return None,None
@@ -78,6 +78,10 @@ class RegistrationDataContainer:
         regUsers=self.names[indices]
         regDates=self.regdates[indices]
         return regUsers,regDates
+
+    def getAllUsers(self):
+        usernames=set(self.names)
+        return usernames
 
     def getUserHistory(self,username):
         indices=np.where(self.names==username)[0]
@@ -99,7 +103,7 @@ class SubmissionDataContainer:
 
         print("submission data of "+tasktype+", size=%d"%len(self.taskids))
 
-    def getUsers(self,taskid):
+    def getSubUsers(self,taskid):
         indices = np.where(self.taskids == taskid)[0]
         if len(indices) == 0:
             return None,None
@@ -108,6 +112,10 @@ class SubmissionDataContainer:
         subUsers=self.names[indices]
         subDates=self.subdates[indices]
         return subUsers,subDates
+
+    def getAllUsers(self):
+        usernames=set(self.names)
+        return usernames
 
     def getResultOfSubmit(self,username,taskid):
         indices=np.where(self.names==username)[0]
@@ -359,6 +367,7 @@ class Tasks:
         self.taskIDs=[]
         self.postingdate=[]
         self.loadData(begindate)
+
     def loadData(self,begindate=5000):
 
         conn = ConnectDB()
@@ -375,21 +384,17 @@ class Tasks:
         self.taskIDs=np.array(self.taskIDs)
         self.postingdate=np.array(self.postingdate,dtype=np.int)
 
-        print(self.tasktype+": task size="%len(self.taskIDs))
+        print(self.tasktype+": task size=%d"%len(self.taskIDs))
 
-class ActiveUserHistory:
-    def __init__(self,userdata,regdata,subdata):
-        self.userdata=userdata
-        self.regdata=regdata
-        self.subdata=subdata
-        self.tag={0:"Reg",1:"Sub",2:"Win"}
+class UserHistoryGenerator:
+    tag={0:"Reg",1:"Sub",2:"Win"}
 
-    def genActiveUserHistory(self,mode,tasktype):
-        user,regdata,subdata=self.userdata,self.regdata,self.subdata
+    def genActiveUserHistory(self,userdata,regdata,subdata,mode,tasktype):
 
-        usernames=user.getUsers()
-        userData = {}
-        for username in usernames:
+        userhistory = {}
+
+        for username in userdata.names:
+
             regids, regdates = regdata.getUserHistory(username)
             if len(regids) == 0:
                 #default for those have registered
@@ -403,16 +408,16 @@ class ActiveUserHistory:
                 #for those ever won
                 continue
 
-            tenure,skills=user.getInfo(username)
-            userData[username] = {"regtasks": [regids, regdates],
+            tenure,skills=userdata.getInfo(username)
+            userhistory[username] = {"regtasks": [regids, regdates],
                                   "subtasks": [subids, subnum, subdates, score, rank],
                                   "tenure":tenure,"skills":skills}
             #print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
             #      len(userData[username]["regtasks"][0]))
 
-        print("saving history of %d active users" % len(userData))
+        print("saving history of %d  users of "+tasktype % len(userhistory))
         with open("../data/Instances/UserHistory/"+tasktype+"-UserHistory"+self.tag[mode]+".data", "wb") as f:
-            pickle.dump(userData, f)
+            pickle.dump(userhistory, f)
 
     def loadActiveUserHistory(self,tasktype,mode):
         print("loading history of active users")
