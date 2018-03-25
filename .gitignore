@@ -5,6 +5,7 @@ data/UserInstances
 data/saved_ML_models
 data/pictures
 data/runResults
+data/TopcoderDataSet
 *.pyc
 *.pkl
 *.json

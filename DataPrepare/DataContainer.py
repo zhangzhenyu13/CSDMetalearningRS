@@ -423,7 +423,7 @@ class UserHistoryGenerator:
 
     def loadActiveUserHistory(self,tasktype,mode):
         print("loading history of active users")
-        with open("../data/UserInstances/UserHistory/"+tasktype+"-UserHistory-"+self.tag[mode]+".data", "rb") as f:
+        with open("../data/UserInstances/UserHistory/"+tasktype+"-UserHistory"+self.tag[mode]+".data", "rb") as f:
             userData = pickle.load(f)
 
         return userData

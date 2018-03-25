@@ -1,5 +1,4 @@
-import numpy as np
-import pickle
+import multiprocessing
 import time,gc
 from DataPrepare.DataContainer import *
 
@@ -48,7 +47,14 @@ class DataInstances:
                                                  subnums=subnums,subdates=dates,scores=scores,finalranks=ranks)
             print("loaded %d sub items"%len(self.subdata.taskids))
 
-    def createInstancesWithRegHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100,runPID=None):
+    def saveDataIndex(self,filepath,dataSegment):
+        with open(filepath,"wb") as f:
+            data=[]
+            for seg in range(dataSegment):
+                data.append(filepath+str(seg))
+            pickle.dump(data,f)
+
+    def createInstancesWithRegHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100):
         if filepath is None:
             filepath="../data/TopcoderDataSet/regHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
@@ -65,7 +71,7 @@ class DataInstances:
 
         userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=0)
 
-        print(self.tasktype+"=>runPID",runPID,":","construct registration history based instances with %d tasks and %d users" %
+        print(self.tasktype+"=>:","construct registration history based instances with %d tasks and %d users" %
               (len(taskdata.keys()), len(userData.keys())))
 
         missingtask=0
@@ -75,7 +81,7 @@ class DataInstances:
 
         for index in range(len(self.regdata.taskids)):
             if (index+1)%verboseNum==0:
-                print("runPID",runPID,":",index+1,"of",len(self.regdata.taskids),
+                print(self.tasktype+"=>:",index+1,"of",len(self.regdata.taskids),
                       "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 print("registered =%d/%d"%(np.sum(regists),len(regists)))
                 t0=time.time()
@@ -91,7 +97,8 @@ class DataInstances:
                 continue
 
             for name in userData.keys():
-
+                #if len(userData[name]["regtasks"][1][:20])>20:
+                #print(userData[name]["regtasks"][1][:20])#;exit(10)
                 tenure, skills = userData[name]["tenure"],userData[name]["skills"]
 
                 if tenure is None:
@@ -146,7 +153,7 @@ class DataInstances:
 
             if len(taskids)>threshold:
                 data={}
-                print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+                print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
                 data["usernames"] = usernames
                 data["taskids"] = taskids
                 data["tasks"] = tasks
@@ -183,16 +190,18 @@ class DataInstances:
         data["scores"]=scores
         data["regists"]=regists
 
-        print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+        print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
         with open(filepath+str(dataSegment),"wb") as f:
             pickle.dump(data,f)
 
-        print("runPID",runPID,":","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
+        self.saveDataIndex(filepath=filepath,dataSegment=dataSegment+1)
+
+        print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
 
         return data
 
-    def createInstancesWithSubHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100,runPID=None):
+    def createInstancesWithSubHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100):
         if filepath is None:
             filepath="../data/TopcoderDataSet/subHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
@@ -210,7 +219,7 @@ class DataInstances:
 
         userData=self.userdata.loadActiveUserHistory(mode=1,tasktype=self.tasktype)
 
-        print(self.tasktype+"=>runPID",runPID,":","construct submission history based instances with %d tasks and %d users" %
+        print(self.tasktype+"=>:","construct submission history based instances with %d tasks and %d users" %
               (len(taskdata), len(userData.keys())))
 
         missingtask=0
@@ -220,7 +229,7 @@ class DataInstances:
 
         for index in range(len(self.regdata.taskids)):
             if (index+1)%verboseNum==0:
-                print("runPID",runPID,":",index+1,"of",len(self.regdata.taskids),
+                print(self.tasktype+"=>:",index+1,"of",len(self.regdata.taskids),
                       "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 print("registered =%d/%d"%(np.sum(regists),len(regists)))
                 print()
@@ -310,7 +319,7 @@ class DataInstances:
 
             if len(taskids)>threshold:
                 data={}
-                print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+                print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
                 data["usernames"] = usernames
                 data["taskids"] = taskids
                 data["tasks"] = tasks
@@ -350,15 +359,16 @@ class DataInstances:
 
 
 
-        print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+        print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
         with open(filepath+str(dataSegment),"wb") as f:
             pickle.dump(data,f)
 
-        print("runPID",runPID,":","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
+        self.saveDataIndex(filepath=filepath,dataSegment=dataSegment+1)
+        print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
         return data
 
-    def createInstancesWithWinHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100,runPID=None):
+    def createInstancesWithWinHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100):
         if filepath is None:
             filepath="../data/TopcoderDataSet/winHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
@@ -376,7 +386,7 @@ class DataInstances:
 
         userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=2)
 
-        print(self.tasktype+"=>runPID",runPID,":","construct winning history based instances with %d tasks and %d users" %
+        print(self.tasktype+"=>:","construct winning history based instances with %d tasks and %d users" %
               (len(taskdata), len(userData.keys())))
 
         missingtask=0
@@ -386,7 +396,7 @@ class DataInstances:
 
         for index in range(len(self.regdata.taskids)):
             if (index+1)%verboseNum==0:
-                print("runPID",runPID,":",index+1,"of",len(self.regdata.taskids),
+                print(self.tasktype+"=>:",index+1,"of",len(self.regdata.taskids),
                       "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 print("registered =%d/%d"%(np.sum(regists),len(regists)))
                 t0=time.time()
@@ -487,7 +497,7 @@ class DataInstances:
 
             if len(taskids)>threshold:
                 data={}
-                print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+                print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
                 data["usernames"] = usernames
                 data["taskids"] = taskids
                 data["tasks"] = tasks
@@ -525,11 +535,12 @@ class DataInstances:
         data["scores"]=scores
         data["regists"]=regists
 
-        print("runPID",runPID,":","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+        print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
         with open(filepath+str(dataSegment),"wb") as f:
             pickle.dump(data,f)
 
-        print("runPID",runPID,":","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
+        self.saveDataIndex(filepath=filepath,dataSegment=dataSegment+1)
+        print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         print()
 
 
@@ -544,5 +555,7 @@ if __name__ == '__main__':
 
             taskids=tasktypes[t]
             tasktype=t.replace("/","_")
-            DataInstances(tasktype=tasktype,choice=choice).createInstancesWithRegHistoryInfo()
+            #DataInstances(tasktype=tasktype,choice=choice).createInstancesWithWinHistoryInfo()
+            multiprocessing.Process(target=DataInstances(tasktype=tasktype,choice=choice).createInstancesWithWinHistoryInfo,
+                                    args=()).start()
     pass
