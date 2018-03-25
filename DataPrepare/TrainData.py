@@ -2,12 +2,32 @@ import multiprocessing
 import time,gc
 from DataPrepare.DataContainer import *
 
-class DataInstances:
-    def __init__(self,tasktype,choice):
+class DataInstances(multiprocessing.Process):
+    maxProcessNum=8
+    def __init__(self,tasktype,choice,cond,usingmode):
+        multiprocessing.Process.__init__(self)
         self.tasktype=tasktype
         self.choice=choice
-        self.loadData(choice)
+        self.cond=cond
+        self.usingMode=usingmode
+        self.running=True
+    def run(self):
+        self.loadData(choice=choice)
+        if self.usingMode==0:
+            self.createInstancesWithRegHistoryInfo()
+        elif self.usingMode==1:
+            self.createInstancesWithSubHistoryInfo()
+        elif self.usingMode==2:
+            self.createInstancesWithWinHistoryInfo()
+        else:
+            print("error mode")
+            raise AssertionError()
 
+        self.cond.acquire()
+        self.running=False
+        print(self.tasktype+"=>finished running")
+        self.cond.notify()
+        self.cond.release()
     def loadData(self,choice):
         #load task data
         with open("../data/TaskInstances/taskDataSet/"+self.tasktype+"-taskData-"+str(choice)+".data","rb") as f:
@@ -54,7 +74,7 @@ class DataInstances:
                 data.append(filepath+str(seg))
             pickle.dump(data,f)
 
-    def createInstancesWithRegHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100):
+    def createInstancesWithRegHistoryInfo(self,filepath=None,threshold=1e+5,verboseNum=1000):
         if filepath is None:
             filepath="../data/TopcoderDataSet/regHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
@@ -201,7 +221,7 @@ class DataInstances:
 
         return data
 
-    def createInstancesWithSubHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100):
+    def createInstancesWithSubHistoryInfo(self,filepath=None,threshold=1e+5,verboseNum=1000):
         if filepath is None:
             filepath="../data/TopcoderDataSet/subHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
@@ -368,7 +388,7 @@ class DataInstances:
         print()
         return data
 
-    def createInstancesWithWinHistoryInfo(self,filepath=None,threshold=1e+6,verboseNum=100):
+    def createInstancesWithWinHistoryInfo(self,filepath=None,threshold=1e+5,verboseNum=1000):
         if filepath is None:
             filepath="../data/TopcoderDataSet/winHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
@@ -544,9 +564,11 @@ class DataInstances:
         print()
 
 
-
 if __name__ == '__main__':
     choice=1
+    mode=0
+    cond=multiprocessing.Condition()
+    process_pools=[]
     with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
         tasktypes=pickle.load(f)
         for t in tasktypes.keys():
@@ -556,6 +578,29 @@ if __name__ == '__main__':
             taskids=tasktypes[t]
             tasktype=t.replace("/","_")
             #DataInstances(tasktype=tasktype,choice=choice).createInstancesWithWinHistoryInfo()
-            multiprocessing.Process(target=DataInstances(tasktype=tasktype,choice=choice).createInstancesWithWinHistoryInfo,
-                                    args=()).start()
-    pass
+            #multiprocessing.Process(target=DataInstances(tasktype=tasktype,choice=choice).createInstancesWithWinHistoryInfo,
+            #                        args=()).start()
+            if len(process_pools)<DataInstances.maxProcessNum:
+                proc=DataInstances(tasktype=tasktype,choice=choice,cond=cond,usingmode=mode)
+                proc.start()
+                process_pools.append(proc)
+
+            else:
+                tagadd=False
+                pos=-1
+                while tagadd==False:
+
+                    for i in range(len(process_pools)):
+                        if process_pools[i].running==False:
+                            tagadd=True
+                            pos=i
+                            break
+
+                    if tagadd==False:
+                        cond.acquire()
+                        print("waiting for process to finish running")
+                        cond.wait()
+                        cond.release()
+                proc=DataInstances(tasktype=tasktype,choice=choice,cond=cond,usingmode=mode)
+                proc.start()
+                process_pools[pos]=proc
