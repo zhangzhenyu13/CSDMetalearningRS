@@ -50,7 +50,7 @@ class LDAFlow:
         t0 = time.time()
         print("transfering docs to LDA topics distribution")
         docs = self.cleanDocs(docs)
-
+        self.n_features=min(int(0.9*len(docs[0])),self.n_features)
         print("performing LDA(%d features) "%self.n_features)
         self.dictionary = corpora.Dictionary(docs)
         doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in docs]

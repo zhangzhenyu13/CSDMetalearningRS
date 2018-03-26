@@ -121,6 +121,7 @@ class SubmissionDataContainer:
 
     def getResultOfSubmit(self,username,taskid):
         indices=np.where(self.names==username)[0]
+        #print(indices);exit(10)
         if len(indices)==0:
             return None
         indices1=np.where(self.taskids[indices]==taskid)[0]

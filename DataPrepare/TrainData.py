@@ -3,7 +3,7 @@ import time,gc
 from DataPrepare.DataContainer import *
 
 class DataInstances(multiprocessing.Process):
-    maxProcessNum=8
+    maxProcessNum=16
     def __init__(self,tasktype,choice,cond,usingmode):
         multiprocessing.Process.__init__(self)
         self.tasktype=tasktype
@@ -23,11 +23,14 @@ class DataInstances(multiprocessing.Process):
             print("error mode")
             raise AssertionError()
 
-        self.cond.acquire()
-        self.running=False
+        #self.cond.acquire()
+        #self.running=False
         print(self.tasktype+"=>finished running")
-        self.cond.notify()
-        self.cond.release()
+        with open("../data/runResults/genTrainData"+UserHistoryGenerator.tag[self.usingMode],"a") as f:
+            f.writelines(self.tasktype+"\n")
+
+        #self.cond.notify()
+        #self.cond.release()
     def loadData(self,choice):
         #load task data
         with open("../data/TaskInstances/taskDataSet/"+self.tasktype+"-taskData-"+str(choice)+".data","rb") as f:
@@ -74,7 +77,7 @@ class DataInstances(multiprocessing.Process):
                 data.append(filepath+str(seg))
             pickle.dump(data,f)
 
-    def createInstancesWithRegHistoryInfo(self,filepath=None,threshold=1e+5,verboseNum=1000):
+    def createInstancesWithRegHistoryInfo(self,filepath=None,threshold=3e+5,verboseNum=1e+6):
         if filepath is None:
             filepath="../data/TopcoderDataSet/regHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
@@ -173,7 +176,7 @@ class DataInstances(multiprocessing.Process):
 
             if len(taskids)>threshold:
                 data={}
-                print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+                #print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
                 data["usernames"] = usernames
                 data["taskids"] = taskids
                 data["tasks"] = tasks
@@ -210,18 +213,16 @@ class DataInstances(multiprocessing.Process):
         data["scores"]=scores
         data["regists"]=regists
 
-        print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+        #print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
         with open(filepath+str(dataSegment),"wb") as f:
             pickle.dump(data,f)
 
         self.saveDataIndex(filepath=filepath,dataSegment=dataSegment+1)
 
-        print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
-        print()
+        #print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
+        #print()
 
-        return data
-
-    def createInstancesWithSubHistoryInfo(self,filepath=None,threshold=1e+5,verboseNum=1000):
+    def createInstancesWithSubHistoryInfo(self,filepath=None,threshold=3e+5,verboseNum=1e+6):
         if filepath is None:
             filepath="../data/TopcoderDataSet/subHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
@@ -339,7 +340,7 @@ class DataInstances(multiprocessing.Process):
 
             if len(taskids)>threshold:
                 data={}
-                print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+                #print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
                 data["usernames"] = usernames
                 data["taskids"] = taskids
                 data["tasks"] = tasks
@@ -379,16 +380,15 @@ class DataInstances(multiprocessing.Process):
 
 
 
-        print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+        #print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
         with open(filepath+str(dataSegment),"wb") as f:
             pickle.dump(data,f)
 
         self.saveDataIndex(filepath=filepath,dataSegment=dataSegment+1)
-        print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
-        print()
-        return data
+        #print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
+        #print()
 
-    def createInstancesWithWinHistoryInfo(self,filepath=None,threshold=1e+5,verboseNum=1000):
+    def createInstancesWithWinHistoryInfo(self,filepath=None,threshold=3e+5,verboseNum=1e+6):
         if filepath is None:
             filepath="../data/TopcoderDataSet/winHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
@@ -517,7 +517,7 @@ class DataInstances(multiprocessing.Process):
 
             if len(taskids)>threshold:
                 data={}
-                print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+                #print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
                 data["usernames"] = usernames
                 data["taskids"] = taskids
                 data["tasks"] = tasks
@@ -555,22 +555,30 @@ class DataInstances(multiprocessing.Process):
         data["scores"]=scores
         data["regists"]=regists
 
-        print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
+        #print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
         with open(filepath+str(dataSegment),"wb") as f:
             pickle.dump(data,f)
 
         self.saveDataIndex(filepath=filepath,dataSegment=dataSegment+1)
-        print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
-        print()
+        #print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
+        #print()
 
 
 if __name__ == '__main__':
-    choice=1
-    mode=0
+    choice=1 #
+    mode=1 #2
     cond=multiprocessing.Condition()
     process_pools=[]
     with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
         tasktypes=pickle.load(f)
+
+        with open("../data/runResults/types.txt","w") as f:
+            for t in tasktypes.keys():
+                if len(tasktypes[t])<50:
+                    continue
+                f.writelines(t+"\n")
+        #exit(10)
+
         for t in tasktypes.keys():
             if len(tasktypes[t])<50:
                 continue
@@ -580,27 +588,7 @@ if __name__ == '__main__':
             #DataInstances(tasktype=tasktype,choice=choice).createInstancesWithWinHistoryInfo()
             #multiprocessing.Process(target=DataInstances(tasktype=tasktype,choice=choice).createInstancesWithWinHistoryInfo,
             #                        args=()).start()
-            if len(process_pools)<DataInstances.maxProcessNum:
-                proc=DataInstances(tasktype=tasktype,choice=choice,cond=cond,usingmode=mode)
-                proc.start()
-                process_pools.append(proc)
+            proc=DataInstances(tasktype=tasktype,choice=choice,cond=cond,usingmode=mode)
+            proc.start()
+            process_pools.append(proc)
 
-            else:
-                tagadd=False
-                pos=-1
-                while tagadd==False:
-
-                    for i in range(len(process_pools)):
-                        if process_pools[i].running==False:
-                            tagadd=True
-                            pos=i
-                            break
-
-                    if tagadd==False:
-                        cond.acquire()
-                        print("waiting for process to finish running")
-                        cond.wait()
-                        cond.release()
-                proc=DataInstances(tasktype=tasktype,choice=choice,cond=cond,usingmode=mode)
-                proc.start()
-                process_pools[pos]=proc
