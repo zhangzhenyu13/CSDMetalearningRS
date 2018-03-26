@@ -1,4 +1,5 @@
 from ML_Models.Model_def import *
+from DataPrepare.TopcoderDataSet import *
 from sklearn import svm,linear_model,naive_bayes,tree
 from sklearn import ensemble
 from sklearn import metrics
@@ -62,8 +63,10 @@ class TraditionalClassifier(ML_model):
 #test the performance
 if __name__ == '__main__':
 
-    data=DataSetTopcoder()
-    #data=DataSetTopCoderReg()
+    data=DataSetTopcoder(testratio=0.2,validateratio=0.1)
+    data.setParameter(tasktype="Assembly Competition",choice=1)
+    data.loadData()
+
     '''
     #regression
     data.CommitRegressionData()
@@ -82,7 +85,7 @@ if __name__ == '__main__':
     data.CommitClassificationData()
     model=TraditionalClassifier()
     model.dataSet=data
-    model.name="global classifier sub"
+    model.name=data.tasktype+"-classifier(submission)"
     model.trainModel()
     model.saveModel()
     model.loadModel()

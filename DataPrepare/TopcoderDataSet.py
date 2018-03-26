@@ -44,6 +44,7 @@ class DataSetTopcoder:
     def loadData(self):
         with open(self.filepath,"rb") as f:
             self.dataSet=pickle.load(f)
+
         users=self.fetchData(self.dataSet,"users")
         tasks=self.fetchData(self.dataSet,"tasks")
         taskids=self.fetchData(self.dataSet,"taskids")

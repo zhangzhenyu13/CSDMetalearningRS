@@ -18,7 +18,7 @@ class ML_model:
         pass
 
     def findPath(self):
-        modelpath="../data/saved_ML_models/"+self.name+".pkl"
+        modelpath="../data/saved_ML_models/classifiers/"+self.name+".pkl"
         return modelpath
     def loadModel(self):
         with open(self.findPath(),"rb") as f:
