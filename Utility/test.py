@@ -85,9 +85,14 @@ def scanID():
             print(s)
 
 
-
+def testFileIndex():
+    with open("../data/TopcoderDataSet/subHistoryBasedData/Assembly Competition-user_task-1.data","rb") as f:
+        files=pickle.load(f)
+        for file in files:
+            print(file)
 
 if __name__ == '__main__':
-    testSub()
-    testReg()
+    #testSub()
+    #testReg()
     #scanID()
+    testFileIndex()
