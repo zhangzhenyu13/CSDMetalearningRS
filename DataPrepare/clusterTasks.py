@@ -257,9 +257,9 @@ def genResults():
             continue
 
         #print(taskdata.ids);exit(10)
-        multiprocessing.Process(target=genResultOfTasktype,args=(tasktype,taskdata,choice)).start()
+        #multiprocessing.Process(target=genResultOfTasktype,args=(tasktype,taskdata,choice)).start()
 
-        #genResultOfTasktype(tasktype=tasktype,taskdata=taskdata,choice=choice)
+        genResultOfTasktype(tasktype=tasktype,taskdata=taskdata,choice=choice)
 
 
 
