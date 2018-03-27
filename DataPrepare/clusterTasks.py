@@ -129,6 +129,7 @@ def initDataSet():
         return dataSet
 
 def clusterVec(taskdata,docX):
+
     X_techs=taskdata.techs
     X_lans=taskdata.lans
 
@@ -136,9 +137,17 @@ def clusterVec(taskdata,docX):
     X=np.concatenate((docX,X_techs),axis=1)
     X=np.concatenate((X,X_lans),axis=1)
 
+    print("cluster shape doc",docX.shape,"vec shape",X.shape)
+
     return X
 
 def taskVec(taskdata,docX):
+
+    print("doc shape",docX.shape)
+    kpca=decomposition.KernelPCA(n_components=100,kernel="rbf")
+    docX=kpca.fit_transform(docX)
+    print("doc shape changed to",docX.shape)
+
     X_techs=taskdata.techs
     X_lans=taskdata.lans
 
@@ -240,7 +249,7 @@ def genResults():
 
     choice=eval(input("1:LDA; 2:LSA \t"))
     print("+++++++++++++++++++++++++++++++++++++++++++++++++")
-    filterThreshold=50
+    filterThreshold=100
     for t in typeinfo:
         taskdata=dataSet[t]
         tasktype=taskdata.taskType

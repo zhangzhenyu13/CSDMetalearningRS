@@ -150,7 +150,7 @@ def showData(Y_predict,Y_true,content):
     plt.title("test and real "+content)
     plt.show()
 if __name__ == '__main__':
-    data=TopcoderSub(testratio=0.2,validateratio=0.1)
+    data=TopcoderSub(testratio=0.2,validateratio=0)
     data.setParameter(tasktype="Architecture",choice=1)
     data.loadData()
     testClassification(data)

@@ -15,7 +15,7 @@ from scipy import sparse
 
 class LDAFlow:
     def __init__(self):
-        self.n_features=1000
+        self.n_features=500
         self.name=""
     def cleanDocs(self,docs_o):
         docs=copy.deepcopy(docs_o)
@@ -28,7 +28,7 @@ class LDAFlow:
             doc = ''.join(ch for ch in doc if ch not in exclude)
             doc = " ".join(lemma.lemmatize(word) for word in doc.split())
             docs[i] = doc.split()
-        return docs
+        return  docs
 
     def transformVec(self,docs):
         #print(np.shape(docs),docs[0])
@@ -50,8 +50,8 @@ class LDAFlow:
         t0 = time.time()
         print("transfering docs to LDA topics distribution")
         docs = self.cleanDocs(docs)
-        self.n_features=min(int(0.9*len(docs[0])),self.n_features)
-        print("performing LDA(%d features) "%self.n_features)
+        self.n_features=min(int(0.8*len(docs[0])),self.n_features)
+        print("performing LDA(%d features) from shape(%d,%d)"%(self.n_features,len(docs),len(docs[0])))
         self.dictionary = corpora.Dictionary(docs)
         doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in docs]
         self.lda = gensim.models.LdaModel(doc_term_matrix, num_topics=self.n_features, id2word=self.dictionary)
@@ -93,7 +93,7 @@ def IDF(n_features):
 
 class LSAFlow:
     def __init__(self):
-        self.n_features=1000
+        self.n_features=500
         self.name=""
     def transformVec(self,docs):
         print("transfering docs to LSA factors")
@@ -105,8 +105,8 @@ class LSAFlow:
 
         X = IDF(self.n_features*10).fit_transform(docs)
         X=X.toarray()
-        self.n_features=min(int(0.9*len(X[0])),self.n_features)
-        print("Performing  LSA(%d features)"%self.n_features)
+        self.n_features=min(int(0.8*len(X[0])),self.n_features)
+        print("Performing  LSA(%d features) from doc shape(%d,%d)"%(self.n_features,len(X),len(X[0])))
         # Vectorizer results are normalized, which makes KMeans behave as
         # spherical k-means for better results. Since LSA/SVD results are
         # not normalized, we have to redo the normalization.
