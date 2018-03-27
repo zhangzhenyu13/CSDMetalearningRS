@@ -27,9 +27,9 @@ class TraditionalClassifier(ML_model):
         candite_selection = {
             "RandomFrorest": ensemble.RandomForestClassifier(),
             "ExtraForest": ensemble.ExtraTreesClassifier(),
-            "AdaBoost": ensemble.AdaBoostClassifier(),
-            "GradientBoost": ensemble.GradientBoostingClassifier(),
-            "SVM": svm.SVC(C=0.9)
+            #"AdaBoost": ensemble.AdaBoostClassifier(),
+            #"GradientBoost": ensemble.GradientBoostingClassifier(),
+            #"SVM": svm.SVC(C=0.9)
         }
         return candite_selection
     def __init__(self):
@@ -57,14 +57,15 @@ class TraditionalClassifier(ML_model):
                     max_acc=acc
         self.model=sel_model
         t1=time.time()
-        score=metrics.accuracy_score(self.dataSet.trainLabel,self.model.predict(self.dataSet.trainX))
-        print("model",self.name,"trainning finished in %ds"%(t1-t0),"train score=%f"%score)
+        score=metrics.accuracy_score(self.dataSet.validateLabel,self.model.predict(self.dataSet.validateX))
+        cm=metrics.confusion_matrix(self.dataSet.validateLabel,self.model.predict(self.dataSet.validateX))
+        print("model",self.name,"trainning finished in %ds"%(t1-t0),"validate score=%f"%score,"CM=\n",cm)
 
 #test the performance
 if __name__ == '__main__':
 
-    data=DataSetTopcoder(testratio=0.2,validateratio=0.1)
-    data.setParameter(tasktype="Assembly Competition",choice=1)
+    data=TopcoderSub(testratio=0.2,validateratio=0.1)
+    data.setParameter(tasktype="Architecture",choice=1)
     data.loadData()
 
     '''
@@ -83,6 +84,7 @@ if __name__ == '__main__':
 
     #classification
     data.CommitClassificationData()
+
     model=TraditionalClassifier()
     model.dataSet=data
     model.name=data.tasktype+"-classifier(submission)"

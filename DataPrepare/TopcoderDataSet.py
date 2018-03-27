@@ -29,17 +29,12 @@ class DataSetTopcoder:
         return IDIndex
 
     def fetchData(self,files,key):
-        with open(files[0],"rb") as f:
-            data=pickle.load(f)
-            X=np.array(data[key])
-        del files[0]
-        for file in files:
-            with open(file,"rb") as f:
-                data=pickle.load(f)
-                X=np.concatenate((X,data["users"]),axis=0)
-        data=None
-        gc.collect()
-        return X
+        '''
+
+        :param files: the files that contain the data
+        :param key: the data key
+        :return: X, array like, containing the data
+        '''
 
     def loadData(self):
         with open(self.filepath,"rb") as f:
@@ -66,8 +61,70 @@ class DataSetTopcoder:
         print("loaded all the instances, size=%d"%len(taskids),
               "test point=%d, validate point=%d"%(self.testPoint,self.validatePoint))
 
+
+class TopcoderReg(DataSetTopcoder):
+    def __init__(self,testratio=0.2,validateratio=0.1):
+        DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
+    def fetchData(self,files,key):
+        with open(files[0],"rb") as f:
+            data=pickle.load(f)
+            X=np.array(data[key])
+
+        if len(files)<2:
+            return X
+
+        for file in files[1:]:
+            with open(file,"rb") as f:
+                data=pickle.load(f)
+                X=np.concatenate((X,data[key]),axis=0)
+        data=None
+        gc.collect()
+        return X
+    def RegisterRegressionData(self):
+        Y=self.fetchData(self.dataSet,"regists")
+        self.trainLabel=Y[self.validatePoint:]
+        self.validateLabel=Y[self.testPoint:self.validatePoint]
+        self.testLabel=Y[:self.testPoint]
+
+    def RegisterClassificationData(self):
+        self.RegisterRegressionData()
+        self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
+        self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
+        self.testLabel=np.array(self.testLabel>0,dtype=np.int)
+
+
+class TopcoderSub(DataSetTopcoder):
+    def __init__(self,testratio=0.2,validateratio=0.1):
+        DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
+    def fetchData(self,files,key):
+        with open(files[0],"rb") as f:
+            data=pickle.load(f)
+            regists=np.array(data["regists"])
+            X=np.array(data[key])
+            indices=np.where(regists>0)[0]
+            if len(indices)>0:
+                X=X[indices]
+        if len(files)<2:
+            return X
+
+        for file in files[1:]:
+            with open(file,"rb") as f:
+                data=pickle.load(f)
+                regists=np.array(data["regists"])
+                X=np.concatenate((X,data[key]),axis=0)
+                indices=np.where(regists>0)[0]
+                if len(indices)>0:
+                    X=X[indices]
+        data=None
+        gc.collect()
+        return X
+
     def CommitRegressionData(self):
+        Y=self.fetchData(self.dataSet,"regists")
+        indices=np.where(Y>0)[0]
+
         Y=self.fetchData(self.dataSet,"submits")
+
         self.trainLabel=Y[self.validatePoint:]
         self.validateLabel=Y[self.testPoint:self.validatePoint]
         self.testLabel=Y[:self.testPoint]
@@ -77,6 +134,33 @@ class DataSetTopcoder:
         self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
         self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
         self.testLabel=np.array(self.testLabel>0,dtype=np.int)
+
+class TopcoderWin(DataSetTopcoder):
+    def __init__(self,testratio=0.2,validateratio=0.1):
+        DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
+
+    def fetchData(self,files,key):
+        with open(files[0],"rb") as f:
+            data=pickle.load(f)
+            submits=data["submits"]
+            X=np.array(data[key])
+            indices=np.where(submits>0)[0]
+            if len(indices)>0:
+                X=X[indices]
+        if len(files)<2:
+            return X
+
+        for file in files[1:]:
+            with open(file,"rb") as f:
+                data=pickle.load(f)
+                submits=data["submits"]
+                X=np.concatenate((X,data[key]),axis=0)
+                indices=np.where(submits>0)[0]
+                if len(indices)>0:
+                    X=X[indices]
+        data=None
+        gc.collect()
+        return X
 
     def WinRankData(self):
         Y=self.fetchData(self.dataSet,"ranks")
@@ -91,13 +175,3 @@ class DataSetTopcoder:
         self.testLabel=np.array(self.testLabel==0,dtype=np.int)
 
 
-if __name__ == '__main__':
-    data = DataSetTopcoder()
-    data.CommitClassificationData()
-    from pandas import DataFrame as frame
-    data_train = frame(data.trainX)
-    data_train["Class"] = data.trainLabel
-    data_train.to_csv("trainData.csv")
-    data_test = frame(data.testX)
-    data_test["Class"] = data.testLabel
-    data_test.to_csv("testData.csv")

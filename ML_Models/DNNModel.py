@@ -1,4 +1,5 @@
 from ML_Models.Model_def import *
+from DataPrepare.TopcoderDataSet import *
 from keras import models,layers,optimizers,losses
 from keras.utils import np_utils
 import numpy as np
@@ -94,7 +95,7 @@ class DNNCLassifier(ML_model):
     def trainModel(self):
         print(self.name+" training")
         t0=time.time()
-        self.model.fit(x=self.dataSet.trainX,y=self.dataSet.trainLabel,epochs=100,batch_size=500)
+        self.model.fit(x=self.dataSet.trainX,y=self.dataSet.trainLabel,epochs=5,batch_size=500)
         t1=time.time()
         loss,accuracy=self.model.evaluate(x=self.dataSet.trainX,y=self.dataSet.trainLabel,batch_size=10000)
         print("finished in %ds"%(t1-t0),"accuracy=%f"%accuracy,"loss=%f"%loss)
@@ -115,7 +116,7 @@ def testClassification(data):
     data.trainLabel=np_utils.to_categorical(data.trainLabel,num_classes=2)
 
     model = DNNCLassifier(dataSet=data)
-    model.name = "DNN _lassifier"
+    model.name = data.tasktype+"-DNN _classifier"
     model.trainModel()
     model.saveModel()
     model.loadModel()
@@ -127,6 +128,7 @@ def testClassification(data):
 
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel, Y_predict2))
+
 def testRegression(data):
     data.CommitRegressionData()
     model=DNNRegression(dataSet=data)
@@ -148,6 +150,8 @@ def showData(Y_predict,Y_true,content):
     plt.title("test and real "+content)
     plt.show()
 if __name__ == '__main__':
-    data=DataSetTopcoder(splitratio=0.7)
+    data=TopcoderSub(testratio=0.2,validateratio=0.1)
+    data.setParameter(tasktype="Architecture",choice=1)
+    data.loadData()
     testClassification(data)
     #testRegression(data)
