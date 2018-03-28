@@ -667,6 +667,6 @@ if __name__ == '__main__':
     cond=multiprocessing.Condition()
 
     choice=1 #
-    mode=2 #2
+    mode=1 #2,1
     #genDataSet()
     genNeighborhoodBasedDataSet()

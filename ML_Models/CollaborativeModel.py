@@ -84,7 +84,7 @@ class CFClassifier(ML_model):
         return max_acc
 if __name__ == '__main__':
 
-    data = DataSetTopcoderCluster(splitraio=0.7)
+    data =
 
     model = CFClassifier(data.clusternames,"local_classifier_Sub")
     model.dataSet = data

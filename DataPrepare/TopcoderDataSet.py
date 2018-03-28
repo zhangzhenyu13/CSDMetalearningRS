@@ -88,9 +88,9 @@ class TopcoderReg(DataSetTopcoder):
 
     def RegisterClassificationData(self):
         self.RegisterRegressionData()
-        self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
-        self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
-        self.testLabel=np.array(self.testLabel>0,dtype=np.int)
+        self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
+        self.validateLabel=np.array(self.validateLabel==0,dtype=np.int)
+        self.testLabel=np.array(self.testLabel==0,dtype=np.int)
 
 
 class TopcoderSub(DataSetTopcoder):
@@ -131,9 +131,9 @@ class TopcoderSub(DataSetTopcoder):
 
     def CommitClassificationData(self):
         self.CommitRegressionData()
-        self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
-        self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
-        self.testLabel=np.array(self.testLabel>0,dtype=np.int)
+        self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
+        self.validateLabel=np.array(self.validateLabel==0,dtype=np.int)
+        self.testLabel=np.array(self.testLabel==0,dtype=np.int)
 
 class TopcoderWin(DataSetTopcoder):
     def __init__(self,testratio=0.2,validateratio=0.1):
