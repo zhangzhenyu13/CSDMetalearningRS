@@ -4,6 +4,8 @@ from Utility.FeatureEncoder import onehotFeatures
 from Utility.personalizedSort import  MySort
 import numpy as np
 import pickle,copy
+import warnings
+warnings.filterwarnings("ignore")
 
 class TaskDataContainer:
     def __init__(self,typename):
@@ -354,12 +356,12 @@ class Submission:
 
 
 class Tasks:
-    def __init__(self,tasktype,choice,begindate=5000):
+    def __init__(self,tasktype,choice=1,begindate=3000):
         with open("../data/TaskInstances/taskDataSet/"+tasktype+"-taskData-" + str(choice) + ".data", "rb") as f:
             taskdata = pickle.load(f)
             ids = taskdata["taskids"]
             X = taskdata["tasks"]
-            print("Task Instances data size=%d"%(len(ids)))
+            print(tasktype,"=>","Task Instances data size=%d"%(len(ids)))
             taskdata = {}
             for i in range(len(ids)):
                 taskdata[ids[i]] = X[i]
@@ -369,13 +371,16 @@ class Tasks:
         self.choice=choice
         self.taskIDs=[]
         self.postingdate=[]
+
         self.loadData(begindate)
 
     def loadData(self,begindate=5000):
 
         conn = ConnectDB()
         cur = conn.cursor()
-        sqlcmd="select taskid, postingdate from task where postingdate <="+str(begindate)+" and postingdate>=0 order by postingDate asc;"
+        sqlcmd="select taskid, postingdate from task where postingdate <="+str(begindate)+\
+               " and tasktype='"+self.tasktype.replace("_","/")+"' and postingdate>=0 order by postingDate asc;"
+        #print(sqlcmd)
         cur.execute(sqlcmd)
         dataset = cur.fetchall()
         for data in dataset:
@@ -388,6 +393,21 @@ class Tasks:
         self.postingdate=np.array(self.postingdate,dtype=np.int)
 
         print(self.tasktype+": task size=%d"%len(self.taskIDs))
+
+
+    def filteredTasks(self,taskids):
+        index=len(self.taskIDs)-1
+        ids=[]
+        postingdate=[]
+        taskdata={}
+        while index>=0:
+            if self.taskIDs[index] in taskids:
+                ids.insert(0,self.taskIDs[index])
+                postingdate.insert(0,self.postingdate[index])
+                taskdata[self.taskIDs[index]]=self.taskdata[self.taskIDs[index]]
+            index-=1
+
+        return ids,postingdate,taskdata
 
 class UserHistoryGenerator:
     tag={0:"Reg",1:"Sub",2:"Win"}

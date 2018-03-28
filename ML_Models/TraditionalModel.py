@@ -64,8 +64,8 @@ class TraditionalClassifier(ML_model):
 #test the performance
 if __name__ == '__main__':
 
-    data=TopcoderSub(testratio=0.2,validateratio=0.1)
-    data.setParameter(tasktype="Architecture",choice=1)
+    data=TopcoderReg(testratio=0.2,validateratio=0.1)
+    data.setParameter(tasktype="First2Finish",choice=1)
     data.loadData()
 
     '''
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     '''
 
     #classification
-    data.CommitClassificationData()
+    data.RegisterClassificationData()
 
     model=TraditionalClassifier()
     model.dataSet=data

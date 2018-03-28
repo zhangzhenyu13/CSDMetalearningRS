@@ -4,42 +4,69 @@ from DataPrepare.DataContainer import *
 
 class DataInstances(multiprocessing.Process):
     maxProcessNum=16
-    def __init__(self,tasktype,choice,cond,usingmode):
+    def __init__(self,tasktype,choice,cond,usingmode,clusternum=0):
         multiprocessing.Process.__init__(self)
-        self.tasktype=tasktype
+        self.tasktype=tasktype.replace("/","_")
         self.choice=choice
         self.cond=cond
         self.usingMode=usingmode
+        self.clusternum=clusternum
         self.running=True
     def run(self):
-        self.loadData(choice=choice)
-        if self.usingMode==0:
-            self.createInstancesWithRegHistoryInfo()
-        elif self.usingMode==1:
-            self.createInstancesWithSubHistoryInfo()
-        elif self.usingMode==2:
-            self.createInstancesWithWinHistoryInfo()
-        else:
-            print("error mode")
-            raise AssertionError()
+        self.loadData(choice=self.choice)
 
-        #self.cond.acquire()
-        #self.running=False
+        if self.clusternum<=0:
+            if self.usingMode==0:
+                self.createInstancesWithRegHistoryInfo()
+            elif self.usingMode==1:
+                self.createInstancesWithSubHistoryInfo()
+            elif self.usingMode==2:
+                self.createInstancesWithWinHistoryInfo()
+            else:
+                print("error mode")
+                raise AssertionError()
+        elif self.clusternum==1:
+            print(self.clusternum,"==1",)
+            return
+
+        else:
+
+            oldSelTasks=self.selTasks
+            class data_tmp:
+                def __init__(self):
+                    self.taskIDs=None
+                    self.postingdate=None
+                    self.taskdata=None
+
+            with open("../data/TaskInstances/taskClusterSet/"+self.tasktype+"-clusters-"+str(self.choice)+".data","rb") as f:
+                IDClusters=pickle.load(f)
+                for cluster_no in IDClusters.keys():
+                    print(self.tasktype,":",cluster_no)
+                    self.selTasks=data_tmp()
+                    self.selTasks.taskIDs,self.selTasks.postingdate,self.selTasks.taskdata=\
+                        oldSelTasks.filteredTasks(IDClusters[cluster_no])
+                    self.cluster_no=cluster_no
+
+                    if self.usingMode==0:
+                        multiprocessing.Process(target=self.createInstancesWithRegHistoryInfo,args=(True,)).start()
+                    elif self.usingMode==1:
+                        multiprocessing.Process(target=self.createInstancesWithSubHistoryInfo,args=(True,)).start()
+                    elif self.usingMode==2:
+                        multiprocessing.Process(target=self.createInstancesWithWinHistoryInfo,args=(True,)).start()
+                    else:
+                        print("error mode")
+                        raise AssertionError
+
+
         print(self.tasktype+"=>finished running")
         with open("../data/runResults/genTrainData"+UserHistoryGenerator.tag[self.usingMode],"a") as f:
             f.writelines(self.tasktype+"\n")
 
-        #self.cond.notify()
-        #self.cond.release()
+
     def loadData(self,choice):
         #load task data
-        with open("../data/TaskInstances/taskDataSet/"+self.tasktype+"-taskData-"+str(choice)+".data","rb") as f:
-            data=pickle.load(f)
-            tasks=data["tasks"]
-            taskids=data["taskids"]
-            self.taskdata={}
-            for i in range(len(taskids)):
-                self.taskdata[taskids[i]]=tasks[i]
+        self.selTasks=Tasks(tasktype=self.tasktype,choice=choice)
+
         #load user data
         self.userdata=UserHistoryGenerator()
 
@@ -77,9 +104,11 @@ class DataInstances(multiprocessing.Process):
                 data.append(filepath+str(seg))
             pickle.dump(data,f)
 
-    def createInstancesWithRegHistoryInfo(self,filepath=None,threshold=3e+5,verboseNum=1e+6):
-        if filepath is None:
+    def createInstancesWithRegHistoryInfo(self,neighborhood=False,threshold=6e+5,verboseNum=1e+6):
+        if neighborhood==False:
             filepath="../data/TopcoderDataSet/regHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
+        else:
+            filepath="../data/TopcoderDataSetNeighborhood/regHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
         tasks=[]
         users=[]
@@ -90,7 +119,7 @@ class DataInstances(multiprocessing.Process):
         ranks = []
         scores=[]
         regists=[]
-        taskdata=self.taskdata
+        taskdata=self.selTasks.taskdata
 
         userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=0)
 
@@ -102,14 +131,14 @@ class DataInstances(multiprocessing.Process):
         dataSegment=0
         t0=time.time()
 
-        for index in range(len(self.regdata.taskids)):
+        for index in range(len(self.selTasks.taskIDs)):
             if (index+1)%verboseNum==0:
-                print(self.tasktype+"=>:",index+1,"of",len(self.regdata.taskids),
+                print(self.tasktype+"=>:",index+1,"of",len(self.selTasks.taskIDs),
                       "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 print("registered =%d/%d"%(np.sum(regists),len(regists)))
                 t0=time.time()
 
-            id,date=self.regdata.taskids[index],self.regdata.regdates[index]
+            id,date=self.selTasks.taskIDs[index],self.selTasks.postingdate[index]
 
             # task data of id
             task = taskdata[id]
@@ -120,8 +149,7 @@ class DataInstances(multiprocessing.Process):
                 continue
 
             for name in userData.keys():
-                #if len(userData[name]["regtasks"][1][:20])>20:
-                #print(userData[name]["regtasks"][1][:20])#;exit(10)
+
                 tenure, skills = userData[name]["tenure"],userData[name]["skills"]
 
                 if tenure is None:
@@ -222,9 +250,11 @@ class DataInstances(multiprocessing.Process):
         #print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         #print()
 
-    def createInstancesWithSubHistoryInfo(self,filepath=None,threshold=3e+5,verboseNum=1e+6):
-        if filepath is None:
+    def createInstancesWithSubHistoryInfo(self,neighborhood=False,threshold=6e+5,verboseNum=1e+6):
+        if neighborhood==False:
             filepath="../data/TopcoderDataSet/subHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
+        else:
+            filepath="../data/TopcoderDataSetNeighborhood/subHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
 
         tasks=[]
         users=[]
@@ -236,7 +266,7 @@ class DataInstances(multiprocessing.Process):
         scores=[]
         regists=[]
 
-        taskdata=self.taskdata
+        taskdata=self.selTasks.taskdata
 
         userData=self.userdata.loadActiveUserHistory(mode=1,tasktype=self.tasktype)
 
@@ -248,15 +278,15 @@ class DataInstances(multiprocessing.Process):
         dataSegment=0
         t0=time.time()
 
-        for index in range(len(self.regdata.taskids)):
+        for index in range(len(self.selTasks.taskIDs)):
             if (index+1)%verboseNum==0:
-                print(self.tasktype+"=>:",index+1,"of",len(self.regdata.taskids),
+                print(self.tasktype+"=>:",index+1,"of",len(self.selTasks.taskIDs),
                       "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 print("registered =%d/%d"%(np.sum(regists),len(regists)))
                 print()
                 t0=time.time()
 
-            id,date=self.regdata.taskids[index],self.regdata.regdates[index]
+            id,date=self.selTasks.taskIDs[index],self.selTasks.postingdate[index]
 
             # task data of id
             task = taskdata[id]
@@ -388,9 +418,12 @@ class DataInstances(multiprocessing.Process):
         #print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         #print()
 
-    def createInstancesWithWinHistoryInfo(self,filepath=None,threshold=3e+5,verboseNum=1e+6):
-        if filepath is None:
+    def createInstancesWithWinHistoryInfo(self,neighborhood=False,threshold=6e+5,verboseNum=1e+6):
+        if neighborhood==False:
             filepath="../data/TopcoderDataSet/winHistoryBasedData/"+self.tasktype+"-user_task-"+str(self.choice)+".data"
+        else:
+            filepath="../data/TopcoderDataSetNeighborhood/winHistoryBasedData/C-"+str(self.cluster_no)+"-"\
+                     +self.tasktype+"-user_task-"+str(self.choice)+".data"
 
         tasks=[]
         users=[]
@@ -402,7 +435,7 @@ class DataInstances(multiprocessing.Process):
         scores=[]
         regists=[]
 
-        taskdata=self.taskdata
+        taskdata=self.selTasks.taskdata
 
         userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=2)
 
@@ -414,14 +447,14 @@ class DataInstances(multiprocessing.Process):
         dataSegment=0
         t0=time.time()
 
-        for index in range(len(self.regdata.taskids)):
+        for index in range(len(self.selTasks.taskIDs)):
             if (index+1)%verboseNum==0:
-                print(self.tasktype+"=>:",index+1,"of",len(self.regdata.taskids),
+                print(self.tasktype+"=>:",index+1,"of",len(self.selTasks.taskIDs),
                       "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
                 print("registered =%d/%d"%(np.sum(regists),len(regists)))
                 t0=time.time()
 
-            id,date=self.regdata.taskids[index],self.regdata.regdates[index]
+            id,date=self.selTasks.taskIDs[index],self.selTasks.postingdate[index]
 
             # task data of id
             task = taskdata[id]
@@ -439,6 +472,15 @@ class DataInstances(multiprocessing.Process):
                     #no such user in user data
                     missinguser+=1
                     continue
+
+                '''
+                if len(userData[name]["regtasks"][1][:20])>10:
+                    print()
+                    print(userData[name]["regtasks"][1][:10])
+                    print(userData[name]["subtasks"][2][:10])
+                    print(self.selTasks.postingdate[:10])
+                    exit(10)
+                '''
 
                 #get reg and sub history before date for user:name
                 regtasks = userData[name]["regtasks"]
@@ -563,24 +605,20 @@ class DataInstances(multiprocessing.Process):
         #print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         #print()
 
-
-if __name__ == '__main__':
-    choice=1 #
-    mode=1 #2
-    cond=multiprocessing.Condition()
+def genDataSet():
     process_pools=[]
     with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
         tasktypes=pickle.load(f)
 
         with open("../data/runResults/types.txt","w") as f:
             for t in tasktypes.keys():
-                if len(tasktypes[t])<50:
+                if len(tasktypes[t])<filterThreshold:
                     continue
                 f.writelines(t+"\n")
         #exit(10)
 
         for t in tasktypes.keys():
-            if len(tasktypes[t])<50:
+            if len(tasktypes[t])<filterThreshold:
                 continue
 
             taskids=tasktypes[t]
@@ -592,3 +630,43 @@ if __name__ == '__main__':
             proc.start()
             process_pools.append(proc)
 
+
+def genNeighborhoodBasedDataSet():
+    process_pools=[]
+    neighboredtasktype={}
+    with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
+        tasktypes=pickle.load(f)
+
+        for t in tasktypes.keys():
+            if len(tasktypes[t])<filterThreshold:
+                continue
+
+            taskids=tasktypes[t]
+            tasktype=t.replace("/","_")
+
+            with open("../data/TaskInstances/taskClusterSet/"+tasktype+"-clusters-"+str(choice)+".data","rb") as f:
+                IDClusters=pickle.load(f)
+                if len(IDClusters.keys())>1:
+                    neighboredtasktype[tasktype]=len(IDClusters.keys())
+            #DataInstances(tasktype=tasktype,choice=choice).createInstancesWithWinHistoryInfo()
+            #multiprocessing.Process(target=DataInstances(tasktype=tasktype,choice=choice).createInstancesWithWinHistoryInfo,
+            #                        args=()).start()
+
+            proc=DataInstances(tasktype=tasktype,choice=choice,cond=cond,usingmode=mode,clusternum=len(IDClusters.keys()))
+            proc.start()
+            process_pools.append(proc)
+
+    tag={0:"reg",1:"sub",2:"win"}
+    with open("../data/TopcoderDataSetNeighborhood/"+tag[mode]+
+              "HistoryBasedData/fileIndex.data","wb") as f:
+        pickle.dump(neighboredtasktype,f)
+    print(neighboredtasktype)
+
+if __name__ == '__main__':
+    filterThreshold=100
+    cond=multiprocessing.Condition()
+
+    choice=1 #
+    mode=2 #2
+    #genDataSet()
+    genNeighborhoodBasedDataSet()

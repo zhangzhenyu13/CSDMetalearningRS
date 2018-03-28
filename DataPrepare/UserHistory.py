@@ -1,5 +1,4 @@
 from DataPrepare.ConnectDB import *
-
 import multiprocessing
 from DataPrepare.DataContainer import *
 warnings.filterwarnings("ignore")
@@ -38,6 +37,7 @@ def genUserHistoryOfTaskType(taskids,userhistory,tasktype,Users,Regs,Subs):
 
 if __name__ == '__main__':
     #init data set
+    filterThreshold=100
     choice=1
     Regs=Registration()
     Subs=Submission()
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
         tasktypes=pickle.load(f)
         for t in tasktypes.keys():
-            if len(tasktypes[t])<50:
+            if len(tasktypes[t])<filterThreshold:
                 continue
 
             taskids=tasktypes[t]

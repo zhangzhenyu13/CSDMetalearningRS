@@ -4,7 +4,7 @@ import numpy as np
 import gc
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
-
+openMode="rb"
 def testReg():
     with open("../data/Instances/regsdata/task_userReg2.data0","rb") as f:
         data=pickle.load(f)
@@ -90,9 +90,25 @@ def testFileIndex():
         files=pickle.load(f)
         for file in files:
             print(file)
+def countUsers():
+    from DataPrepare.DataContainer import UserHistoryGenerator
+    filterThreshold=100
+    userhis=UserHistoryGenerator()
+    count=0
+    with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
+        tasktypes=pickle.load(f)
+        for t in tasktypes.keys():
+            if len(tasktypes[t])<filterThreshold:
+                continue
+
+            count+=1
+            tasktype=t.replace("/","_")
+            userdata=userhis.loadActiveUserHistory(tasktype=tasktype,mode=2)
+            print(count,tasktype,len(userdata))
 
 if __name__ == '__main__':
     #testSub()
     #testReg()
     #scanID()
-    testFileIndex()
+    #testFileIndex()
+    countUsers()

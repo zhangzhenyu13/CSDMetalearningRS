@@ -144,7 +144,7 @@ def clusterVec(taskdata,docX):
 def taskVec(taskdata,docX):
 
     print("doc shape",docX.shape)
-    kpca=decomposition.KernelPCA(n_components=100,kernel="rbf")
+    kpca=decomposition.KernelPCA(n_components=min(len(docX[0]),100),kernel="rbf")
     docX=kpca.fit_transform(docX)
     print("doc shape changed to",docX.shape)
 
@@ -257,9 +257,9 @@ def genResults():
             continue
 
         #print(taskdata.ids);exit(10)
-        #multiprocessing.Process(target=genResultOfTasktype,args=(tasktype,taskdata,choice)).start()
+        multiprocessing.Process(target=genResultOfTasktype,args=(tasktype,taskdata,choice)).start()
 
-        genResultOfTasktype(tasktype=tasktype,taskdata=taskdata,choice=choice)
+        #genResultOfTasktype(tasktype=tasktype,taskdata=taskdata,choice=choice)
 
 
 
