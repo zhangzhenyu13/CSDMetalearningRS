@@ -1,4 +1,5 @@
 from ML_Models.DocTopicsModel import LSAFlow,LDAFlow
+from Utility.TagsDef import *
 from DataPrepare.ConnectDB import ConnectDB
 from Utility.FeatureEncoder import onehotFeatures
 from Utility.personalizedSort import  MySort
@@ -38,12 +39,12 @@ class TaskDataContainer:
         print(self.taskType,"docs shape",self.docs.shape)
 
         print("encoding techs",self.taskType)
-        self.techs=onehotFeatures(self.techs,threshold_num=5)
-        print(self.taskType,"techs shape",self.techs.shape)
+        self.techs_vec=onehotFeatures(self.techs,threshold_num=5)
+        print(self.taskType,"techs shape",self.techs_vec.shape)
 
         print("encoding lans",self.taskType)
-        self.lans=onehotFeatures(self.lans,threshold_num=5)
-        print(self.taskType,"lans shape",self.lans.shape)
+        self.lans_vec=onehotFeatures(self.lans,threshold_num=5)
+        print(self.taskType,"lans shape",self.lans_vec.shape)
 
 class UserDataContainer:
 
@@ -410,7 +411,6 @@ class Tasks:
         return ids,postingdate,taskdata
 
 class UserHistoryGenerator:
-    tag={0:"Reg",1:"Sub",2:"Win"}
 
     def genActiveUserHistory(self,userdata,regdata,subdata,mode,tasktype):
 
@@ -438,13 +438,13 @@ class UserHistoryGenerator:
             #print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
             #      len(userData[username]["regtasks"][0]))
 
-        print("saving history of %d users"% len(userhistory),"type="+tasktype)
-        with open("../data/UserInstances/UserHistory/"+tasktype.replace("/","_")+"-UserHistory"+self.tag[mode]+".data", "wb") as f:
+        print("saving %s history of %d users"%(ModeTag[mode], len(userhistory)),"type="+tasktype)
+        with open("../data/UserInstances/UserHistory/"+tasktype.replace("/","_")+"-UserHistory"+ModeTag[mode]+".data", "wb") as f:
             pickle.dump(userhistory, f)
 
     def loadActiveUserHistory(self,tasktype,mode):
-        print("loading history of active users")
-        with open("../data/UserInstances/UserHistory/"+tasktype+"-UserHistory"+self.tag[mode]+".data", "rb") as f:
+        print("loading %s history of active users "%ModeTag[mode])
+        with open("../data/UserInstances/UserHistory/"+tasktype+"-UserHistory"+ModeTag[mode]+".data", "rb") as f:
             userData = pickle.load(f)
 
         return userData

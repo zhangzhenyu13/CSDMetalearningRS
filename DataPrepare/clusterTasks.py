@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pickle,multiprocessing
 from DataPrepare.DataContainer import TaskDataContainer
 from ML_Models.ClusteringModel import ClusteringModel
-
+from Utility.TagsDef import *
 warnings.filterwarnings("ignore")
 
 def showData(X):
@@ -112,94 +112,89 @@ def initDataSet():
 
                 dataSet[t]=container
 
-        print()
         typeInfo={}
+        selTypeInfo={}
         for t in dataSet.keys():
             typeInfo[t]=dataSet[t].ids
+            if len(dataSet[t].ids)>TaskFilterThreshold:
+                selTypeInfo[t]=dataSet[t].ids
+
         with open("../data/TaskInstances/OriginalTasktype.data","wb") as f:
             pickle.dump(typeInfo,f)
+
+        with open("../data/TaskInstances/SelTasktype.data","wb") as f:
+            pickle.dump(selTypeInfo,f)
+
         with open("../data/TaskInstances/OriginalTasktype.data", "rb") as f:
             typeInfo=pickle.load(f)
             total=0
             for k in typeInfo.keys():print(k,",",len(typeInfo[k]));total+=len(typeInfo[k])
-
+        print("original task num=%d of %d" %(total,len(ids)))
         print()
-        print("task num=%d" % len(ids),total)
 
+        print("Selected Task Item Type")
+        with open("../data/TaskInstances/SelTasktype.data", "rb") as f:
+            selTypeInfo=pickle.load(f)
+            total=0
+            for k in selTypeInfo.keys():print(k,",",len(selTypeInfo[k]));total+=len(selTypeInfo[k])
+        print("Selected task num=%d of %d" %(total,len(ids)))
         return dataSet
 
 def clusterVec(taskdata,docX):
 
-    X_techs=taskdata.techs
-    X_lans=taskdata.lans
+    X_techs=taskdata.techs_vec
+    X_lans=taskdata.lans_vec
 
-    print("docs,techs,lans",docX.shape,X_techs.shape,X_lans.shape)
+    print("cluster shape: docs,techs,lans",docX.shape,X_techs.shape,X_lans.shape)
     X=np.concatenate((docX,X_techs),axis=1)
     X=np.concatenate((X,X_lans),axis=1)
 
-    print("cluster shape doc",docX.shape,"vec shape",X.shape)
-
     return X
 
-def taskVec(taskdata,docX):
-
-    print("doc shape",docX.shape)
-    kpca=decomposition.KernelPCA(n_components=min(len(docX[0]),100),kernel="rbf")
-    docX=kpca.fit_transform(docX)
-    print("doc shape changed to",docX.shape)
-
-    X_techs=taskdata.techs
-    X_lans=taskdata.lans
-
-    X_startdate = taskdata.startdates
-    X_duration = taskdata.durations
-    X_prize = taskdata.prizes
-    X_diffdeg =taskdata.diffdegs
-
-    X = np.concatenate((docX,X_techs), axis=1)
-    X = np.concatenate((X, X_lans), axis=1)
-    X = np.concatenate((X, X_startdate), axis=1)
-    X = np.concatenate((X, X_duration), axis=1)
-    X = np.concatenate((X, X_prize), axis=1)
-    X = np.concatenate((X, X_diffdeg), axis=1)
-    return X
 
 #save data content as a vector
-def saveTaskVecData(X,taskids,dataname,choice=1):
+def saveTaskData(taskdata):
     data={}
-    data["size"]=len(taskids)
-    data["taskids"]=taskids
-    data["tasks"]=X
-    with open("../data/TaskInstances/taskDataSet/"+dataname+"-taskData-"+str(choice)+".data","wb") as f:
+    docX=taskdata.docs
+    oldshape=docX.shape
+    kpca=decomposition.KernelPCA(n_components=min(len(docX[0]),100),kernel="rbf")
+    data["docX"]=kpca.fit_transform(docX)
+    print(taskdata.taskType,"KPCA doc shape changed from",oldshape,"to",data["docX"].shape)
+
+    #print(taskdata.techs[:20])
+    #print(taskdata.lans[:20])
+    #exit(20)
+    for i in range(len(taskdata.ids)):
+        taskdata.lans[i]=taskdata.lans[i].split(",")
+        taskdata.techs[i]=taskdata.techs[i].split(",")
+    #print(taskdata.techs[:20])
+    #print(taskdata.lans[:20])
+    #exit(20)
+    data["lans"]=taskdata.lans
+    data["techs"]=taskdata.techs
+    data["diffdegs"]=taskdata.diffdegs
+    data["startdates"]=taskdata.startdates
+    data["durations"]=taskdata.durations
+    data["prizes"]=taskdata.prizes
+    data["ids"]=taskdata.ids
+    with open("../data/TaskInstances/taskDataSet/"+taskdata.taskType+"-taskData.data","wb") as f:
         pickle.dump(data,f)
 
 
 def genResultOfTasktype(tasktype,taskdata,choice):
 
-    taskdata=taskdata
     taskdata.encodingFeature(choice)
     docX=taskdata.docs
-    #kernel pca method test
-    '''
-    print()
-    print(tasktype,docX.shape,"before kPCA")
-    kpca=decomposition.KernelPCA()
-    docX=kpca.fit_transform(docX)
-    print(tasktype,docX.shape,"after kPCA")
-    print(tasktype,kpca.coef0)
-    print()
-    '''
 
     #save vec representaion of all the tasks
-    X=taskVec(taskdata,docX)
-    saveTaskVecData(X,taskdata.ids,tasktype,choice)
+    saveTaskData(taskdata)
 
     #cluster task based on its feature
     X=clusterVec(taskdata,docX)
 
-    clusterEXP=500
+    clusterEXP=800
     model=ClusteringModel()
-    model.name=tasktype+"-clusteringModel-"+str(choice)
+    model.name=tasktype+"-clusteringModel"
     n_clusters=max(1,len(taskdata.ids)//clusterEXP)
 
     model.trainCluster(X=X,n_clusters=n_clusters,minibatch=False)
@@ -221,10 +216,10 @@ def genResultOfTasktype(tasktype,taskdata,choice):
 
     # saving result
     print("saving clustering result")
-    with open("../data/TaskInstances/taskClusterSet/"+tasktype+"-clusters-" + str(choice) + ".data", "wb") as f:
+    with open("../data/TaskInstances/taskClusterSet/"+tasktype+"-clusters.data", "wb") as f:
         pickle.dump(IDClusters, f)
 
-    with open("../data/TaskInstances/taskClusterSet/"+tasktype+"-clusters-"  + str(choice) + ".data", "rb") as f:
+    with open("../data/TaskInstances/taskClusterSet/"+tasktype+"-clusters.data", "rb") as f:
         taskidClusters=pickle.load(f)
 
     print("saving cluster plot result")
@@ -235,10 +230,10 @@ def genResultOfTasktype(tasktype,taskdata,choice):
         print(tasktype,"#%d"%i,"size=%d"%len(taskidClusters[i]))
 
     plt.plot(np.arange(n_clusters),y, marker='o')
-    plt.title(tasktype+",choice=%d" % choice+", size=%d"%len(X))
+    plt.title(tasktype+", size=%d"%len(X))
     plt.xlabel("cluster no")
     plt.ylabel("task instance size")
-    plt.savefig("../data/pictures/TaskClusterPlots/"+tasktype+ "-taskclusters-"+str(choice)+".png")
+    plt.savefig("../data/pictures/TaskClusterPlots/"+tasktype+ "-taskclusters.png")
     plt.gcf().clear()
     print("===========================================================================")
     print()
@@ -249,12 +244,11 @@ def genResults():
 
     choice=eval(input("1:LDA; 2:LSA \t"))
     print("+++++++++++++++++++++++++++++++++++++++++++++++++")
-    filterThreshold=100
-    for t in typeinfo:
+    with open("../data/TaskInstances/SelTasktype.data","rb") as f:
+        tasktypes=pickle.load(f)
+    for t in tasktypes:
         taskdata=dataSet[t]
         tasktype=taskdata.taskType
-        if len(taskdata.ids)<filterThreshold:
-            continue
 
         #print(taskdata.ids);exit(10)
         multiprocessing.Process(target=genResultOfTasktype,args=(tasktype,taskdata,choice)).start()

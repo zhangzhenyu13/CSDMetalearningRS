@@ -4,6 +4,7 @@ import numpy as np
 import gc
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
+from Utility.TagsDef import *
 openMode="rb"
 def testReg():
     with open("../data/Instances/regsdata/task_userReg2.data0","rb") as f:
@@ -92,23 +93,115 @@ def testFileIndex():
             print(file)
 def countUsers():
     from DataPrepare.DataContainer import UserHistoryGenerator
-    filterThreshold=100
     userhis=UserHistoryGenerator()
     count=0
     with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
         tasktypes=pickle.load(f)
         for t in tasktypes.keys():
-            if len(tasktypes[t])<filterThreshold:
-                continue
-
             count+=1
             tasktype=t.replace("/","_")
+            for mode in (0,1,2):
+                userdata=userhis.loadActiveUserHistory(tasktype=tasktype,mode=mode)
+                print(count,tasktype,ModeTag[mode]+":%d"%len(userdata))
+            print()
+def countUserTaskType():
+    from DataPrepare.DataContainer import UserHistoryGenerator
+    userhis=UserHistoryGenerator()
+    usertypesReg={}
+    usertypesSub={}
+    usertypesWin={}
+
+    with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
+        tasktypeIndex=pickle.load(f)
+        tasktypes=list(tasktypeIndex.keys())
+        for i in range(len(tasktypes)):
+
+            tasktype=tasktypes[i].replace("/","_")
+
+            userdata=userhis.loadActiveUserHistory(tasktype=tasktype,mode=0)
+            usertypesReg[tasktype]=set(userdata.keys())
+            #print(type(usertypesReg[tasktype]),usertypesReg[tasktype]);exit(10)
+            userdata=userhis.loadActiveUserHistory(tasktype=tasktype,mode=1)
+            usertypesSub[tasktype]=set(userdata.keys())
+
             userdata=userhis.loadActiveUserHistory(tasktype=tasktype,mode=2)
-            print(count,tasktype,len(userdata))
+            usertypesWin[tasktype]=set(userdata.keys())
+
+        userCrossTypeData={}
+        userCrossTypeData["tasktypes"]=tasktypes
+        crossM_Reg={}
+        crossM_Sub={}
+        crossM_Win={}
+
+        x=np.arange(len(tasktypes))
+
+        for i in range(len(tasktypes)):
+            t1=tasktypes[i].replace("/","_")
+
+            for j in range(i+1,len(tasktypes)):
+
+                t2=tasktypes[j].replace("/","_")
+
+                comTReg=usertypesReg[t1].intersection(usertypesReg[t2])
+                comTSub=usertypesSub[t1].intersection(usertypesSub[t2])
+                comTWin=usertypesWin[t1].intersection(usertypesWin[t2])
+
+                crossM_Reg[(t1,t2)]=crossM_Reg[(t2,t1)]=comTReg
+                crossM_Sub[(t1,t2)]=crossM_Sub[(t2,t1)]=comTSub
+                crossM_Win[(t1,t2)]=crossM_Win[(t2,t1)]=comTWin
+
+
+
+                print("between %s and %s"%(t1,t2))
+                print("regs type common=%d"%len(comTReg))
+                print("subs type common=%d"%len(comTSub))
+                print("wins type common=%d"%len(comTWin))
+                print()
+
+        userCrossTypeData["regs"]=crossM_Reg
+        userCrossTypeData["subs"]=crossM_Sub
+        userCrossTypeData["wins"]=crossM_Win
+        with open("../data/Statistics/crossTypeUserData.data","wb") as f:
+            pickle.dump(userCrossTypeData,f)
+
+        with open("../data/Statistics/crossTypeUserData.data","rb") as f:
+            userCrossTypeData=pickle.load(f)
+            crossM_Reg=userCrossTypeData["regs"]
+            crossM_Sub=userCrossTypeData["subs"]
+            crossM_Win=userCrossTypeData["wins"]
+
+            for i in range(len(tasktypes)):
+                t1=tasktypes[i].replace("/","_")
+                plt.figure(t1)
+                y1=np.zeros(shape=len(tasktypes))
+                y2=np.zeros(shape=len(tasktypes))
+                y3=np.zeros(shape=len(tasktypes))
+
+                for j in range(len(tasktypes)):
+                    if i==j:
+                        continue
+                    t2=tasktypes[j].replace("/","_")
+                    y1[j]=len(crossM_Reg[(t1,t2)])
+                    y2[j]=len(crossM_Sub[(t1,t2)])
+                    y3[j]=len(crossM_Win[(t1,t2)])
+
+                plt.plot(x,y1,color="r")
+                plt.plot(x,y2,color="g")
+                plt.plot(x,y3,color="b")
+                plt.xlabel("task type no")
+                plt.ylabel("intersection user num")
+                plt.title(t1+"=>itme size=%d, user"%len(tasktypeIndex[t1.replace("_","/")]))
+                plt.text(1000,1000,"red:reg")
+                plt.text(1000,980,"green:sub")
+                plt.text(1000,960,"blue:win")
+                plt.savefig("../data/pictures/userCrossTypes/"+t1+".png")
+                plt.gca().clear()
+
 
 if __name__ == '__main__':
     #testSub()
     #testReg()
     #scanID()
     #testFileIndex()
-    countUsers()
+    #countUsers()
+    countUserTaskType()
