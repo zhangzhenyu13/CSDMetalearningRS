@@ -138,24 +138,28 @@ def countUserTaskType():
         for i in range(len(tasktypes)):
             t1=tasktypes[i].replace("/","_")
 
-            for j in range(i+1,len(tasktypes)):
-
+            for j in range(len(tasktypes)):
+                if i==j:
+                    continue
                 t2=tasktypes[j].replace("/","_")
 
-                comTReg=usertypesReg[t1].intersection(usertypesReg[t2])
-                comTSub=usertypesSub[t1].intersection(usertypesSub[t2])
-                comTWin=usertypesWin[t1].intersection(usertypesWin[t2])
+                if j>i:
 
-                crossM_Reg[(t1,t2)]=crossM_Reg[(t2,t1)]=comTReg
-                crossM_Sub[(t1,t2)]=crossM_Sub[(t2,t1)]=comTSub
-                crossM_Win[(t1,t2)]=crossM_Win[(t2,t1)]=comTWin
+                    comTReg=usertypesReg[t1].intersection(usertypesReg[t2])
+                    comTSub=usertypesSub[t1].intersection(usertypesSub[t2])
+                    comTWin=usertypesWin[t1].intersection(usertypesWin[t2])
 
+                    crossM_Reg[(t1,t2)]=crossM_Reg[(t2,t1)]=comTReg
+                    crossM_Sub[(t1,t2)]=crossM_Sub[(t2,t1)]=comTSub
+                    crossM_Win[(t1,t2)]=crossM_Win[(t2,t1)]=comTWin
 
-
+                comTReg=crossM_Reg[(t1,t2)]
+                comTSub=crossM_Sub[(t1,t2)]
+                comTWin=crossM_Win[(t1,t2)]
                 print("between %s and %s"%(t1,t2))
-                print("regs type common=%d"%len(comTReg))
-                print("subs type common=%d"%len(comTSub))
-                print("wins type common=%d"%len(comTWin))
+                print("regs type common=%d"%len(comTReg),len(usertypesReg[t1]))
+                print("subs type common=%d"%len(comTSub),len(usertypesSub[t1]))
+                print("wins type common=%d"%len(comTWin),len(usertypesWin[t1]))
                 print()
 
         userCrossTypeData["regs"]=crossM_Reg
@@ -180,22 +184,34 @@ def countUserTaskType():
                 for j in range(len(tasktypes)):
                     if i==j:
                         continue
-                    t2=tasktypes[j].replace("/","_")
-                    y1[j]=len(crossM_Reg[(t1,t2)])
-                    y2[j]=len(crossM_Sub[(t1,t2)])
-                    y3[j]=len(crossM_Win[(t1,t2)])
 
-                plt.plot(x,y1,color="r")
+                    t2=tasktypes[j].replace("/","_")
+
+                    if len(usertypesReg[t1])>0:
+                        y1[j]=len(crossM_Reg[(t1,t2)])/len(usertypesReg[t1])
+
+                    if len(usertypesSub[t1])>0:
+                        y2[j]=len(crossM_Sub[(t1,t2)])/len(usertypesSub[t1])
+
+                    if len(usertypesWin[t1])>0:
+                        y3[j]=len(crossM_Win[(t1,t2)])/len(usertypesWin[t1])
+
+
+
+                plt.plot(x,y1,color="b")
                 plt.plot(x,y2,color="g")
-                plt.plot(x,y3,color="b")
+                plt.plot(x,y3,color="r")
                 plt.xlabel("task type no")
-                plt.ylabel("intersection user num")
-                plt.title(t1+"=>itme size=%d, user"%len(tasktypeIndex[t1.replace("_","/")]))
-                plt.text(1000,1000,"red:reg")
-                plt.text(1000,980,"green:sub")
-                plt.text(1000,960,"blue:win")
+                plt.ylabel("CR")
+                #t1=t1.replace("_","/")
+                plt.title(t1)
+
+                #plt.text(20,0.8,"red:reg")
+                #plt.text(20,0.75,"green:sub")
+                #plt.text(20,0.7,"blue:win")
                 plt.savefig("../data/pictures/userCrossTypes/"+t1+".png")
                 plt.gca().clear()
+
 
 
 if __name__ == '__main__':

@@ -18,7 +18,7 @@ class TaskDataContainer:
         self.durations=[]
         self.prizes=[]
         self.diffdegs=[]
-        self.taskType=typename.replace("/","_")
+        self.taskType=typename
     def encodingFeature(self,choice):
         self.choice=choice
 

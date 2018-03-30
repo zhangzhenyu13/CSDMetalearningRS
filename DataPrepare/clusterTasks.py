@@ -2,10 +2,11 @@ from DataPrepare.ConnectDB import *
 from sklearn import decomposition
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle,multiprocessing
+import multiprocessing
 from DataPrepare.DataContainer import TaskDataContainer
 from ML_Models.ClusteringModel import ClusteringModel
 from Utility.TagsDef import *
+from Utility.genFilters import *
 warnings.filterwarnings("ignore")
 
 def showData(X):
@@ -42,11 +43,11 @@ def initDataSet():
             docs.append(data[2]+"\n"+data[1])
 
             if data[3]>50:
-                durations.append([50])
+                durations.append(50)
             elif data[3]<1:
-                durations.append([1])
+                durations.append(1)
             else:
-                durations.append([data[3]])
+                durations.append(data[3])
 
             techs.append(data[4])
             lans.append(data[5])
@@ -57,19 +58,19 @@ def initDataSet():
                     prize=6000
                 if prize<1:
                     prize=1
-                prizes.append([prize])
+                prizes.append(prize)
             else:
-                prizes.append([1.])
+                prizes.append(1.)
 
             if data[7]<1:
-                startdates.append([1])
+                startdates.append(1)
             else:
-                startdates.append([data[7]])
+                startdates.append(data[7])
 
             if data[8]>0.6:
-                diffdegs.append([0.6])
+                diffdegs.append(0.6)
             else:
-                diffdegs.append([data[8]])
+                diffdegs.append(data[8])
 
             tasktypes.append(data[9])
 
@@ -79,7 +80,7 @@ def initDataSet():
 
         dataSet={}
         for i in range(len(tasktypes)):
-            t=tasktypes[i]
+            t=tasktypes[i].replace("/","_")
             if t is None:
                 continue
             if t in dataSet.keys():
@@ -153,25 +154,30 @@ def clusterVec(taskdata,docX):
 
 
 #save data content as a vector
-def saveTaskData(taskdata):
+def saveTaskData(taskdata,clustered=False):
     data={}
-    docX=taskdata.docs
-    oldshape=docX.shape
-    kpca=decomposition.KernelPCA(n_components=min(len(docX[0]),100),kernel="rbf")
-    data["docX"]=kpca.fit_transform(docX)
-    print(taskdata.taskType,"KPCA doc shape changed from",oldshape,"to",data["docX"].shape)
-
+    docX=np.array(taskdata.docs)
+    if 200<len(docX[0]):
+        oldshape=docX.shape
+        kpca=decomposition.KernelPCA(n_components=200,kernel="rbf")
+        data["docX"]=kpca.fit_transform(docX)
+        print(taskdata.taskType,"KPCA doc shape changed from",oldshape,"to",data["docX"].shape)
+    else:
+        data["docX"]=docX
+        print(taskdata.taskType,"needn't apply decompistion")
     #print(taskdata.techs[:20])
     #print(taskdata.lans[:20])
     #exit(20)
+    lans=[None for i in range(len(taskdata.ids))]
+    techs=[None for i in range(len(taskdata.ids))]
     for i in range(len(taskdata.ids)):
-        taskdata.lans[i]=taskdata.lans[i].split(",")
-        taskdata.techs[i]=taskdata.techs[i].split(",")
+        lans[i]=taskdata.lans[i].split(",")
+        techs[i]=taskdata.techs[i].split(",")
     #print(taskdata.techs[:20])
     #print(taskdata.lans[:20])
     #exit(20)
-    data["lans"]=taskdata.lans
-    data["techs"]=taskdata.techs
+    data["lans"]=lans
+    data["techs"]=techs
     data["diffdegs"]=taskdata.diffdegs
     data["startdates"]=taskdata.startdates
     data["durations"]=taskdata.durations
@@ -180,6 +186,9 @@ def saveTaskData(taskdata):
     with open("../data/TaskInstances/taskDataSet/"+taskdata.taskType+"-taskData.data","wb") as f:
         pickle.dump(data,f)
 
+    if clustered==True:
+        with open("../data/TaskInstances/taskClusterSet/"+taskdata.taskType+"-taskData.data","wb") as f:
+            pickle.dump(data,f)
 
 def genResultOfTasktype(tasktype,taskdata,choice):
 
@@ -189,10 +198,18 @@ def genResultOfTasktype(tasktype,taskdata,choice):
     #save vec representaion of all the tasks
     saveTaskData(taskdata)
 
+
+    with open("../data/TaskInstances/SelTasktype.data","rb") as f:
+        clusterTypes=pickle.load(f)
+    if tasktype not in clusterTypes:
+        saveTaskData(taskdata,True)
+        return
+
+
     #cluster task based on its feature
     X=clusterVec(taskdata,docX)
 
-    clusterEXP=800
+    clusterEXP=500
     model=ClusteringModel()
     model.name=tasktype+"-clusteringModel"
     n_clusters=max(1,len(taskdata.ids)//clusterEXP)
@@ -204,30 +221,53 @@ def genResultOfTasktype(tasktype,taskdata,choice):
     result=model.predictCluster(X)
 
     IDClusters={}
-    for i in range(n_clusters):
-        IDClusters[i]=[]
+    ClustersData={}
+
     for i in range(len(result)):
         t=result[i]
 
         if t not in IDClusters.keys():
             IDClusters[t]=[taskdata.ids[i]]
+
+            container=TaskDataContainer(typename=t)
+            container.ids.append(taskdata.ids[i])
+            container.docs.append(taskdata.docs[i])
+            container.techs.append(taskdata.techs[i])
+            container.lans.append(taskdata.lans[i])
+            container.startdates.append(taskdata.startdates[i])
+            container.durations.append(taskdata.durations[i])
+            container.prizes.append(taskdata.prizes[i])
+            container.diffdegs.append(taskdata.diffdegs[i])
+
+            ClustersData[t]=container
         else:
             IDClusters[t].append(taskdata.ids[i])
 
+            container=ClustersData[t]
+            container.ids.append(taskdata.ids[i])
+            container.docs.append(taskdata.docs[i])
+            container.techs.append(taskdata.techs[i])
+            container.lans.append(taskdata.lans[i])
+            container.startdates.append(taskdata.startdates[i])
+            container.durations.append(taskdata.durations[i])
+            container.prizes.append(taskdata.prizes[i])
+            container.diffdegs.append(taskdata.diffdegs[i])
+
+            ClustersData[t]=container
+
     # saving result
     print("saving clustering result")
-    with open("../data/TaskInstances/taskClusterSet/"+tasktype+"-clusters.data", "wb") as f:
-        pickle.dump(IDClusters, f)
-
-    with open("../data/TaskInstances/taskClusterSet/"+tasktype+"-clusters.data", "rb") as f:
-        taskidClusters=pickle.load(f)
+    for t in ClustersData.keys():
+        container=ClustersData[t]
+        container.taskType=tasktype+"#"+str(t)
+        saveTaskData(container,True)
 
     print("saving cluster plot result")
     plt.figure(tasktype)
     y=[]
     for i in range(n_clusters):
-        y.append(len(taskidClusters[i]))
-        print(tasktype,"#%d"%i,"size=%d"%len(taskidClusters[i]))
+        y.append(len(IDClusters[i]))
+        print(tasktype,"#%d"%i,"size=%d"%len(IDClusters[i]))
 
     plt.plot(np.arange(n_clusters),y, marker='o')
     plt.title(tasktype+", size=%d"%len(X))
@@ -240,22 +280,22 @@ def genResultOfTasktype(tasktype,taskdata,choice):
 
 def genResults():
     dataSet=initDataSet()
-    typeinfo=dataSet.keys()
 
+    filtertypes=loadFilteredTypes()
     choice=eval(input("1:LDA; 2:LSA \t"))
     print("+++++++++++++++++++++++++++++++++++++++++++++++++")
-    with open("../data/TaskInstances/SelTasktype.data","rb") as f:
+    with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
         tasktypes=pickle.load(f)
     for t in tasktypes:
         taskdata=dataSet[t]
         tasktype=taskdata.taskType
+        if tasktype in filtertypes:
+            continue
 
         #print(taskdata.ids);exit(10)
         multiprocessing.Process(target=genResultOfTasktype,args=(tasktype,taskdata,choice)).start()
 
         #genResultOfTasktype(tasktype=tasktype,taskdata=taskdata,choice=choice)
-
-
 
 if __name__ == '__main__':
     genResults()
