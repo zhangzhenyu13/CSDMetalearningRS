@@ -183,11 +183,12 @@ def saveTaskData(taskdata,clustered=False):
     data["durations"]=taskdata.durations
     data["prizes"]=taskdata.prizes
     data["ids"]=taskdata.ids
-    with open("../data/TaskInstances/taskDataSet/"+taskdata.taskType+"-taskData.data","wb") as f:
-        pickle.dump(data,f)
 
     if clustered==True:
         with open("../data/TaskInstances/taskClusterSet/"+taskdata.taskType+"-taskData.data","wb") as f:
+            pickle.dump(data,f)
+    else:
+        with open("../data/TaskInstances/taskDataSet/"+taskdata.taskType+"-taskData.data","wb") as f:
             pickle.dump(data,f)
 
 def genResultOfTasktype(tasktype,taskdata,choice):

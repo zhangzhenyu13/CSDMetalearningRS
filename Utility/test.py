@@ -111,12 +111,12 @@ def countUserTaskType():
     usertypesSub={}
     usertypesWin={}
 
-    with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
-        tasktypeIndex=pickle.load(f)
-        tasktypes=list(tasktypeIndex.keys())
+    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
+        tasktypes=pickle.load(f)
+
         for i in range(len(tasktypes)):
 
-            tasktype=tasktypes[i].replace("/","_")
+            tasktype=tasktypes[i]
 
             userdata=userhis.loadActiveUserHistory(tasktype=tasktype,mode=0)
             usertypesReg[tasktype]=set(userdata.keys())
@@ -136,12 +136,12 @@ def countUserTaskType():
         x=np.arange(len(tasktypes))
 
         for i in range(len(tasktypes)):
-            t1=tasktypes[i].replace("/","_")
+            t1=tasktypes[i]
 
             for j in range(len(tasktypes)):
                 if i==j:
                     continue
-                t2=tasktypes[j].replace("/","_")
+                t2=tasktypes[j]
 
                 if j>i:
 
@@ -165,17 +165,17 @@ def countUserTaskType():
         userCrossTypeData["regs"]=crossM_Reg
         userCrossTypeData["subs"]=crossM_Sub
         userCrossTypeData["wins"]=crossM_Win
-        with open("../data/Statistics/crossTypeUserData.data","wb") as f:
+        with open("../data/Statistics/crossClusterTypeUserData.data","wb") as f:
             pickle.dump(userCrossTypeData,f)
 
-        with open("../data/Statistics/crossTypeUserData.data","rb") as f:
+        with open("../data/Statistics/crossClusterTypeUserData.data","rb") as f:
             userCrossTypeData=pickle.load(f)
             crossM_Reg=userCrossTypeData["regs"]
             crossM_Sub=userCrossTypeData["subs"]
             crossM_Win=userCrossTypeData["wins"]
 
             for i in range(len(tasktypes)):
-                t1=tasktypes[i].replace("/","_")
+                t1=tasktypes[i]
                 plt.figure(t1)
                 y1=np.zeros(shape=len(tasktypes))
                 y2=np.zeros(shape=len(tasktypes))
@@ -185,7 +185,7 @@ def countUserTaskType():
                     if i==j:
                         continue
 
-                    t2=tasktypes[j].replace("/","_")
+                    t2=tasktypes[j]
 
                     if len(usertypesReg[t1])>0:
                         y1[j]=len(crossM_Reg[(t1,t2)])/len(usertypesReg[t1])
@@ -209,10 +209,30 @@ def countUserTaskType():
                 #plt.text(20,0.8,"red:reg")
                 #plt.text(20,0.75,"green:sub")
                 #plt.text(20,0.7,"blue:win")
-                plt.savefig("../data/pictures/userCrossTypes/"+t1+".png")
+                plt.savefig("../data/pictures/userCrossTypesCluster/"+t1+".png")
                 plt.gca().clear()
 
+def genTaskFileIndex():
 
+    typesCluster=np.array(os.listdir("../data/TaskInstances/taskClusterSet/"))
+    for i in range(len(typesCluster)):
+        typesCluster[i]=typesCluster[i][:-14]
+
+    with open("../data/TaskInstances/ClusterTaskIndex.data","wb") as f:
+        pickle.dump(typesCluster,f)
+
+    types=np.array(os.listdir("../data/TaskInstances/taskDataSet/"))
+    for i in range(len(types)):
+        types[i]=types[i][:-14]
+
+    with open("../data/TaskInstances/TaskIndex.data","wb") as f:
+        pickle.dump(types,f)
+
+    with open("../data/TaskInstances/ClusterTaskIndex.data","rb") as f:
+        print(pickle.load(f))
+    print()
+    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
+        print(pickle.load(f))
 
 if __name__ == '__main__':
     #testSub()
@@ -221,3 +241,5 @@ if __name__ == '__main__':
     #testFileIndex()
     #countUsers()
     countUserTaskType()
+    #genTaskFileIndex()
+

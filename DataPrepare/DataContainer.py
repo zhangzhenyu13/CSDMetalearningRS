@@ -52,16 +52,16 @@ class UserDataContainer:
         self.names=np.array(names)
         self.tenure=np.array(tenure)
         self.skills=np.array(skills)
-
+        self.skills_vec=None
         print("User Instances size=%d"%len(self.names))
 
     def getUserInfo(self,username):
         index=np.where(self.names==username)[0]
         if len(index)>0:
             #print(index,self.memberage[index][0],self.skills[index][0])
-            return (self.tenure[index][0],self.skills[index][0])
+            return (self.tenure[index][0],self.skills[index][0],self.skills_vec[index][0])
         else:
-            return (None,None)
+            return (None,None,None)
 
 class RegistrationDataContainer:
     def __init__(self,tasktype,taskids,usernames,regdates):
@@ -412,7 +412,7 @@ class Tasks:
 
 class UserHistoryGenerator:
 
-    def genActiveUserHistory(self,userdata,regdata,subdata,mode,tasktype):
+    def genActiveUserHistory(self,userdata,regdata,subdata,mode,tasktype,filepath=None):
 
         userhistory = {}
 
@@ -431,20 +431,23 @@ class UserHistoryGenerator:
                 #for those ever won
                 continue
 
-            tenure,skills=userdata.getUserInfo(username)
+            tenure,skills,skills_vec=userdata.getUserInfo(username)
             userhistory[username] = {"regtasks": [regids, regdates],
                                   "subtasks": [subids, subnum, subdates, score, rank],
-                                  "tenure":tenure,"skills":skills}
+                                  "tenure":tenure,"skills":skills,"skills_vec":skills_vec}
             #print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
             #      len(userData[username]["regtasks"][0]))
-
+        if filepath is None:
+            filepath="../data/UserInstances/UserHistory/"+tasktype.replace("/","_")+"-UserHistory"+ModeTag[mode]+".data"
         print("saving %s history of %d users"%(ModeTag[mode], len(userhistory)),"type="+tasktype)
-        with open("../data/UserInstances/UserHistory/"+tasktype.replace("/","_")+"-UserHistory"+ModeTag[mode]+".data", "wb") as f:
+        with open(filepath, "wb") as f:
             pickle.dump(userhistory, f)
 
-    def loadActiveUserHistory(self,tasktype,mode):
+    def loadActiveUserHistory(self,tasktype,mode,filepath=None):
         print("loading %s history of active users "%ModeTag[mode])
-        with open("../data/UserInstances/UserHistory/"+tasktype+"-UserHistory"+ModeTag[mode]+".data", "rb") as f:
+        if filepath is None:
+            filepath="../data/UserInstances/UserHistory/"+tasktype.replace("/","_")+"-UserHistory"+ModeTag[mode]+".data"
+        with open(filepath, "rb") as f:
             userData = pickle.load(f)
 
         return userData
