@@ -165,18 +165,22 @@ def countUserTaskType():
         userCrossTypeData["regs"]=crossM_Reg
         userCrossTypeData["subs"]=crossM_Sub
         userCrossTypeData["wins"]=crossM_Win
-        with open("../data/Statistics/crossClusterTypeUserData.data","wb") as f:
+        with open("../data/Statistics/crossTypeUserData.data","wb") as f:
             pickle.dump(userCrossTypeData,f)
 
-        with open("../data/Statistics/crossClusterTypeUserData.data","rb") as f:
+        with open("../data/Statistics/crossTypeUserData.data","rb") as f:
             userCrossTypeData=pickle.load(f)
             crossM_Reg=userCrossTypeData["regs"]
             crossM_Sub=userCrossTypeData["subs"]
             crossM_Win=userCrossTypeData["wins"]
 
+            CR_Matrix={}
+            CR_Matrix["tasktypes"]=tasktypes
+
             for i in range(len(tasktypes)):
                 t1=tasktypes[i]
                 plt.figure(t1)
+                CR={}
                 y1=np.zeros(shape=len(tasktypes))
                 y2=np.zeros(shape=len(tasktypes))
                 y3=np.zeros(shape=len(tasktypes))
@@ -196,7 +200,10 @@ def countUserTaskType():
                     if len(usertypesWin[t1])>0:
                         y3[j]=len(crossM_Win[(t1,t2)])/len(usertypesWin[t1])
 
-
+                CR["regs"]=y1
+                CR["subs"]=y2
+                CR["wins"]=y3
+                CR_Matrix[t1]=CR
 
                 plt.plot(x,y1,color="b")
                 plt.plot(x,y2,color="g")
@@ -209,24 +216,44 @@ def countUserTaskType():
                 #plt.text(20,0.8,"red:reg")
                 #plt.text(20,0.75,"green:sub")
                 #plt.text(20,0.7,"blue:win")
-                plt.savefig("../data/pictures/userCrossTypesCluster/"+t1+".png")
+                plt.savefig("../data/pictures/userCrossTypes/"+t1+".png")
                 plt.gca().clear()
+            with open("../data/Statistics/CR_Data.data","wb") as f:
+                pickle.dump(CR_Matrix,f)
+
 
 def genTaskFileIndex():
 
-    typesCluster=np.array(os.listdir("../data/TaskInstances/taskClusterSet/"))
-    for i in range(len(typesCluster)):
-        typesCluster[i]=typesCluster[i][:-14]
+    alltypes=np.array(os.listdir("../data/TaskInstances/taskDataSet/"))
+    for i in range(len(alltypes)):
+        alltypes[i]=alltypes[i][:-14]
+    types=[]
+    clustertypes=[]
+    tmp=[]
+    for t in alltypes:
+        if "#" not in t:
+            types.append(t)
+        else:
+            pos=t.find("#")
+            tmp.append(t[:pos])
 
-    with open("../data/TaskInstances/ClusterTaskIndex.data","wb") as f:
-        pickle.dump(typesCluster,f)
+    for t in alltypes:
+        if "#" in t:
 
-    types=np.array(os.listdir("../data/TaskInstances/taskDataSet/"))
-    for i in range(len(types)):
-        types[i]=types[i][:-14]
+            clustertypes.append(t)
+        else:
+            if t not in tmp:
+                clustertypes.append(t)
 
+    print(len(types),types)
+    print(len(clustertypes),clustertypes)
+    print("First2Finish" in types,"First2Finish" in clustertypes)
+    exit(10)
     with open("../data/TaskInstances/TaskIndex.data","wb") as f:
         pickle.dump(types,f)
+
+    with open("../data/TaskInstances/ClusterTaskIndex.data","wb") as f:
+        pickle.dump(clustertypes,f)
 
     with open("../data/TaskInstances/ClusterTaskIndex.data","rb") as f:
         print(pickle.load(f))
@@ -234,12 +261,41 @@ def genTaskFileIndex():
     with open("../data/TaskInstances/TaskIndex.data","rb") as f:
         print(pickle.load(f))
 
+def gentransferNeighbors(cr_threshold_reg=0.8,cr_threshold_sub=0.6,cr_threshold_win=0.4):
+    with open("../data/Statistics/CR_Data.data","rb") as f:
+        CR_Matrix=pickle.load(f)
+    tasktypes=CR_Matrix["tasktypes"]
+    for t in tasktypes:
+        regs_neighbors=[]
+        subs_neighbor=[]
+        wins_neighbor=[]
+        cr=CR_Matrix[t]
+        cr_regs=cr["regs"]
+        cr_subs=cr["subs"]
+        cr_wins=cr["wins"]
+
+        for i in range(len(tasktypes)):
+            candidate_nighbor=tasktypes[i]
+            if candidate_nighbor==t:
+                continue
+            if cr_regs[i]>=cr_threshold_reg:
+                regs_neighbors.append(candidate_nighbor)
+            if cr_subs[i]>=cr_threshold_sub:
+                subs_neighbor.append(candidate_nighbor)
+            if cr_wins[i]>=cr_threshold_win:
+                wins_neighbor.append(candidate_nighbor)
+        print(t,"regs nb",regs_neighbors)
+        print(t,"subs nb",subs_neighbor)
+        print(t,"wins nb",wins_neighbor)
+        print()
+
 if __name__ == '__main__':
     #testSub()
     #testReg()
     #scanID()
     #testFileIndex()
     #countUsers()
-    countUserTaskType()
-    #genTaskFileIndex()
+    #countUserTaskType()
+    genTaskFileIndex()
+    gentransferNeighbors()
 

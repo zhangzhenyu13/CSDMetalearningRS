@@ -154,7 +154,7 @@ def clusterVec(taskdata,docX):
 
 
 #save data content as a vector
-def saveTaskData(taskdata,clustered=False):
+def saveTaskData(taskdata):
     data={}
     docX=np.array(taskdata.docs)
     if 200<len(docX[0]):
@@ -184,12 +184,9 @@ def saveTaskData(taskdata,clustered=False):
     data["prizes"]=taskdata.prizes
     data["ids"]=taskdata.ids
 
-    if clustered==True:
-        with open("../data/TaskInstances/taskClusterSet/"+taskdata.taskType+"-taskData.data","wb") as f:
-            pickle.dump(data,f)
-    else:
-        with open("../data/TaskInstances/taskDataSet/"+taskdata.taskType+"-taskData.data","wb") as f:
-            pickle.dump(data,f)
+
+    with open("../data/TaskInstances/taskDataSet/"+taskdata.taskType+"-taskData.data","wb") as f:
+        pickle.dump(data,f)
 
 def genResultOfTasktype(tasktype,taskdata,choice):
 
@@ -202,10 +199,10 @@ def genResultOfTasktype(tasktype,taskdata,choice):
 
     with open("../data/TaskInstances/SelTasktype.data","rb") as f:
         clusterTypes=pickle.load(f)
-    if tasktype not in clusterTypes:
-        saveTaskData(taskdata,True)
-        return
 
+    if tasktype not in clusterTypes:
+        saveTaskData(taskdata)
+        return
 
     #cluster task based on its feature
     X=clusterVec(taskdata,docX)
@@ -261,7 +258,7 @@ def genResultOfTasktype(tasktype,taskdata,choice):
     for t in ClustersData.keys():
         container=ClustersData[t]
         container.taskType=tasktype+"#"+str(t)
-        saveTaskData(container,True)
+        saveTaskData(container)
 
     print("saving cluster plot result")
     plt.figure(tasktype)

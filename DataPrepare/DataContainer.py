@@ -357,41 +357,51 @@ class Submission:
 
 
 class Tasks:
-    def __init__(self,tasktype,choice=1,begindate=3000):
-        with open("../data/TaskInstances/taskDataSet/"+tasktype+"-taskData-" + str(choice) + ".data", "rb") as f:
-            taskdata = pickle.load(f)
-            ids = taskdata["taskids"]
-            X = taskdata["tasks"]
-            print(tasktype,"=>","Task Instances data size=%d"%(len(ids)))
-            taskdata = {}
-            for i in range(len(ids)):
-                taskdata[ids[i]] = X[i]
+    def __init__(self,tasktype,begindate=3000):
+
+        filepath="../data/TaskInstances/taskDataSet/"+tasktype+"-taskData.data"
+
+        with open(filepath, "rb") as f:
+            data = pickle.load(f)
+            for k in data.keys():
+                data[k]=list(data[k])
+                data[k].reverse()
+
+            self.taskIDs = data["ids"]
+            self.docX=data["docX"]
+            self.lans=data["lans"]
+            self.techs=data["techs"]
+            self.diffdegs=data["diffdegs"]
+            self.postingdate=data["startdates"]
+            self.durations=data["durations"]
+            self.prizes=data["prizes"]
+
+            print(tasktype,"=>","Task Instances data size=%d"%(len(self.taskIDs)))
+            #print("post",self.postingdate[:20])
+        taskdata = {}
+        for i in range(len(self.taskIDs)):
+            taskdata[self.taskIDs[i]]=i
+
+        self.dataIndex=taskdata
 
         self.tasktype=tasktype
         self.taskdata=taskdata
-        self.choice=choice
-        self.taskIDs=[]
-        self.postingdate=[]
 
         self.loadData(begindate)
 
     def loadData(self,begindate=5000):
+        pos=0
+        for pos in range(len(self.taskIDs)):
+            if self.postingdate[pos]>=begindate:
+                break
 
-        conn = ConnectDB()
-        cur = conn.cursor()
-        sqlcmd="select taskid, postingdate from task where postingdate <="+str(begindate)+\
-               " and tasktype='"+self.tasktype.replace("_","/")+"' and postingdate>=0 order by postingDate asc;"
-        #print(sqlcmd)
-        cur.execute(sqlcmd)
-        dataset = cur.fetchall()
-        for data in dataset:
-            if data[0] not in self.taskdata.keys():
-                continue
-            self.taskIDs.append(data[0])
-            self.postingdate.append(data[1])
-
-        self.taskIDs=np.array(self.taskIDs)
-        self.postingdate=np.array(self.postingdate,dtype=np.int)
+        self.taskIDs = self.taskIDs[:pos]
+        self.lans=self.lans[:pos]
+        self.techs=self.techs[:pos]
+        self.diffdegs=self.diffdegs[:pos]
+        self.postingdate=self.postingdate[:pos]
+        self.durations=self.durations[:pos]
+        self.prizes=self.prizes[:pos]
 
         print(self.tasktype+": task size=%d"%len(self.taskIDs))
 
@@ -400,15 +410,15 @@ class Tasks:
         index=len(self.taskIDs)-1
         ids=[]
         postingdate=[]
-        taskdata={}
+        dataIndex={}
         while index>=0:
             if self.taskIDs[index] in taskids:
                 ids.insert(0,self.taskIDs[index])
                 postingdate.insert(0,self.postingdate[index])
-                taskdata[self.taskIDs[index]]=self.taskdata[self.taskIDs[index]]
+                dataIndex[self.taskIDs[index]]=index
             index-=1
 
-        return ids,postingdate,taskdata
+        return ids,postingdate,dataIndex
 
 class UserHistoryGenerator:
 
@@ -431,14 +441,34 @@ class UserHistoryGenerator:
                 #for those ever won
                 continue
 
+            regids=list(regids)
+            regids.reverse()
+            regdates=list(regdates)
+            regdates.reverse()
+
+            subids=list(subids)
+            subids.reverse()
+            subnum=list(subnum)
+            subnum.reverse()
+            subdates=list(subdates)
+            subdates.reverse()
+            score=list(score)
+            score.reverse()
+            rank=list(rank)
+            rank.reverse()
+
             tenure,skills,skills_vec=userdata.getUserInfo(username)
             userhistory[username] = {"regtasks": [regids, regdates],
                                   "subtasks": [subids, subnum, subdates, score, rank],
-                                  "tenure":tenure,"skills":skills,"skills_vec":skills_vec}
+                                  "tenure":tenure,"skills":skills.split(","),"skills_vec":skills_vec}
+
+            #print(regdates)
+            #print(subdates)
+
             #print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
             #      len(userData[username]["regtasks"][0]))
         if filepath is None:
-            filepath="../data/UserInstances/UserHistory/"+tasktype.replace("/","_")+"-UserHistory"+ModeTag[mode]+".data"
+            filepath="../data/UserInstances/UserHistory/"+tasktype+"-UserHistory"+ModeTag[mode]+".data"
         print("saving %s history of %d users"%(ModeTag[mode], len(userhistory)),"type="+tasktype)
         with open(filepath, "wb") as f:
             pickle.dump(userhistory, f)

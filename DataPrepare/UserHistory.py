@@ -5,7 +5,7 @@ warnings.filterwarnings("ignore")
 
 
 def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
-    with open("../data/TaskInstances/taskClusterSet/"+t+"-taskData.data","rb") as f:
+    with open("../data/TaskInstances/taskDataSet/"+t+"-taskData.data","rb") as f:
         taskdata=pickle.load(f)
     taskids=taskdata["ids"]
 
@@ -19,7 +19,7 @@ def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
         if userdata.skills[i] is None:
             userdata.skills[i]=""
 
-    with open("../data/TaskInstances/RegInfo/"+tasktype+"-regs-"+str(choice)+".data","wb") as f:
+    with open("../data/TaskInstances/RegInfo/"+tasktype+"-regs.data","wb") as f:
         data={}
         data["taskids"]=regdata.taskids
         data["regdates"]=regdata.regdates
@@ -27,7 +27,7 @@ def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
         pickle.dump(data,f)
         print("saved %d reg items"%len(regdata.taskids))
 
-    with open("../data/TaskInstances/SubInfo/"+tasktype+"-subs-"+str(choice)+".data","wb") as f:
+    with open("../data/TaskInstances/SubInfo/"+tasktype+"-subs.data","wb") as f:
         data={}
         data["taskids"]=subdata.taskids
         data["subdates"]=subdata.subdates
@@ -43,10 +43,8 @@ def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
         userhistory.genActiveUserHistory(userdata=userdata,regdata=regdata,subdata=subdata,mode=mode,tasktype=tasktype)
 
 
-
 if __name__ == '__main__':
     #init data set
-    choice=1
     Regs=Registration()
     Subs=Submission()
     Users=UserData()
@@ -54,7 +52,7 @@ if __name__ == '__main__':
     userhistory=UserHistoryGenerator()
     #construct history for users of given tasktype
 
-    with open("../data/TaskInstances/ClusterTaskIndex.data","rb") as f:
+    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
         tasktypes=pickle.load(f)
 
     for t in tasktypes:
