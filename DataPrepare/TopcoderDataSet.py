@@ -1,7 +1,9 @@
 import pickle
 import numpy as np
 import gc
+from Utility.TagsDef import *
 
+from collections import Counter
 class DataSetTopcoder:
     def __init__(self,testratio=0.2,validateratio=0.1):
         self.dataSet=None
@@ -14,10 +16,10 @@ class DataSetTopcoder:
         self.testRatio=testratio
         self.validateRatio=validateratio
 
-    def setParameter(self,tasktype,choice):
+    def setParameter(self,tasktype,mode):
         #file data
         self.tasktype=tasktype.replace("/","_")
-        self.filepath="../data/TopcoderDataSet/winHistoryBasedData/"+self.tasktype+"-user_task-"+str(choice)+".data"
+        self.filepath="../data/TopcoderDataSet/"+ModeTag[mode].lower()+"HistoryBasedData/"+self.tasktype+"-user_task.data"
 
     def indexDataPoint(self,taskids):
         id=taskids[0]
@@ -37,6 +39,7 @@ class DataSetTopcoder:
         '''
 
     def loadData(self):
+        print(self.tasktype,"loading data")
         with open(self.filepath,"rb") as f:
             self.dataSet=pickle.load(f)
 
@@ -46,7 +49,7 @@ class DataSetTopcoder:
 
         X=np.concatenate((tasks,users),axis=1)
 
-        self.IDIndex=self.indexDataPoint(taskids)
+        self.IDIndex=self.indexDataPoint(taskids=taskids)
         tp=int(self.testRatio*len(self.IDIndex))
         self.testPoint=self.IDIndex[tp][1]
         vp=int((self.testRatio+self.validateRatio)*len(self.IDIndex))
@@ -61,11 +64,23 @@ class DataSetTopcoder:
         print("loaded all the instances, size=%d"%len(taskids),
               "test point=%d, validate point=%d"%(self.testPoint,self.validatePoint))
 
+    def ReSampling(self,data,labels,method):
+        resampling=method()
+        label_status=Counter(labels)
+        print("data "+self.tasktype,label_status)
+        data,labels=resampling.fit_sample(data,labels)
+        label_status=Counter(labels)
+        print("sampling status=",label_status)
+
+        return data,labels
+
+
 
 class TopcoderReg(DataSetTopcoder):
     def __init__(self,testratio=0.2,validateratio=0.1):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
     def fetchData(self,files,key):
+        print(self.tasktype+" fetching registration data,key="+key)
         with open(files[0],"rb") as f:
             data=pickle.load(f)
             X=np.array(data[key])
@@ -80,6 +95,7 @@ class TopcoderReg(DataSetTopcoder):
         data=None
         gc.collect()
         return X
+
     def RegisterRegressionData(self):
         Y=self.fetchData(self.dataSet,"regists")
         self.trainLabel=Y[self.validatePoint:]
@@ -97,6 +113,7 @@ class TopcoderSub(DataSetTopcoder):
     def __init__(self,testratio=0.2,validateratio=0.1):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
     def fetchData(self,files,key):
+        print(self.tasktype+" fetching submission data,key="+key)
         with open(files[0],"rb") as f:
             data=pickle.load(f)
             regists=np.array(data["regists"])
@@ -140,9 +157,10 @@ class TopcoderWin(DataSetTopcoder):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
 
     def fetchData(self,files,key):
+        print(self.tasktype+" fetching winning data,key="+key)
         with open(files[0],"rb") as f:
             data=pickle.load(f)
-            submits=data["submits"]
+            submits=np.array(data["submits"],dtype=np.int)
             X=np.array(data[key])
             indices=np.where(submits>0)[0]
             if len(indices)>0:
@@ -153,7 +171,7 @@ class TopcoderWin(DataSetTopcoder):
         for file in files[1:]:
             with open(file,"rb") as f:
                 data=pickle.load(f)
-                submits=data["submits"]
+                submits=np.array(data["submits"],dtype=np.int)
                 X=np.concatenate((X,data[key]),axis=0)
                 indices=np.where(submits>0)[0]
                 if len(indices)>0:

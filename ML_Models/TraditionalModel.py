@@ -4,6 +4,8 @@ from sklearn import svm,linear_model,naive_bayes,tree
 from sklearn import ensemble
 from sklearn import metrics
 import time
+from imblearn import under_sampling,over_sampling
+
 import matplotlib.pyplot as plt
 #model container
 class TraditionalRegressor(ML_model):
@@ -27,9 +29,9 @@ class TraditionalClassifier(ML_model):
         candite_selection = {
             "RandomFrorest": ensemble.RandomForestClassifier(),
             "ExtraForest": ensemble.ExtraTreesClassifier(),
-            #"AdaBoost": ensemble.AdaBoostClassifier(),
-            #"GradientBoost": ensemble.GradientBoostingClassifier(),
-            #"SVM": svm.SVC(C=0.9)
+            "AdaBoost": ensemble.AdaBoostClassifier(),
+            "GradientBoost": ensemble.GradientBoostingClassifier(),
+            "SVM": svm.SVC(C=0.9)
         }
         return candite_selection
     def __init__(self):
@@ -64,9 +66,10 @@ class TraditionalClassifier(ML_model):
 #test the performance
 if __name__ == '__main__':
 
-    data=TopcoderReg(testratio=0.2,validateratio=0.1)
-    data.setParameter(tasktype="First2Finish",choice=1)
+    data=TopcoderReg(testratio=0.1,validateratio=0.1)
+    data.setParameter(tasktype="Development",mode=0)
     data.loadData()
+
 
     '''
     #regression
@@ -84,6 +87,7 @@ if __name__ == '__main__':
 
     #classification
     data.RegisterClassificationData()
+    data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel,under_sampling.RepeatedEditedNearestNeighbours)
 
     model=TraditionalClassifier()
     model.dataSet=data

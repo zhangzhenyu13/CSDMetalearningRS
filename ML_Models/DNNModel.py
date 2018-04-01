@@ -102,7 +102,7 @@ class DNNCLassifier(ML_model):
 
     def predict(self,X):
         print("dnn model predicting ")
-        Y=self.model.predict(X,batch_size=200)
+        Y=self.model.predict(X,batch_size=10000)
         print("finished predicting ",len(Y))
         return Y
     def loadModel(self):
@@ -112,8 +112,6 @@ class DNNCLassifier(ML_model):
         self.model = None
 
 def testClassification(data):
-    data.CommitClassificationData()
-    data.trainLabel=np_utils.to_categorical(data.trainLabel,num_classes=2)
 
     model = DNNCLassifier(dataSet=data)
     model.name = data.tasktype+"-DNN _classifier"
@@ -132,7 +130,7 @@ def testClassification(data):
 def testRegression(data):
     data.CommitRegressionData()
     model=DNNRegression(dataSet=data)
-    model.name="DNN_Regression"
+    model.name=data.tasktype+"-DNN_Regression"
     model.trainModel()
     model.saveModel()
     model.loadModel()
@@ -150,8 +148,12 @@ def showData(Y_predict,Y_true,content):
     plt.title("test and real "+content)
     plt.show()
 if __name__ == '__main__':
-    data=TopcoderSub(testratio=0.2,validateratio=0)
-    data.setParameter(tasktype="Architecture",choice=1)
+    data=TopcoderReg(testratio=0.1,validateratio=0)
+    data.setParameter(tasktype="Development",mode=0)
     data.loadData()
+    data.RegisterClassificationData()
+    data.trainX,data.trainLabel=data.overSampling(data.trainX,data.trainLabel)
+    data.trainLabel=np_utils.to_categorical(data.trainLabel,num_classes=2)
+
     testClassification(data)
     #testRegression(data)
