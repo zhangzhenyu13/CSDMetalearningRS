@@ -1,8 +1,8 @@
 import pickle
 import numpy as np
-import gc
+import time
 from Utility.TagsDef import *
-
+import threading
 from collections import Counter
 class DataSetTopcoder:
     def __init__(self,testratio=0.2,validateratio=0.1):
@@ -32,12 +32,34 @@ class DataSetTopcoder:
 
     def fetchData(self,files,key):
         '''
-
         :param files: the files that contain the data
         :param key: the data key
         :return: X, array like, containing the data
         '''
+        print(self.tasktype+" fetching data,key="+key)
+        VecX=[None for i in range(len(files))]
+        pool_threads=[]
+        for i in range(len(files)):
+            file=files[i]
+            t=threading.Thread(target=self.fetchOne,args=(file,key,i,VecX))
+            t.start()
+            pool_threads.append(t)
+        for t in pool_threads:
+            t.join()
+        X=VecX[0]
+        for X in VecX:print(X.shape)
+        for i in range(1,len(VecX)):
+            X=np.concatenate((X,VecX[i]),axis=0)
 
+        return X
+
+    def fetchOne(self,file,key,indedx,vecX):
+        '''
+        fetch data segment from one file and put it into vecX
+        :param file:
+        :param key:
+        :return:
+        '''
     def loadData(self):
         print(self.tasktype,"loading data")
         with open(self.filepath,"rb") as f:
@@ -79,22 +101,15 @@ class DataSetTopcoder:
 class TopcoderReg(DataSetTopcoder):
     def __init__(self,testratio=0.2,validateratio=0.1):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
-    def fetchData(self,files,key):
-        print(self.tasktype+" fetching registration data,key="+key)
-        with open(files[0],"rb") as f:
+
+    def fetchOne(self,file,key,index,vecX):
+        t0=time.time()
+        with open(file,"rb") as f:
             data=pickle.load(f)
             X=np.array(data[key])
-
-        if len(files)<2:
-            return X
-
-        for file in files[1:]:
-            with open(file,"rb") as f:
-                data=pickle.load(f)
-                X=np.concatenate((X,data[key]),axis=0)
-        data=None
-        gc.collect()
-        return X
+        vecX[index]=X
+        #print(X.shape)
+        print(self.tasktype+" fetched segment:",index,"in %ds"%(time.time()-t0))
 
     def RegisterRegressionData(self):
         Y=self.fetchData(self.dataSet,"regists")
@@ -112,29 +127,17 @@ class TopcoderReg(DataSetTopcoder):
 class TopcoderSub(DataSetTopcoder):
     def __init__(self,testratio=0.2,validateratio=0.1):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
-    def fetchData(self,files,key):
-        print(self.tasktype+" fetching submission data,key="+key)
-        with open(files[0],"rb") as f:
+    def fetchOne(self,file,key,index,vecX):
+        t0=time.time()
+        with open(file,"rb") as f:
             data=pickle.load(f)
             regists=np.array(data["regists"])
             X=np.array(data[key])
             indices=np.where(regists>0)[0]
             if len(indices)>0:
                 X=X[indices]
-        if len(files)<2:
-            return X
-
-        for file in files[1:]:
-            with open(file,"rb") as f:
-                data=pickle.load(f)
-                regists=np.array(data["regists"])
-                X=np.concatenate((X,data[key]),axis=0)
-                indices=np.where(regists>0)[0]
-                if len(indices)>0:
-                    X=X[indices]
-        data=None
-        gc.collect()
-        return X
+        vecX[index]=X
+        print(self.tasktype+" fetched segment:",index,"in %ds"%(time.time()-t0))
 
     def CommitRegressionData(self):
         Y=self.fetchData(self.dataSet,"regists")
@@ -155,30 +158,17 @@ class TopcoderSub(DataSetTopcoder):
 class TopcoderWin(DataSetTopcoder):
     def __init__(self,testratio=0.2,validateratio=0.1):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
-
-    def fetchData(self,files,key):
-        print(self.tasktype+" fetching winning data,key="+key)
-        with open(files[0],"rb") as f:
+    def fetchOne(self,file,key,index,vecX):
+        t0=time.time()
+        with open(file,"rb") as f:
             data=pickle.load(f)
             submits=np.array(data["submits"],dtype=np.int)
             X=np.array(data[key])
             indices=np.where(submits>0)[0]
             if len(indices)>0:
                 X=X[indices]
-        if len(files)<2:
-            return X
-
-        for file in files[1:]:
-            with open(file,"rb") as f:
-                data=pickle.load(f)
-                submits=np.array(data["submits"],dtype=np.int)
-                X=np.concatenate((X,data[key]),axis=0)
-                indices=np.where(submits>0)[0]
-                if len(indices)>0:
-                    X=X[indices]
-        data=None
-        gc.collect()
-        return X
+        vecX[index]=X
+        print(self.tasktype+" fetched segment:",index,"in %ds"%(time.time()-t0))
 
     def WinRankData(self):
         Y=self.fetchData(self.dataSet,"ranks")

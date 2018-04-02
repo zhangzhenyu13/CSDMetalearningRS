@@ -5,8 +5,8 @@ from sklearn import ensemble
 from sklearn import metrics
 import time
 from imblearn import under_sampling,over_sampling
-
 import matplotlib.pyplot as plt
+
 #model container
 class TraditionalRegressor(ML_model):
     def __init__(self,regressor):
@@ -100,3 +100,4 @@ if __name__ == '__main__':
     print()
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
+

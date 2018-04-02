@@ -2,6 +2,7 @@ import multiprocessing
 import time,gc
 from DataPrepare.DataContainer import *
 from Utility.TagsDef import *
+
 class DataInstances(multiprocessing.Process):
     maxProcessNum=16
 
@@ -71,7 +72,7 @@ class DataInstances(multiprocessing.Process):
                 data.append(filepath+str(seg))
             pickle.dump(data,f)
 
-    def createInstancesWithRegHistoryInfo(self,threshold=6e+5,verboseNum=1e+5):
+    def createInstancesWithRegHistoryInfo(self,threshold=1e+6,verboseNum=1e+5):
 
         filepath="../data/TopcoderDataSet/regHistoryBasedData/"+self.tasktype+"-user_task.data"
 
@@ -237,7 +238,7 @@ class DataInstances(multiprocessing.Process):
         #print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         #print()
 
-    def createInstancesWithSubHistoryInfo(self,threshold=6e+5,verboseNum=1e+5):
+    def createInstancesWithSubHistoryInfo(self,threshold=1e+6,verboseNum=1e+5):
         filepath="../data/TopcoderDataSet/subHistoryBasedData/"+self.tasktype+"-user_task.data"
 
         tasks=[]
@@ -422,7 +423,7 @@ class DataInstances(multiprocessing.Process):
         #print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
         #print()
 
-    def createInstancesWithWinHistoryInfo(self,threshold=6e+5,verboseNum=1e+5):
+    def createInstancesWithWinHistoryInfo(self,threshold=1e+6,verboseNum=1e+5):
         filepath="../data/TopcoderDataSet/winHistoryBasedData/"+self.tasktype+"-user_task.data"
 
         tasks=[]
