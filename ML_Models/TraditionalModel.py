@@ -30,7 +30,7 @@ class TraditionalClassifier(ML_model):
             "RandomFrorest": ensemble.RandomForestClassifier(),
             "ExtraForest": ensemble.ExtraTreesClassifier(),
             "AdaBoost": ensemble.AdaBoostClassifier(),
-            "GradientBoost": ensemble.GradientBoostingClassifier(),
+            #"GradientBoost": ensemble.GradientBoostingClassifier(),
             #"SVM": svm.SVC(C=0.9)
         }
         return candite_selection
@@ -58,38 +58,17 @@ class TraditionalClassifier(ML_model):
                     sel_model=self.model
                     max_acc=acc
         self.model=sel_model
+
+        trainData=np.concatenate((data.trainX,data.validateX),axis=0)
+        trainLabel=np.concatenate((data.trainLabel,data.validateLabel),axis=0)
+        self.model.fit(trainData,trainLabel)
+
         t1=time.time()
         score=metrics.accuracy_score(self.dataSet.validateLabel,self.model.predict(self.dataSet.validateX))
         cm=metrics.confusion_matrix(self.dataSet.validateLabel,self.model.predict(self.dataSet.validateX))
         print("model",self.name,"trainning finished in %ds"%(t1-t0),"validate score=%f"%score,"CM=\n",cm)
 
-#test the performance
-if __name__ == '__main__':
-
-    data=TopcoderWin(testratio=0.1,validateratio=0.1)
-    data.setParameter(tasktype="Code",mode=2)
-    data.loadData()
-
-
-    '''
-    #regression
-    data.CommitRegressionData()
-    model=TraditionalRegressor(svm.NuSVR())
-    model.name="linearRegressorCommit"
-    model.dataSet=data
-    model.trainModel()
-    model.saveModel()
-    model.loadModel()
-    Y_predict1=model.predict(data.testX)
-    print("test mse=%f"%(metrics.mean_squared_error(data.testLabel,Y_predict1)))
-    print("navie commit probability=",np.sum(data.testLabel>0)/len(data.testLabel),"mean num",np.mean(data.testLabel))
-    '''
-
-    #classification
-    data.WinRankData()
-    data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel,
-                                                over_sampling.SMOTE)
-
+def testClassification(data):
     model=TraditionalClassifier()
     model.dataSet=data
     model.name=data.tasktype+"-classifier(submission)"
@@ -105,3 +84,21 @@ if __name__ == '__main__':
     acc=topKAccuracy(Y_predict2,data,5)
     print(acc)
     print(np.mean(acc))
+
+#test the performance
+if __name__ == '__main__':
+
+    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
+        tasktypes=pickle.load(f)
+    mode=1
+    for t in tasktypes:
+        data=TopcoderWin(testratio=0.1,validateratio=0.1)
+        data.setParameter(tasktype=t,mode=mode)
+        data.loadData()
+    
+
+        #classification
+        data.WinRankData()
+        data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel,
+                                                    over_sampling.ADASYN)
+

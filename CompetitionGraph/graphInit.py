@@ -225,7 +225,7 @@ def constructGraph(users,dataset):
     for i in range(n_users):
         if len(pools_process)<maxProcess:
             t=UserInteraction(i,cond,dataset,users,queue,finishedSig)
-            t.method=t.SubNumbasedMeasure
+            t.method=t.ScoreBasedMeasure
             t.start()
 
             pools_process.append(t)
@@ -250,7 +250,7 @@ def constructGraph(users,dataset):
                     t.join()
                     pools_process[j] = UserInteraction(i,cond, dataset, users, queue, finishedSig)
                     t=pools_process[j]
-                    t.method=t.SubNumbasedMeasure
+                    t.method=t.ScoreBasedMeasure
                     t.start()
 
                     break
@@ -283,7 +283,7 @@ def initLocalGraph(mode):
         print()
         t0=time.time()
         taskids,postingdate=taskData.taskIDs,taskData.postingdate
-        print(postingdate[:30]); exit(10)
+        #print(postingdate[:30]); exit(10)
         for i in range(len(taskids)):
             if (i+1)%30==0:
                 print(i+1,"time=%ds"%(time.time()-t0))
@@ -300,7 +300,7 @@ def initLocalGraph(mode):
             data["data"]=user_m
             dataGraph[taskids[i]]=data
 
-        with open("../data/UserInstances/UserGraph/SubNumBased/"+t+"-UserInteraction.data","wb") as f:
+        with open("../data/UserInstances/UserGraph/ScoreBased/"+t+"-UserInteraction.data","wb") as f:
             pickle.dump(dataGraph,f)
 
 

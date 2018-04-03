@@ -56,9 +56,12 @@ def topKAccuracy(Y_predict2,data,k=5):
         predictY=Y_predict2[left:right]
         Y_predict.append(predictY)
         Y_true.append(trueY[np.where(trueY==0)])
-    Y_predict=np.array(Y_predict)
-    Y_true=np.array(Y_true)
-    print(Y_predict.shape,Y_true.shape)
+        #print("predict",Y_predict)
+        #print("true",Y_true)
+        left=right
+    print(len(Y_true))
+    for i in range(len(Y_true)):
+        print(Y_predict[i].shape,Y_true[i].shape)
     #test intersection
     Y=np.zeros(shape=(len(Y_true)),dtype=np.bool)
 

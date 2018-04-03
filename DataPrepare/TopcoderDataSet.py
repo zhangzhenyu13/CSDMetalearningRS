@@ -82,6 +82,7 @@ class DataSetTopcoder:
 
     def ReSampling(self,data,labels,method):
         resampling=method()
+
         label_status=Counter(labels)
         print("data "+self.tasktype,label_status)
         data,labels=resampling.fit_sample(data,labels)
@@ -103,7 +104,7 @@ class TopcoderReg(DataSetTopcoder):
             X=np.array(data[key])
         vecX[index]=X
         #print(X.shape)
-        print(self.tasktype+" fetched segment:",index,"in %ds"%(time.time()-t0))
+        print(" fetched segment:",index,"in %ds"%(time.time()-t0))
 
     def RegisterRegressionData(self):
         Y=self.fetchData(self.dataSet,"regists")
@@ -131,7 +132,7 @@ class TopcoderSub(DataSetTopcoder):
             if len(indices)>0:
                 X=X[indices]
         vecX[index]=X
-        print(self.tasktype+" fetched segment:",index,"in %ds"%(time.time()-t0))
+        print(" fetched segment:",index,"in %ds"%(time.time()-t0))
 
     def CommitRegressionData(self):
         Y=self.fetchData(self.dataSet,"regists")
@@ -162,7 +163,7 @@ class TopcoderWin(DataSetTopcoder):
             if len(indices)>0:
                 X=X[indices]
         vecX[index]=X
-        print(self.tasktype+" fetched segment:",index,"in %ds"%(time.time()-t0))
+        print(" fetched segment:",index,"in %ds"%(time.time()-t0))
 
     def WinRankData(self):
         Y=self.fetchData(self.dataSet,"ranks")
