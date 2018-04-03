@@ -2,7 +2,6 @@ import networkx as nx
 import json
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-from DataPrepare.Entity import Users
 import Utility.personalizedSort as ps
 import matplotlib.pyplot as plt
 import pickle

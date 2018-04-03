@@ -38,17 +38,11 @@ class DataSetTopcoder:
         '''
         print(self.tasktype+" fetching data,key="+key)
         VecX=[None for i in range(len(files))]
-        pool_threads=[]
-        for i in range(len(files)):
-            file=files[i]
-            t=threading.Thread(target=self.fetchOne,args=(file,key,i,VecX))
-            t.start()
-            pool_threads.append(t)
-        for t in pool_threads:
-            t.join()
+        self.fetchOne(files[0],key,0,VecX)
         X=VecX[0]
-        for X in VecX:print(X.shape)
-        for i in range(1,len(VecX)):
+        for i in range(1,len(files)):
+            file=files[i]
+            self.fetchOne(file,key,i,VecX)
             X=np.concatenate((X,VecX[i]),axis=0)
 
         return X
@@ -67,11 +61,11 @@ class DataSetTopcoder:
 
         users=self.fetchData(self.dataSet,"users")
         tasks=self.fetchData(self.dataSet,"tasks")
-        taskids=self.fetchData(self.dataSet,"taskids")
+        self.taskids=self.fetchData(self.dataSet,"taskids")
 
         X=np.concatenate((tasks,users),axis=1)
 
-        self.IDIndex=self.indexDataPoint(taskids=taskids)
+        self.IDIndex=self.indexDataPoint(taskids=self.taskids)
         tp=int(self.testRatio*len(self.IDIndex))
         self.testPoint=self.IDIndex[tp][1]
         vp=int((self.testRatio+self.validateRatio)*len(self.IDIndex))
@@ -83,7 +77,7 @@ class DataSetTopcoder:
         self.testX=X[:self.testPoint]
 
         print("feature length for user(%d) and task(%d) is %d"%(len(users[0]),len(tasks[0]),len(X[0])))
-        print("loaded all the instances, size=%d"%len(taskids),
+        print("loaded all the instances, size=%d"%len(self.taskids),
               "test point=%d, validate point=%d"%(self.testPoint,self.validatePoint))
 
     def ReSampling(self,data,labels,method):
@@ -119,9 +113,9 @@ class TopcoderReg(DataSetTopcoder):
 
     def RegisterClassificationData(self):
         self.RegisterRegressionData()
-        self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
-        self.validateLabel=np.array(self.validateLabel==0,dtype=np.int)
-        self.testLabel=np.array(self.testLabel==0,dtype=np.int)
+        self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
+        self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
+        self.testLabel=np.array(self.testLabel>0,dtype=np.int)
 
 
 class TopcoderSub(DataSetTopcoder):
@@ -151,9 +145,9 @@ class TopcoderSub(DataSetTopcoder):
 
     def CommitClassificationData(self):
         self.CommitRegressionData()
-        self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
-        self.validateLabel=np.array(self.validateLabel==0,dtype=np.int)
-        self.testLabel=np.array(self.testLabel==0,dtype=np.int)
+        self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
+        self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
+        self.testLabel=np.array(self.testLabel>0,dtype=np.int)
 
 class TopcoderWin(DataSetTopcoder):
     def __init__(self,testratio=0.2,validateratio=0.1):

@@ -6,7 +6,7 @@ import numpy as np
 from sklearn import metrics
 import time
 import matplotlib.pyplot as plt
-
+from imblearn import under_sampling, over_sampling
 class DNNRegression(ML_model):
     def __init__(self,dataSet):
         ML_model.__init__(self)
@@ -66,28 +66,13 @@ class DNNCLassifier(ML_model):
     def defineModelLayer(self):
         inputDim=len(self.dataSet.trainX[0])
         ouputDim=2
-        self.model=models.Sequential()
-        self.model.add(layers.Dense(units=2048,input_dim=inputDim))
-        self.model.add(layers.Activation("relu"))
-        self.model.add(layers.Dense(units=1800))
-        self.model.add(layers.Activation("relu"))
-        self.model.add(layers.Dense(units=1596))
-        self.model.add(layers.Activation("relu"))
-        self.model.add(layers.Dense(units=1024))
-        self.model.add(layers.Activation("relu"))
-        self.model.add(layers.Dense(units=896))
-        self.model.add(layers.Activation("relu"))
-        self.model.add(layers.Dense(units=768))
-        self.model.add(layers.Activation("relu"))
-        self.model.add(layers.Dense(units=512))
-        self.model.add(layers.Activation("relu"))
-        self.model.add(layers.Dense(units=256))
-        self.model.add(layers.Activation("relu"))
-        self.model.add(layers.Dense(units=128))
-        self.model.add(layers.Activation("relu"))
-        self.model.add(layers.Dense(units=64))
-        self.model.add(layers.Dense(units=ouputDim))
-        self.model.add(layers.Activation("softmax"))
+        model = models.Sequential()
+        model.add(layers.Embedding(20000, 200))
+        model.add(layers.LSTM(200, dropout=0.2, recurrent_dropout=0.2))
+        model.add(layers.Dense(ouputDim, activation='sigmoid'))
+
+        model.add(layers.Activation("softmax"))
+        self.model=model
 
         opt = optimizers.Adagrad(lr=0.001)
         self.model.compile(optimizer=opt,loss='categorical_crossentropy',metrics=["accuracy"])
@@ -149,10 +134,11 @@ def showData(Y_predict,Y_true,content):
     plt.show()
 if __name__ == '__main__':
     data=TopcoderReg(testratio=0.1,validateratio=0)
-    data.setParameter(tasktype="Development",mode=0)
+    data.setParameter(tasktype="First2Finish",mode=2)
     data.loadData()
     data.RegisterClassificationData()
-    data.trainX,data.trainLabel=data.overSampling(data.trainX,data.trainLabel)
+    data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel,
+                                                over_sampling.SMOTE)
     data.trainLabel=np_utils.to_categorical(data.trainLabel,num_classes=2)
 
     testClassification(data)

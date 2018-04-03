@@ -1,128 +1,61 @@
 import json,pickle
 import multiprocessing
 from DataPrepare.ConnectDB import *
-from DataPrepare.Entity import Users
 from multiprocessing import Condition,Queue
 from scipy import sparse
 import time
 import gc
 import numpy as np
-
-def loadclusters(choice):
-    f=open("../data/clusterResult/clusters"+str(choice)+".data","rb")
-    clusters=pickle.load(f)
-    return clusters
-
+from DataPrepare.DataContainer import Tasks,UserHistoryGenerator
 #datastructure for reg and sub
+
 class DataURS:
-    def filterUsers(self,users=None,change=False):
-        if users is not None:
-            self.activeUsers = users
 
-        rmIndices=[]
-        for i in range(len(self.activeReg)):
-            if self.activeReg[i][0] not in self.activeUsers:
-                rmIndices.append(i)
-        count=len(rmIndices)
-
-        self.activeReg=np.delete(self.activeReg,rmIndices,axis=0)
-        print("all %d reg filtered" % count)
-
-        rmIndices=[]
-        for i in range(len(self.activeSub)):
-            if self.activeSub[i][0] not in self.activeUsers:
-                rmIndices.append(i)
-        count=len(rmIndices)
-
-        self.activeSub=np.delete(self.activeSub,rmIndices,axis=0)
-        print("all %d sub filtered" % count)
-
-        if change:
-            self.subdata=self.activeSub
-            self.regdata=self.activeReg
-
-        print("after filtering active~ regdata size=%d, subdata size=%d"%(len(self.activeReg),len(self.activeSub)))
-
-    def __init__(self):
-        warnings.filterwarnings("ignore")
-
-        conn = ConnectDB()
-        cur = conn.cursor()
-        #load registration data
-        sqlcmd = "select handle,taskid,regdate from registration where regdate<2500"
-        cur.execute(sqlcmd)
-        self.regdata = np.array(cur.fetchall())
-
-        #load submission data
-        sqlcmd="select handle,taskid,subnum,score from submission where submitdate<2500"
-        cur.execute(sqlcmd)
-        self.subdata=np.array(cur.fetchall())
-
-        print("regdata size=%d, subdata size=%d"%(len(self.regdata),len(self.subdata)))
-
-        # print(type(self.regdata),self.regdata[:10],self.subdata[:10])
-
-    def setActiveCluster(self,taskIDs):
-        if taskIDs is None:
-            print("using whole data set(Glabal)")
-            self.activeReg=self.regdata
-            self.activeSub=self.subdata
-            print("ative regtasks size=%d,active subtasks size=%d" % (len(self.activeReg), len(self.activeSub)))
-            return
-
-        self.activeTask=taskIDs
-
-        self.activeReg=[]
-        for taskid in taskIDs:
-            i=np.where(self.regdata[:,1]==taskid)[0]
-            if len(i)>0:
-                regs=self.regdata[i]
-                for reg in regs:
-                    self.activeReg.append(reg)
-        self.activeReg=np.array(self.activeReg)
-        self.activeSub=[]
-        for taskid in taskIDs:
-            i=np.where(self.subdata[:,1]==taskid)[0]
-            if len(i)>0:
-                subs=self.subdata[i]
-                for sub in subs:
-                    self.activeSub.append(sub)
-        self.activeSub=np.array(self.activeSub)
-        print("ative regtasks size=%d,active subtasks size=%d"%(len(self.activeReg),len(self.activeSub)))
-        #print(self.activeSub[:3],self.activeReg[:3])
+    def __init__(self,tasktype,mode):
+        self.userData=UserHistoryGenerator().loadActiveUserHistory(tasktype,mode)
+        self.mode=mode
+        self.tasktype=tasktype
+        for name in self.userData.keys():
+            regtasks=self.userData[name]["regtasks"]
+            subtasks=self.userData[name]["subtasks"]
+            for i in range(len(regtasks)):
+                regtasks[i]=np.array(regtasks[i])
+            for i in range(len(subtasks)):
+                subtasks[i]=np.array(subtasks[i])
+            self.userData[name]["regtasks"]=regtasks
+            self.userData[name]["subtasks"]=subtasks
 
     def getRegUsers(self):
-        users = set()
+        return self.userData.keys()
 
-        for reg in self.activeReg:
-            if reg[0] in self.activeSub[:,0]:
-                users.add(reg[0])
+    def setTimeline(self,date):
+        for name in self.userData.keys():
+            #reset regtasks
+            regtasks=self.userData[name]["regtasks"]
+            #print(regtasks.shape,regtasks[:3])
+            indices=np.where(regtasks[1]>date)[0]
+            for i in range(len(regtasks)):
+                regtasks[i]=regtasks[i][indices]
 
-        return users
+            self.userData[name]["regtasks"]=regtasks
+            #reset subtasks
+            subtasks=self.userData[name]["subtasks"]
+            #print(subtasks.shape,subtasks[:3])
+            indices=np.where(subtasks[2]>date)[0]
+            for i in range(len(subtasks)):
+                subtasks[i]=subtasks[i][indices]
 
-    def getRegTasks(self,user):
-        if len(self.activeReg)==0:
-            return np.array([])
-        indices=np.where(self.activeReg[:,0]==user)[0]
-        if len(indices)>0:
-            tasks=self.activeReg[indices][:,1]
-        else:
-            tasks=np.array([])
-        return tasks
+            self.userData[name]["subtasks"]=subtasks
 
-    def getSubTasks(self,user):
-        if len(self.activeSub)==0:
-            return np.array([])
-        indices=np.where(self.activeSub[:,0]==user)[0]
-        if len(indices)>0:
-            tasks=self.activeSub[indices][:,1:4]
-        else:
-            tasks=np.array([])
-        return tasks
+    def getRegTasks(self,username):
+        regtasks=self.userData[username]["regtasks"]
 
-    def getAvgSubNum(self,user):
-        tasks=self.getSubTasks(user)
-        return np.sum(tasks[:,1])/len(self.getRegTasks(user))
+        return regtasks[0]
+
+    def getSubTasks(self,username):
+        subtasks=self.userData[username]["subtasks"]
+
+        return subtasks
 
 class UserInteraction(multiprocessing.Process):
     def __init__(self,index,outercon,dataset,users,queue,fsig):
@@ -133,9 +66,8 @@ class UserInteraction(multiprocessing.Process):
         self.users = users
         self.queue = queue
         self.finishedSig=fsig
-
-    def run(self):
-        print("process running for user no %d"%self.index)
+        self.method=None
+    def ScoreBasedMeasure(self):
         n_users=len(self.users)
         userVec=[]
         # user a : register and submit
@@ -144,10 +76,10 @@ class UserInteraction(multiprocessing.Process):
         regtaskA = self.dataset.getRegTasks(a)
         subtaskA = self.dataset.getSubTasks(a)
         #print("test",regtaskA[:5],subtaskA[:5])
-        subnumA=np.array([])
+        subscoreA=np.array([])
         if len(subtaskA)>0:
-            subnumA = subtaskA[:,1]
-            subtaskA=subtaskA[:,0]
+            subscoreA = subtaskA[3]
+            subtaskA=subtaskA[0]
 
         t0 = time.time()
         for j in range(self.index+1,n_users):
@@ -158,15 +90,79 @@ class UserInteraction(multiprocessing.Process):
             # user b: register and submit
             b = self.users[j]
 
-            regtaskB = dataset.getRegTasks(b)
-            subtaskB = dataset.getSubTasks(b)
-            subnumB=np.array([])
+            regtaskB = self.dataset.getRegTasks(b)
+            subtaskB = self.dataset.getSubTasks(b)
+            subscoreB=np.array([])
             if len(subtaskB)>0:
-                subnumB = subtaskB[:,1]
-                subtaskB=subtaskB[:,0]
+                subscoreB = subtaskB[3]
+                subtaskB=subtaskB[0]
 
             # use common task to compute init status
-            comtasks = set(regtaskA).intersection(regtaskB)
+            comtasks = set(regtaskA).intersection(set(regtaskB))
+
+            if len(comtasks) == 0 or len(subtaskA) == 0 or len(subtaskB) == 0:
+                # no interaction, set entry as 0
+                continue
+
+            # common avg submit times
+            com_a = 0
+            com_b = 0
+
+            for taskid in comtasks:
+                i=np.where(subtaskA==taskid)[0]
+                if len(i)>0:
+                    com_a += subscoreA[i[0]]
+                i=np.where(subtaskB==taskid)[0]
+                if len(i)>0:
+                    com_b+=subscoreB[i[0]]
+
+            com_a /= len(comtasks)
+            com_b /= len(comtasks)
+
+            # total avg submit times
+            score_a = np.sum(subscoreA)/len(regtaskA)
+            score_b = np.sum(subscoreB)/len(regtaskB)
+
+            # set entry as outperform degree
+            userVec.append((self.index,j,(com_a - score_a) / score_a))
+            userVec.append((j,self.index,(com_b - score_b) / score_b))
+
+        self.queue.put(userVec)
+
+
+    def SubNumbasedMeasure(self):
+
+        n_users=len(self.users)
+        userVec=[]
+        # user a : register and submit
+        a = self.users[self.index]
+
+        regtaskA = self.dataset.getRegTasks(a)
+        subtaskA = self.dataset.getSubTasks(a)
+        #print("test",regtaskA[:5],subtaskA[:5])
+        subnumA=np.array([])
+        if len(subtaskA)>0:
+            subnumA = subtaskA[1]
+            subtaskA=subtaskA[0]
+
+        t0 = time.time()
+        for j in range(self.index+1,n_users):
+            if (j + 1) % 5000 == 0:
+                print("sub progress: %d/%d for user no %d,cost %ds" % (j + 1, n_users,self.index,time.time()-t0))
+                t0=time.time()
+
+            # user b: register and submit
+            b = self.users[j]
+
+            regtaskB = self.dataset.getRegTasks(b)
+            subtaskB = self.dataset.getSubTasks(b)
+            subnumB=np.array([])
+            if len(subtaskB)>0:
+                subnumB = subtaskB[1]
+                subtaskB=subtaskB[0]
+
+            # use common task to compute init status
+            comtasks = set(regtaskA).intersection(set(regtaskB))
 
             if len(comtasks) == 0 or len(subtaskA) == 0 or len(subtaskB) == 0:
                 # no interaction, set entry as 0
@@ -197,37 +193,39 @@ class UserInteraction(multiprocessing.Process):
             #print("Interaction", a, b,(com_a - sub_a) / sub_a,(com_b - sub_b) / sub_b)
 
         self.queue.put(userVec)
+
+    def run(self):
+        #print("process running for user no %d"%self.index)
+        self.method()
+
         #print("put vec index %d"%self.index)
         self.outercon.acquire()
-        print("process finished for user no %d"%self.index)
+        #print("process finished for user no %d"%self.index)
 
         self.finishedSig.put(self.index)
         self.outercon.notify()
         self.outercon.release()
 
-def constructGraph(tasks,dataset):
-    if tasks is None:
-        #print(len(dataset.regdata[:,1]),type(dataset.regdata[:,1][0]))
-        tasks=dataset.regdata[:,1]
-    print("cluster size=%d"%len(tasks))
-    users=dataset.getRegUsers()
+def constructGraph(users,dataset):
+
     #print(users)
     queue=Queue()
-    users=list(users)
+
     n_users=len(users)
     userMatrix=sparse.dok_matrix((n_users,n_users))
-    print("builiding user matrix,size=%d"%n_users)
+
     #statistics for user competition status
     cond=Condition()
 
-    maxProcess=min(n_users,8)
-    print("running using %d process(es)"%maxProcess)
+    maxProcess=min(n_users,30)
+    #print("running using maximum %d process(es)"%maxProcess)
     pools_process=[]
     finishedSig=Queue()
     cond.acquire()
     for i in range(n_users):
         if len(pools_process)<maxProcess:
             t=UserInteraction(i,cond,dataset,users,queue,finishedSig)
+            t.method=t.SubNumbasedMeasure
             t.start()
 
             pools_process.append(t)
@@ -252,12 +250,13 @@ def constructGraph(tasks,dataset):
                     t.join()
                     pools_process[j] = UserInteraction(i,cond, dataset, users, queue, finishedSig)
                     t=pools_process[j]
+                    t.method=t.SubNumbasedMeasure
                     t.start()
 
                     break
 
     cond.release()
-    print("gather final data")
+    #print("gather final data")
     for t in pools_process:
         t.join()
 
@@ -268,55 +267,43 @@ def constructGraph(tasks,dataset):
 
     return (userMatrix.toarray(),users)
 
-def initGlobalGraph(dataset):
-    print("init Glabal interaction graph")
-    dataset.setActiveCluster(None)
+def initLocalGraph(mode):
 
-    user_m,users=constructGraph(None,dataset)
-    subdata = []
-    for i in range(len(users)):
-        subdata.append(dataset.getAvgSubNum(users[i]))
-    subdata = np.array(subdata)
-    with open("../data/UserGraph/initGraph/globalGraph" + str(choice) + ".data", "wb") as f:
-        data = {}
-        data["size"] = len(user_m)
-        data["users"] = users
-        data["data"] = user_m
-        data["avgsubnum"]=subdata
-        pickle.dump(data,f)
+    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
+        tasktypes=pickle.load(f)
 
-def initLocalGraph(dataset):
-    dataGraph={}
-    for k in clusters["taskids"].keys():
-        print("cluster",k,"graph building")
-        cluster=clusters["taskids"][k]
-        #print(cluster)
-        cluster=np.array(cluster,dtype=np.int)
-        dataset.setActiveCluster(cluster)
-        user_m,users=constructGraph(cluster,dataset)
-        subdata=[]
-        for i in range(len(users)):
-            subdata.append(dataset.getAvgSubNum(users[i]))
-        subdata=np.array(subdata)
-        data={}
-        data["size"]=len(user_m)
-        data["users"]=users
-        data["data"]=user_m
-        data["avgsubnum"]=subdata
-        dataGraph[k]=data
+    for t in tasktypes:
+        dataset=DataURS(t,mode)
+        taskData=Tasks(t,600)
+        dataGraph={}
         gc.collect()
 
-    with open("../data/UserGraph/initGraph/localGraph"+str(choice)+".data","wb") as f:
-        pickle.dump(dataGraph,f)
+        users=list(dataset.getRegUsers())
+        print("builiding user matrix,size=%d"%len(users))
+        print()
+        t0=time.time()
+        taskids,postingdate=taskData.taskIDs,taskData.postingdate
+        print(postingdate[:30]); exit(10)
+        for i in range(len(taskids)):
+            if (i+1)%30==0:
+                print(i+1,"time=%ds"%(time.time()-t0))
+                t0=time.time()
+
+            date=postingdate[i]
+            dataset.setTimeline(date)
+
+            user_m,users=constructGraph(users,dataset)
+
+            data={}
+            data["size"]=len(user_m)
+            data["users"]=users
+            data["data"]=user_m
+            dataGraph[taskids[i]]=data
+
+        with open("../data/UserInstances/UserGraph/SubNumBased/"+t+"-UserInteraction.data","wb") as f:
+            pickle.dump(dataGraph,f)
+
 
 if __name__ == '__main__':
-    choice=eval(input("choice= "))
-    print("loading data")
-    users = Users().getUsers()
-
-    clusters=loadclusters(choice)
-    dataset=DataURS()
-    dataset.setActiveCluster(None)
-    dataset.filterUsers(users,change=True)
-    #initGlobalGraph(dataset)
-    initLocalGraph(dataset)
+    mode=1
+    initLocalGraph(mode)

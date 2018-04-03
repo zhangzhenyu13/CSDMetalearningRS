@@ -31,24 +31,45 @@ class ML_model:
             data["name"]=self.name
             pickle.dump(data,f)
 
-def topKAccuracy(Y_predict,Y_true):
+def topKAccuracy(Y_predict2,data,k=5):
     '''
     :return Y[i]=true if ith sample can intersect with each other in Y_predict[i] and Y_true[i]
                       else return false
-    :param Y_predict:
-    :param Y_true:
+    :param Y_predict2: a list of recommended entries
+    :param data: the data set containing actual labels
     :return: boolean
     '''
-    Y=np.zeros(shape=(len(Y_predict)),dtype=np.bool)
+    # measure top k accuracy
+    print("predicting top k accuracy of",data.tasktype)
+    # batch data into task centered array
+    ids=data.taskids[:data.testPoint]
+    indexData=data.indexDataPoint(ids)
+    left=indexData[0][1]
+
+    Y_predict=[]
+    Y_true=[]
+
+    for step in range(1,len(indexData)):
+        right=indexData[step][1]
+
+        trueY=data.testLabel[left:right]
+        predictY=Y_predict2[left:right]
+        Y_predict.append(predictY)
+        Y_true.append(trueY[np.where(trueY==0)])
+    Y_predict=np.array(Y_predict)
+    Y_true=np.array(Y_true)
+    print(Y_predict.shape,Y_true.shape)
+    #test intersection
+    Y=np.zeros(shape=(len(Y_true)),dtype=np.bool)
+
     for i in range(len(Y)):
         tag=False
-        for  ele in Y_predict:
-            if ele in Y_true:
+
+        for ele in Y_predict[i][:k]:
+            if ele in Y_true[i]:
                 tag=True
                 break
+
         Y[i]=tag
+
     return Y
-
-
-
-

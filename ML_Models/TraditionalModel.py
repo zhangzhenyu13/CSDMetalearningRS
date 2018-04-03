@@ -31,7 +31,7 @@ class TraditionalClassifier(ML_model):
             "ExtraForest": ensemble.ExtraTreesClassifier(),
             "AdaBoost": ensemble.AdaBoostClassifier(),
             "GradientBoost": ensemble.GradientBoostingClassifier(),
-            "SVM": svm.SVC(C=0.9)
+            #"SVM": svm.SVC(C=0.9)
         }
         return candite_selection
     def __init__(self):
@@ -66,8 +66,8 @@ class TraditionalClassifier(ML_model):
 #test the performance
 if __name__ == '__main__':
 
-    data=TopcoderReg(testratio=0.1,validateratio=0.1)
-    data.setParameter(tasktype="Development",mode=0)
+    data=TopcoderWin(testratio=0.1,validateratio=0.1)
+    data.setParameter(tasktype="Code",mode=2)
     data.loadData()
 
 
@@ -86,8 +86,9 @@ if __name__ == '__main__':
     '''
 
     #classification
-    data.RegisterClassificationData()
-    data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel,under_sampling.RepeatedEditedNearestNeighbours)
+    data.WinRankData()
+    data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel,
+                                                over_sampling.SMOTE)
 
     model=TraditionalClassifier()
     model.dataSet=data
@@ -101,3 +102,6 @@ if __name__ == '__main__':
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
 
+    acc=topKAccuracy(Y_predict2,data,5)
+    print(acc)
+    print(np.mean(acc))
