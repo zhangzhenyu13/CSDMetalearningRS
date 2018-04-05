@@ -4,6 +4,8 @@ import time
 from Utility.TagsDef import *
 import threading
 from collections import Counter
+from imblearn import under_sampling,over_sampling
+
 class DataSetTopcoder:
     def __init__(self,testratio=0.2,validateratio=0.1):
         self.dataSet=None
@@ -80,14 +82,29 @@ class DataSetTopcoder:
         print("loaded all the instances, size=%d"%len(self.taskids),
               "test point=%d, validate point=%d"%(self.testPoint,self.validatePoint))
 
-    def ReSampling(self,data,labels,method):
-        resampling=method()
+    def ReSampling(self,data,labels):
 
         label_status=Counter(labels)
-        print("data "+self.tasktype,label_status)
-        data,labels=resampling.fit_sample(data,labels)
+        print(self.tasktype,"data "+self.tasktype,label_status)
+        if len(label_status)<2:
+            print(self.tasktype,"no need to resample")
+            return data,labels
+        n_samples=1e+10
+        for k in label_status.keys():
+            if label_status[k]<n_samples:
+                n_samples=label_status[k]
+        #print("n_neighbors<=",n_samples)
+        try:
+            resampling=over_sampling.ADASYN(n_neighbors=n_samples)
+
+            data,labels=resampling.fit_sample(data,labels)
+        except ValueError:
+            print(self.tasktype,"resampling using random method")
+            resampling=over_sampling.RandomOverSampler()
+            data,labels=resampling.fit_sample(data,labels)
+
         label_status=Counter(labels)
-        print("sampling status=",label_status)
+        print(self.tasktype,"sampling status=",label_status)
 
         return data,labels
 

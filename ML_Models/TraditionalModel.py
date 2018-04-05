@@ -4,9 +4,8 @@ from sklearn import svm,linear_model,naive_bayes,tree
 from sklearn import ensemble
 from sklearn import metrics
 import time
-from imblearn import under_sampling,over_sampling
 import matplotlib.pyplot as plt
-
+import multiprocessing
 #model container
 class TraditionalRegressor(ML_model):
     def __init__(self,regressor):
@@ -59,8 +58,8 @@ class TraditionalClassifier(ML_model):
                     max_acc=acc
         self.model=sel_model
 
-        trainData=np.concatenate((data.trainX,data.validateX),axis=0)
-        trainLabel=np.concatenate((data.trainLabel,data.validateLabel),axis=0)
+        trainData=np.concatenate((self.dataSet.trainX,self.dataSet.validateX),axis=0)
+        trainLabel=np.concatenate((self.dataSet.trainLabel,self.dataSet.validateLabel),axis=0)
         self.model.fit(trainData,trainLabel)
 
         t1=time.time()
@@ -68,22 +67,31 @@ class TraditionalClassifier(ML_model):
         cm=metrics.confusion_matrix(self.dataSet.validateLabel,self.model.predict(self.dataSet.validateX))
         print("model",self.name,"trainning finished in %ds"%(t1-t0),"validate score=%f"%score,"CM=\n",cm)
 
-def testClassification(data):
+def testWinRankClassification(tasktype,queue):
+    data=TopcoderWin(testratio=0.1,validateratio=0.1)
+    data.setParameter(tasktype=tasktype,mode=mode)
+    data.loadData()
+
+    data.WinRankData()
+    data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
     model=TraditionalClassifier()
     model.dataSet=data
-    model.name=data.tasktype+"-classifier(submission)"
+    model.name=data.tasktype+"-classifier(Rank)"
     model.trainModel()
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
     print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2,normalize=True)))
-    print()
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
-
-    acc=topKAccuracy(Y_predict2,data,5)
-    print(acc)
-    print(np.mean(acc))
+    kacc=[data.tasktype]
+    for k in (1,3,5,10):
+        acc=topKAccuracy(Y_predict2,data,k)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+        kacc=kacc+[acc]
+    print()
+    queue.put(kacc)
 
 #test the performance
 if __name__ == '__main__':
@@ -91,14 +99,24 @@ if __name__ == '__main__':
     with open("../data/TaskInstances/TaskIndex.data","rb") as f:
         tasktypes=pickle.load(f)
     mode=1
+    queue=multiprocessing.Queue()
+    pool_processes=[]
     for t in tasktypes:
-        data=TopcoderWin(testratio=0.1,validateratio=0.1)
-        data.setParameter(tasktype=t,mode=mode)
-        data.loadData()
-    
+        #if t=="Architecture":continue
 
-        #classification
-        data.WinRankData()
-        data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel,
-                                                    over_sampling.ADASYN)
+        #testWinRankClassification(t)
+
+        p=multiprocessing.Process(target=testWinRankClassification,args=(t,queue))
+        pool_processes.append(p)
+        p.start()
+        #p.join()
+    for p in pool_processes:
+        p.join()
+
+    result=""
+    while queue.empty()==False:
+        data=queue.get()
+        result=result+data[0]+" : %f"%data[1]
+    with open("../data/runResults/rankPrediction.txt","w") as f:
+        f.writelines(result)
 

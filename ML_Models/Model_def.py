@@ -1,6 +1,6 @@
 import pickle
 import numpy as np
-
+from Utility.personalizedSort import MySort
 class ML_model:
     def __init__(self):
         self.model=None
@@ -31,7 +31,7 @@ class ML_model:
             data["name"]=self.name
             pickle.dump(data,f)
 
-def topKAccuracy(Y_predict2,data,k=5):
+def topKAccuracy(Y_predict2,data,k):
     '''
     :return Y[i]=true if ith sample can intersect with each other in Y_predict[i] and Y_true[i]
                       else return false
@@ -40,7 +40,7 @@ def topKAccuracy(Y_predict2,data,k=5):
     :return: boolean
     '''
     # measure top k accuracy
-    print("predicting top k accuracy of",data.tasktype)
+
     # batch data into task centered array
     ids=data.taskids[:data.testPoint]
     indexData=data.indexDataPoint(ids)
@@ -54,18 +54,32 @@ def topKAccuracy(Y_predict2,data,k=5):
 
         trueY=data.testLabel[left:right]
         predictY=Y_predict2[left:right]
+
+        ys=[]
+        for i in range(len(predictY)):
+            ys.append([i,predictY[i]])
+        m_s=MySort(ys)
+        m_s.compare_vec_index=-1
+        ys=m_s.mergeSort()
+        ys.reverse()
+        ys=np.array(ys)
+        #print(ys)
+        predictY=ys[:,0]
+
         Y_predict.append(predictY)
-        Y_true.append(trueY[np.where(trueY==0)])
+        Y_true.append(np.where(trueY==0)[0])
         #print("predict",Y_predict)
         #print("true",Y_true)
         left=right
-    print(len(Y_true))
-    for i in range(len(Y_true)):
-        print(Y_predict[i].shape,Y_true[i].shape)
+    #print(len(Y_true))
+    #for i in range(len(Y_true)):
+    #   print(Y_predict[i].shape,Y_true[i].shape)
     #test intersection
-    Y=np.zeros(shape=(len(Y_true)),dtype=np.bool)
+    Y=[]
 
-    for i in range(len(Y)):
+    for i in range(len(Y_true)):
+        if len(Y_true[i]==0):
+            continue
         tag=False
 
         for ele in Y_predict[i][:k]:
@@ -73,6 +87,6 @@ def topKAccuracy(Y_predict2,data,k=5):
                 tag=True
                 break
 
-        Y[i]=tag
+        Y.insert(i,tag)
 
-    return Y
+    return np.array(Y)
