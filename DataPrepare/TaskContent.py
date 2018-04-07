@@ -150,6 +150,13 @@ def clusterVec(taskdata,docX):
     X=np.concatenate((docX,X_techs),axis=1)
     X=np.concatenate((X,X_lans),axis=1)
 
+    data={}
+    data["ids"]=taskdata.ids
+    data["X"]=X
+
+    with open("../data/TaskInstances/taskContent/"+taskdata.taskType+"-taskData.data","wb") as f:
+        pickle.dump(data,f)
+
     return X
 
 
@@ -157,25 +164,15 @@ def clusterVec(taskdata,docX):
 def saveTaskData(taskdata):
     data={}
     docX=np.array(taskdata.docs)
-    if 200<len(docX[0]):
-        oldshape=docX.shape
-        kpca=decomposition.KernelPCA(n_components=200,kernel="rbf")
-        data["docX"]=kpca.fit_transform(docX)
-        print(taskdata.taskType,"KPCA doc shape changed from",oldshape,"to",data["docX"].shape)
-    else:
-        data["docX"]=docX
-        print(taskdata.taskType,"needn't apply decompistion")
-    #print(taskdata.techs[:20])
-    #print(taskdata.lans[:20])
-    #exit(20)
+
+    data["docX"]=docX
+
     lans=[None for i in range(len(taskdata.ids))]
     techs=[None for i in range(len(taskdata.ids))]
     for i in range(len(taskdata.ids)):
         lans[i]=taskdata.lans[i].split(",")
         techs[i]=taskdata.techs[i].split(",")
-    #print(taskdata.techs[:20])
-    #print(taskdata.lans[:20])
-    #exit(20)
+
     data["lans"]=lans
     data["techs"]=techs
     data["diffdegs"]=taskdata.diffdegs
@@ -183,7 +180,6 @@ def saveTaskData(taskdata):
     data["durations"]=taskdata.durations
     data["prizes"]=taskdata.prizes
     data["ids"]=taskdata.ids
-
 
     with open("../data/TaskInstances/taskDataSet/"+taskdata.taskType+"-taskData.data","wb") as f:
         pickle.dump(data,f)
@@ -196,7 +192,6 @@ def genResultOfTasktype(tasktype,taskdata,choice):
     #save vec representaion of all the tasks
     saveTaskData(taskdata)
 
-
     with open("../data/TaskInstances/SelTasktype.data","rb") as f:
         clusterTypes=pickle.load(f)
 
@@ -207,7 +202,7 @@ def genResultOfTasktype(tasktype,taskdata,choice):
     #cluster task based on its feature
     X=clusterVec(taskdata,docX)
 
-    clusterEXP=500
+    clusterEXP=800
     model=ClusteringModel()
     model.name=tasktype+"-clusteringModel"
     n_clusters=max(1,len(taskdata.ids)//clusterEXP)

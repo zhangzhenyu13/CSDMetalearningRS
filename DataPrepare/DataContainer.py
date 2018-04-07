@@ -2,7 +2,7 @@ from ML_Models.DocTopicsModel import LSAFlow,LDAFlow
 from Utility.TagsDef import *
 from DataPrepare.ConnectDB import ConnectDB
 from Utility.FeatureEncoder import onehotFeatures
-from Utility.personalizedSort import  MySort
+from Utility.TagsDef import  *
 import numpy as np
 import pickle,copy
 import warnings
@@ -19,6 +19,7 @@ class TaskDataContainer:
         self.prizes=[]
         self.diffdegs=[]
         self.taskType=typename
+
     def encodingFeature(self,choice):
         self.choice=choice
 
@@ -39,11 +40,11 @@ class TaskDataContainer:
         print(self.taskType,"docs shape",self.docs.shape)
 
         print("encoding techs",self.taskType)
-        self.techs_vec=onehotFeatures(self.techs,threshold_num=5)
+        self.techs_vec=onehotFeatures(self.techs,feature_num=TaskTechs)
         print(self.taskType,"techs shape",self.techs_vec.shape)
 
         print("encoding lans",self.taskType)
-        self.lans_vec=onehotFeatures(self.lans,threshold_num=5)
+        self.lans_vec=onehotFeatures(self.lans,feature_num=TaskLans)
         print(self.taskType,"lans shape",self.lans_vec.shape)
 
 class UserDataContainer:
@@ -427,6 +428,10 @@ class UserHistoryGenerator:
         userhistory = {}
 
         for username in userdata.names:
+            #fiter incomplete data information
+            tenure,skills,skills_vec=userdata.getUserInfo(username)
+            if tenure is None or tenure<TestDate:
+                continue
 
             regids, regdates = regdata.getUserHistory(username)
             if len(regids) == 0:
@@ -457,7 +462,6 @@ class UserHistoryGenerator:
             rank=list(rank)
             rank.reverse()
 
-            tenure,skills,skills_vec=userdata.getUserInfo(username)
             userhistory[username] = {"regtasks": [regids, regdates],
                                   "subtasks": [subids, subnum, subdates, score, rank],
                                   "tenure":tenure,"skills":skills.split(","),"skills_vec":skills_vec}
@@ -481,3 +485,16 @@ class UserHistoryGenerator:
             userData = pickle.load(f)
 
         return userData
+
+#test data
+import matplotlib.pyplot as plt
+from Utility.personalizedSort import *
+if __name__ == '__main__':
+    Users=UserData()
+    Users=Users.getSelUsers(Users.name[np.where(Users.memberage>600)])
+    y=Users.tenure.reshape((len(Users.tenure),1)).tolist()
+    ms=MySort(y)
+    y=ms.mergeSort()
+    x=np.arange(len(y))
+    plt.plot(x,y)
+    plt.show()

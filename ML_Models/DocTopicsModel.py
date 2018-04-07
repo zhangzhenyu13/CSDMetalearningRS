@@ -12,10 +12,10 @@ from sklearn.preprocessing import Normalizer
 import copy,time
 import pickle
 from scipy import sparse
-
+from Utility.TagsDef import *
 class LDAFlow:
     def __init__(self):
-        self.n_features=500
+        self.n_features=TaskFeatures
         self.name=""
     def cleanDocs(self,docs_o):
         docs=copy.deepcopy(docs_o)
@@ -50,7 +50,7 @@ class LDAFlow:
         t0 = time.time()
         print("transfering docs to LDA topics distribution")
         docs = self.cleanDocs(docs)
-        self.n_features=min(int(0.9*len(docs[0])),self.n_features)
+        #self.n_features=min(int(0.9*len(docs[0])),self.n_features)
         print("performing LDA(%d features) from shape(%d,%d)"%(self.n_features,len(docs),len(docs[0])))
         self.dictionary = corpora.Dictionary(docs)
         doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in docs]

@@ -87,7 +87,7 @@ class DataInstances(multiprocessing.Process):
         regists=[]
         dataIndex=self.selTasks.dataIndex
 
-        userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=0)
+        userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=1)
 
         print(self.tasktype+"=>:","construct registration history based instances with %d tasks and %d users" %
               (len(dataIndex), len(userData.keys())))
@@ -116,11 +116,6 @@ class DataInstances(multiprocessing.Process):
             for name in userData.keys():
 
                 tenure, skills,skills_vec = userData[name]["tenure"],userData[name]["skills"],userData[name]["skills_vec"]
-
-                if tenure is None or tenure<date:
-                    #no such user in user data
-                    missinguser+=1
-                    continue
 
                 #get reg and sub history before date for user:name
                 regtasks = userData[name]["regtasks"]

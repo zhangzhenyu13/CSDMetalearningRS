@@ -1,6 +1,7 @@
 from scipy import sparse
+from Utility.personalizedSort import *
 
-def onehotFeatures(data,threshold_num=5):
+def onehotFeatures(data,feature_num=20):
     '''
     :param data:str data
     :return: one-hot vector representation
@@ -17,19 +18,25 @@ def onehotFeatures(data,threshold_num=5):
                 c[x] = 1
     #print(data)
     #print("doc item",c)
-    rmKs=[]
-    for k in c.keys():
-        if c[k]<threshold_num :
-            rmKs.append(k)
-    for k in rmKs:
-        del c[k]
+
+    while len(c)>feature_num:
+        minNum=1e+5
+        rmK=None
+        for k in c.keys():
+            if c[k]<minNum :
+                rmK=k
+                minNum=c[k]
+
+        del c[rmK]
+
     c=c.keys()
     i_c = {}
     count = 0
     for i in c:
         i_c[i] = count
         count += 1
-    X = sparse.dok_matrix((len(data), count))
+    #print(i_c)
+    X = sparse.dok_matrix((len(data), feature_num))
     row = 0
     for r in data:
 
@@ -42,8 +49,14 @@ def onehotFeatures(data,threshold_num=5):
             if x not in c:
                 continue
             col = i_c[x]
-            X[row, col] = 1
+            try:
+                X[row, col] = 1
+            except:
+
+                print("~~~~~~",row,col,X.shape)
         row += 1
     #print("one-hot feature size=%d"%(len(c)),"removed feature size=%d"%(len(rmKs)))
 
     return X.toarray()
+
+

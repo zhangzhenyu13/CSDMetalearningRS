@@ -58,20 +58,27 @@ class DataURS:
         return subtasks
 
 class UserInteraction(multiprocessing.Process):
-    def __init__(self,index,outercon,dataset,users,queue,fsig):
+    def __init__(self,taskid,date,dataset,users,queue,finishSig,scoretag=False):
         multiprocessing.Process.__init__(self)
-        self.index=index
-        self.outercon=outercon
+        self.taskid=taskid
         self.dataset=dataset
         self.users = users
-        self.queue = queue
-        self.finishedSig=fsig
-        self.method=None
-    def ScoreBasedMeasure(self):
-        n_users=len(self.users)
-        userVec=[]
+        self.queue=queue
+        self.finishSig=finishSig
+        if scoretag:
+            self.method=self.ScoreBasedMeasure
+        else:
+            self.method=self.SubNumbasedMeasure
+
+        self.dataset.setTimeline(date)
+        self.n_users=len(users)
+        self.user_m=sparse.dok_matrix((self.n_users,self.n_users),dtype=np.float32)
+
+
+    def ScoreBasedMeasure(self,index):
+        n_users=self.n_users
         # user a : register and submit
-        a = self.users[self.index]
+        a = self.users[index]
 
         regtaskA = self.dataset.getRegTasks(a)
         subtaskA = self.dataset.getSubTasks(a)
@@ -81,11 +88,7 @@ class UserInteraction(multiprocessing.Process):
             subscoreA = subtaskA[3]
             subtaskA=subtaskA[0]
 
-        t0 = time.time()
-        for j in range(self.index+1,n_users):
-            if (j + 1) % 5000 == 0:
-                print("sub progress: %d/%d for user no %d,cost %ds" % (j + 1, n_users,self.index,time.time()-t0))
-                t0=time.time()
+        for j in range(index+1,n_users):
 
             # user b: register and submit
             b = self.users[j]
@@ -124,18 +127,14 @@ class UserInteraction(multiprocessing.Process):
             score_b = np.sum(subscoreB)/len(regtaskB)
 
             # set entry as outperform degree
-            userVec.append((self.index,j,(com_a - score_a) / score_a))
-            userVec.append((j,self.index,(com_b - score_b) / score_b))
+            self.user_m[index,j]=(com_a - score_a) / score_a
+            self.user_m[j,index]=(com_b - score_b) / score_b
 
-        self.queue.put(userVec)
+    def SubNumbasedMeasure(self,index):
 
-
-    def SubNumbasedMeasure(self):
-
-        n_users=len(self.users)
-        userVec=[]
+        n_users=self.n_users
         # user a : register and submit
-        a = self.users[self.index]
+        a = self.users[index]
 
         regtaskA = self.dataset.getRegTasks(a)
         subtaskA = self.dataset.getSubTasks(a)
@@ -145,11 +144,7 @@ class UserInteraction(multiprocessing.Process):
             subnumA = subtaskA[1]
             subtaskA=subtaskA[0]
 
-        t0 = time.time()
-        for j in range(self.index+1,n_users):
-            if (j + 1) % 5000 == 0:
-                print("sub progress: %d/%d for user no %d,cost %ds" % (j + 1, n_users,self.index,time.time()-t0))
-                t0=time.time()
+        for j in range(index+1,n_users):
 
             # user b: register and submit
             b = self.users[j]
@@ -188,122 +183,132 @@ class UserInteraction(multiprocessing.Process):
             sub_b = np.sum(subnumB)/len(regtaskB)
 
             # set entry as outperform degree
-            userVec.append((self.index,j,(com_a - sub_a) / sub_a))
-            userVec.append((j,self.index,(com_b - sub_b) / sub_b))
-            #print("Interaction", a, b,(com_a - sub_a) / sub_a,(com_b - sub_b) / sub_b)
+            self.user_m[index,j]=(com_a - sub_a) / sub_a
+            self.user_m[j,index]=(com_b - sub_b) / sub_b
 
-        self.queue.put(userVec)
 
     def run(self):
-        #print("process running for user no %d"%self.index)
-        self.method()
+        for index in range(self.n_users):
+            #print(index+1,"of",self.n_users)
+            self.method(index)
 
-        #print("put vec index %d"%self.index)
-        self.outercon.acquire()
-        #print("process finished for user no %d"%self.index)
+        #print(self.taskid,"finished")
+        self.finishSig.acquire()
+        self.queue.put((self.taskid,self.user_m))
 
-        self.finishedSig.put(self.index)
-        self.outercon.notify()
-        self.outercon.release()
+        self.finishSig.notify()
+        self.finishSig.release()
 
-def constructGraph(users,dataset):
-
-    #print(users)
-    queue=Queue()
-
-    n_users=len(users)
-    userMatrix=sparse.dok_matrix((n_users,n_users))
-
-    #statistics for user competition status
-    cond=Condition()
-
-    maxProcess=min(n_users,30)
-    #print("running using maximum %d process(es)"%maxProcess)
-    pools_process=[]
-    finishedSig=Queue()
-    cond.acquire()
-    for i in range(n_users):
-        if len(pools_process)<maxProcess:
-            t=UserInteraction(i,cond,dataset,users,queue,finishedSig)
-            t.method=t.ScoreBasedMeasure
-            t.start()
-
-            pools_process.append(t)
-            #print("next user no %d" % (i + 1))
-        else:
-            if finishedSig.empty():
-
-                cond.notify()
-                cond.wait()
-
-            index=finishedSig.get()
-            #print("destroy index %d"%index)
-            for j in range(len(pools_process)):
-                t=pools_process[j]
-                #print("checking index of %d"%t.index)
-                if t.index==index:
-                    #print("clearing data of cache queue")
-                    while queue.empty() == False:
-                        entries = queue.get()
-                        for data in entries:
-                            userMatrix[data[0], data[1]] = data[2]
-                    t.join()
-                    pools_process[j] = UserInteraction(i,cond, dataset, users, queue, finishedSig)
-                    t=pools_process[j]
-                    t.method=t.ScoreBasedMeasure
-                    t.start()
-
-                    break
-
-    cond.release()
-    #print("gather final data")
-    for t in pools_process:
-        t.join()
-
-    while queue.empty()==False:
-        entries=queue.get()
-        for data in entries:
-            userMatrix[data[0],data[1]]=data[2]
-
-    return (userMatrix.toarray(),users)
-
-def initLocalGraph(mode):
-
-    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
+if __name__ == '__main__':
+    mode=1
+    with open("../data/Statistics/finalTypes.data","rb") as f:
         tasktypes=pickle.load(f)
 
     for t in tasktypes:
         dataset=DataURS(t,mode)
         taskData=Tasks(t,600)
         dataGraph={}
-        gc.collect()
+        data={}
 
         users=list(dataset.getRegUsers())
-        print("builiding user matrix,size=%d"%len(users))
+        print("builiding DIG,users=%d, challenges=%d"%(len(users),len(taskData.taskIDs)))
         print()
         t0=time.time()
         taskids,postingdate=taskData.taskIDs,taskData.postingdate
         #print(postingdate[:30]); exit(10)
-        for i in range(len(taskids)):
-            if (i+1)%30==0:
-                print(i+1,"time=%ds"%(time.time()-t0))
-                t0=time.time()
+        pool_processes=[]
+        max_threads_num=30
+        queue=Queue()
+        finishSig=Condition()
+        i=0
+        while i < len(taskids):
 
             date=postingdate[i]
-            dataset.setTimeline(date)
 
-            user_m,users=constructGraph(users,dataset)
+            if max_threads_num>len(pool_processes):
+                p=UserInteraction(taskid=taskids[i],date=date,dataset=dataset,users=users,
+                                  queue=queue,finishSig=finishSig,scoretag=False)
+                p.start()
+                pool_processes.append(p)
+                i+=1
+            else:
+                finishSig.acquire()
+                #print("pool full")
+                if queue.empty()==True:
+                    finishSig.wait()
 
-            data={}
-            data["size"]=len(user_m)
-            data["users"]=users
-            data["data"]=user_m
-            dataGraph[taskids[i]]=data
+                rmPs=[]
+                while queue.empty()==False:
+                    result=queue.get()
+                    user_m=result[1].toarray()
+                    taskid=result[0]
+                    data={}
+                    data["users"]=users
+                    data["data"]=user_m
+                    #print("fetched",taskid)
+                    dataGraph[taskid]=data
 
-        with open("../data/UserInstances/UserGraph/ScoreBased/"+t+"-UserInteraction.data","wb") as f:
+                    if len(dataGraph)%100==0:
+                        print(len(dataGraph),"of",len(taskids))
+
+                    for j in range(len(pool_processes)):
+                        p=pool_processes[j]
+                        if p.taskid==taskid:
+                            rmPs.append(j)
+                            #print(pool_processes[j].taskid,"finished")
+                            break
+
+                rmPs.sort()
+                rmPs.reverse()
+                #print(rmPs)
+                for j in rmPs:
+                    #pool_processes[j].join()
+                    del pool_processes[j]
+
+                finishSig.release()
+
+        #finishSig.acquire()
+        #print("gathering final part")
+        while len(pool_processes)>0:
+            #if queue.empty()==True:
+                #print("wait",len(dataGraph))
+                #finishSig.wait()
+                #print("wake")
+                #finishSig.release()
+                #finishSig.acquire()
+
+            rmPs=[]
+            while queue.empty()==False:
+                result=queue.get()
+                user_m=result[1].toarray()
+                taskid=result[0]
+                data={}
+                data["users"]=users
+                data["data"]=user_m
+                #print("fetched",taskid)
+                dataGraph[taskid]=data
+
+                if len(dataGraph)%100==0:
+                    print(len(dataGraph),"of",len(taskids))
+
+                for i in range(len(pool_processes)):
+                    p=pool_processes[i]
+                    if p.taskid==taskid:
+                        rmPs.append(i)
+                        #print(pool_processes[i].taskid,"finished")
+                        break
+
+            rmPs.sort()
+            rmPs.reverse()
+            #print(rmPs)
+            for i in rmPs:
+                #pool_processes[i].join()
+                del pool_processes[i]
+
+        #finishSig.release()
+
+        with open("../data/UserInstances/UserGraph/SubNumBased/"+t+"-UserInteraction.data","wb") as f:
             pickle.dump(dataGraph,f)
 
-
-if __name__ == '__main__':
-    mode=1
-    initLocalGraph(mode)
+        print("time=%ds"%(time.time()-t0))
+        print()

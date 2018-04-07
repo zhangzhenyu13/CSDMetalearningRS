@@ -1,6 +1,7 @@
 from DataPrepare.ConnectDB import *
 import multiprocessing,threading
 from DataPrepare.DataContainer import *
+from Utility.genFilters import loadFilteredTypes
 warnings.filterwarnings("ignore")
 
 
@@ -12,8 +13,9 @@ def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
     regdata=Regs.getSelRegistration(tasktype=tasktype,taskids=taskids)
     subdata=Subs.getSelSubmission(tasktype=tasktype,taskids=taskids)
     selnames=regdata.getAllUsers()
+
     userdata=(Users.getSelUsers(usernames=selnames))
-    userdata.skills_vec=onehotFeatures(data=userdata.skills,threshold_num=0.5*len(userdata.names))
+    userdata.skills_vec=onehotFeatures(data=userdata.skills,feature_num=10)
 
     for i in range(len(userdata.names)):
         if userdata.skills[i] is None:
@@ -52,12 +54,17 @@ if __name__ == '__main__':
     userhistory=UserHistoryGenerator()
     #construct history for users of given tasktype
 
-    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
+    with open("../data/TaskInstances/ClusterTaskIndex.data","rb") as f:
         tasktypes=pickle.load(f)
-
+    filers=loadFilteredTypes()
     for t in tasktypes:
+        if t in filers:
+            continue
+
+        if "#" in t:
+            pos=t.find("#")
+            if t[:pos] in filers:
+                continue
 
         #genUserHistoryOfTaskType(userhistory=userhistory,tasktype=t,Users=Users,Regs=Regs,Subs=Subs)
         multiprocessing.Process(target=genUserHistoryOfTaskType,args=(userhistory,t,Users,Regs,Subs)).start()
-
-
