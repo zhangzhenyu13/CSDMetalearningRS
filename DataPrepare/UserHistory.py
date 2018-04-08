@@ -68,3 +68,4 @@ if __name__ == '__main__':
 
         #genUserHistoryOfTaskType(userhistory=userhistory,tasktype=t,Users=Users,Regs=Regs,Subs=Subs)
         multiprocessing.Process(target=genUserHistoryOfTaskType,args=(userhistory,t,Users,Regs,Subs)).start()
+

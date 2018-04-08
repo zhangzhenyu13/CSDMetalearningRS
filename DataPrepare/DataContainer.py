@@ -406,7 +406,6 @@ class Tasks:
 
         print(self.tasktype+": task size=%d"%len(self.taskIDs))
 
-
     def filteredTasks(self,taskids):
         index=len(self.taskIDs)-1
         ids=[]
@@ -430,7 +429,7 @@ class UserHistoryGenerator:
         for username in userdata.names:
             #fiter incomplete data information
             tenure,skills,skills_vec=userdata.getUserInfo(username)
-            if tenure is None or tenure<TestDate:
+            if tenure is None:
                 continue
 
             regids, regdates = regdata.getUserHistory(username)

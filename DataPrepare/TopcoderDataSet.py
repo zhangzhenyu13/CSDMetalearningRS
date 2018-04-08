@@ -49,13 +49,21 @@ class DataSetTopcoder:
 
         return X
 
-    def fetchOne(self,file,key,indedx,vecX):
+    def fetchOne(self,file,key,index,vecX):
         '''
         fetch data segment from one file and put it into vecX
         :param file:
         :param key:
         :return:
         '''
+        t0=time.time()
+        with open(file,"rb") as f:
+            data=pickle.load(f)
+            X=np.array(data[key])
+        vecX[index]=X
+        #print(X.shape)
+        print(" fetched segment:",index,"in %ds"%(time.time()-t0))
+
     def loadData(self):
         print(self.tasktype,"loading data")
         with open(self.filepath,"rb") as f:
@@ -67,18 +75,27 @@ class DataSetTopcoder:
 
         X=np.concatenate((tasks,users),axis=1)
 
+        dates=self.fetchData(self.dataSet,"dates")
+
         self.IDIndex=self.indexDataPoint(taskids=self.taskids)
         tp=int(self.testRatio*len(self.IDIndex))
         self.testPoint=self.IDIndex[tp][1]
+
+        while dates[self.testPoint]>TestDate and tp>0:
+            tp-=1
+            self.testPoint=self.IDIndex[tp][1]
+
+        self.testPoint+=1
+
         vp=int((self.testRatio+self.validateRatio)*len(self.IDIndex))
         self.validatePoint=self.IDIndex[vp][1]
-
 
         self.trainX=X[self.validatePoint:]
         self.validateX=X[self.testPoint:self.validatePoint]
         self.testX=X[:self.testPoint]
 
         print("feature length for user(%d) and task(%d) is %d"%(len(users[0]),len(tasks[0]),len(X[0])))
+        print("total tasks size=%d,test size=%d, validate size=%d"%(len(self.IDIndex),tp,vp-tp))
         print("loaded all the instances, size=%d"%len(self.taskids),
               "test point=%d, validate point=%d"%(self.testPoint,self.validatePoint))
 
@@ -108,20 +125,10 @@ class DataSetTopcoder:
 
         return data,labels
 
-
-
 class TopcoderReg(DataSetTopcoder):
-    def __init__(self,testratio=0.2,validateratio=0.1):
+    def __init__(self,tasktype,testratio=0.2,validateratio=0.1):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
-
-    def fetchOne(self,file,key,index,vecX):
-        t0=time.time()
-        with open(file,"rb") as f:
-            data=pickle.load(f)
-            X=np.array(data[key])
-        vecX[index]=X
-        #print(X.shape)
-        print(" fetched segment:",index,"in %ds"%(time.time()-t0))
+        self.setParameter(tasktype,0)
 
     def RegisterRegressionData(self):
         Y=self.fetchData(self.dataSet,"regists")
@@ -137,19 +144,10 @@ class TopcoderReg(DataSetTopcoder):
 
 
 class TopcoderSub(DataSetTopcoder):
-    def __init__(self,testratio=0.2,validateratio=0.1):
+    def __init__(self,tasktype,testratio=0.2,validateratio=0.1):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
-    def fetchOne(self,file,key,index,vecX):
-        t0=time.time()
-        with open(file,"rb") as f:
-            data=pickle.load(f)
-            regists=np.array(data["regists"])
-            X=np.array(data[key])
-            indices=np.where(regists>0)[0]
-            if len(indices)>0:
-                X=X[indices]
-        vecX[index]=X
-        print(" fetched segment:",index,"in %ds"%(time.time()-t0))
+        self.setParameter(tasktype,1)
+
 
     def CommitRegressionData(self):
         Y=self.fetchData(self.dataSet,"regists")
@@ -168,19 +166,10 @@ class TopcoderSub(DataSetTopcoder):
         self.testLabel=np.array(self.testLabel>0,dtype=np.int)
 
 class TopcoderWin(DataSetTopcoder):
-    def __init__(self,testratio=0.2,validateratio=0.1):
+    def __init__(self,tasktype,testratio=0.2,validateratio=0.1):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
-    def fetchOne(self,file,key,index,vecX):
-        t0=time.time()
-        with open(file,"rb") as f:
-            data=pickle.load(f)
-            submits=np.array(data["submits"],dtype=np.int)
-            X=np.array(data[key])
-            indices=np.where(submits>0)[0]
-            if len(indices)>0:
-                X=X[indices]
-        vecX[index]=X
-        print(" fetched segment:",index,"in %ds"%(time.time()-t0))
+        self.setParameter(tasktype,2)
+
 
     def WinRankData(self):
         Y=self.fetchData(self.dataSet,"ranks")

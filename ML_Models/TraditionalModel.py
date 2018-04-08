@@ -28,7 +28,7 @@ class TraditionalClassifier(ML_model):
         candite_selection = {
             "RandomFrorest": ensemble.RandomForestClassifier(),
             "ExtraForest": ensemble.ExtraTreesClassifier(),
-            "AdaBoost": ensemble.AdaBoostClassifier(),
+            #"AdaBoost": ensemble.AdaBoostClassifier(),
             #"GradientBoost": ensemble.GradientBoostingClassifier(),
             #"SVM": svm.SVC(C=0.9)
         }
@@ -68,8 +68,8 @@ class TraditionalClassifier(ML_model):
         print("model",self.name,"trainning finished in %ds"%(t1-t0),"validate score=%f"%score,"CM=\n",cm)
 
 def testWinRankClassification(tasktype,queue):
-    data=TopcoderWin(testratio=0.1,validateratio=0.1)
-    data.setParameter(tasktype=tasktype,mode=mode)
+    data=TopcoderWin(tasktype,testratio=0.1,validateratio=0.1)
+
     data.loadData()
 
     data.WinRankData()
@@ -81,11 +81,11 @@ def testWinRankClassification(tasktype,queue):
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2,normalize=True)))
+    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
     kacc=[data.tasktype]
-    for k in (1,3,5,10):
+    for k in (3,5,10,20):
         acc=topKAccuracy(Y_predict2,data,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)

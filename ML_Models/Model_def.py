@@ -44,6 +44,7 @@ def topKAccuracy(Y_predict2,data,k):
     # batch data into task centered array
     ids=data.taskids[:data.testPoint]
     indexData=data.indexDataPoint(ids)
+    #print(indexData);exit(12)
     left=indexData[0][1]
 
     Y_predict=[]
@@ -68,18 +69,31 @@ def topKAccuracy(Y_predict2,data,k):
 
         Y_predict.append(predictY)
         Y_true.append(np.where(trueY==0)[0])
-        #print("predict",Y_predict)
-        #print("true",Y_true)
+
         left=right
-    #print(len(Y_true))
-    #for i in range(len(Y_true)):
-    #   print(Y_predict[i].shape,Y_true[i].shape)
-    #test intersection
-    Y=[]
+
+    right=len(ids)
+    trueY=data.testLabel[left:right]
+    predictY=Y_predict2[left:right]
+    ys=[]
+    for i in range(len(predictY)):
+        ys.append([i,predictY[i]])
+    m_s=MySort(ys)
+    m_s.compare_vec_index=-1
+    ys=m_s.mergeSort()
+    ys.reverse()
+    ys=np.array(ys)
+        #print(ys)
+    predictY=ys[:,0]
+
+    Y_predict.append(predictY)
+    Y_true.append(np.where(trueY==0)[0])
+    #print("predict",len(Y_predict),Y_predict)
+    #print("true",len(Y_true),Y_true)
+    Y=np.zeros(shape=len(Y_true))
 
     for i in range(len(Y_true)):
-        if len(Y_true[i]==0):
-            continue
+
         tag=False
 
         for ele in Y_predict[i][:k]:
@@ -87,6 +101,6 @@ def topKAccuracy(Y_predict2,data,k):
                 tag=True
                 break
 
-        Y.insert(i,tag)
+        Y[i]=tag
 
     return np.array(Y)

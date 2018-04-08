@@ -2,6 +2,7 @@ import multiprocessing
 import time,gc
 from DataPrepare.DataContainer import *
 from Utility.TagsDef import *
+from Utility.genFilters import loadFilteredTypes
 
 class DataInstances(multiprocessing.Process):
     maxProcessNum=16
@@ -87,7 +88,7 @@ class DataInstances(multiprocessing.Process):
         regists=[]
         dataIndex=self.selTasks.dataIndex
 
-        userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=1)
+        userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=0)
 
         print(self.tasktype+"=>:","construct registration history based instances with %d tasks and %d users" %
               (len(dataIndex), len(userData.keys())))
@@ -128,6 +129,7 @@ class DataInstances(multiprocessing.Process):
                     missinguser += 1
                     continue
 
+
                 if name in reg_usernams:
                     regists.append(1)
                 else:
@@ -147,12 +149,16 @@ class DataInstances(multiprocessing.Process):
                 #print("reg history of",name,len(regtasks[0]))
 
                 # reg history info
-                regID, regDate = regtasks[0], regtasks[1]
+                if len(regtasks[0])>0:
+                    regID, regDate = regtasks[0], regtasks[1]
 
-                date_interval = regDate[len(regDate)-1] - date
-                participate_recency = regDate[0]-date
-                participate_frequency = len(regID)
-
+                    date_interval = regDate[len(regDate)-1] - date
+                    participate_recency = regDate[0]-date
+                    participate_frequency = len(regID)
+                else:
+                    date_interval=0
+                    participate_recency=1e+6
+                    participate_frequency=0
                 #user vec
                 user=[tenure-date,date_interval,participate_recency,participate_frequency]
                 user=user+list(skills_vec)
@@ -277,11 +283,6 @@ class DataInstances(multiprocessing.Process):
 
                 tenure, skills,skills_vec = userData[name]["tenure"],userData[name]["skills"],userData[name]["skills_vec"]
 
-                if tenure is None or tenure<date:
-                    #no such user in user data
-                    missinguser+=1
-                    continue
-
                 #get reg and sub history before date for user:name
                 regtasks = userData[name]["regtasks"]
                 while len(regtasks[0]) > 0 and regtasks[1][0] < date:
@@ -322,19 +323,30 @@ class DataInstances(multiprocessing.Process):
                 #print("reg and sub history of",name,len(regtasks[0]),len(subtasks[0]))
 
                 # reg history info
-                regID, regDate = regtasks[0], regtasks[1]
+                if len(regtasks[0])>0:
+                    regID, regDate = regtasks[0], regtasks[1]
 
-                date_interval = regDate[len(regDate)-1] - date
-                participate_recency = regDate[0]-date
-                participate_frequency = len(regID)
+                    date_interval = regDate[len(regDate)-1] - date
+                    participate_recency = regDate[0]-date
+                    participate_frequency = len(regID)
+                else:
+                    date_interval=0
+                    participate_frequency=0
+                    participate_recency=1e+6
 
-                # sub history info
-                subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], subtasks[4]
+                if len(subtasks[0])>0:
+                    # sub history info
+                    subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], subtasks[4]
 
-                commit_recency = subDate[0]-date
-                commit_frequency = np.sum(subNum)
-                last_perfromance = subScore[0]
-                last_rank=subScore[0]
+                    commit_recency = subDate[0]-date
+                    commit_frequency = np.sum(subNum)
+                    last_perfromance = subScore[0]
+                    last_rank=subrank[0]
+                else:
+                    commit_frequency=0
+                    commit_recency=1e+6
+                    last_perfromance=0
+                    last_rank=10
 
                 user=[tenure-date,date_interval,participate_recency,participate_frequency,commit_recency,commit_frequency,
                       last_perfromance,last_rank]
@@ -461,11 +473,6 @@ class DataInstances(multiprocessing.Process):
 
                 tenure, skills,skills_vec = userData[name]["tenure"],userData[name]["skills"],userData[name]["skills_vec"]
 
-                if tenure is None or tenure<date:
-                    #no such user in user data
-                    missinguser+=1
-                    continue
-
                 #get reg and sub history before date for user:name
                 regtasks = userData[name]["regtasks"]
                 while len(regtasks[0]) > 0 and regtasks[1][0] < date:
@@ -491,30 +498,39 @@ class DataInstances(multiprocessing.Process):
                 #print("reg and sub history of",name,len(regtasks[0]),len(subtasks[0]))
 
                 # reg history info
-                regID, regDate = regtasks[0], regtasks[1]
+                if len(regtasks[0])>0:
+                    regID, regDate = regtasks[0], regtasks[1]
 
-                date_interval = regDate[len(regDate)-1] - date
-                participate_recency = regDate[0]-date
-                participate_frequency = len(regID)
+                    date_interval = regDate[len(regDate)-1] - date
+                    participate_recency = regDate[0]-date
+                    participate_frequency = len(regID)
+                else:
+                    date_interval=0
+                    participate_recency=1e+6
+                    participate_frequency=0
+                if len(subtasks[0])>0:
+                    # sub history info
+                    subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], subtasks[4]
 
-                # sub history info
-                subID, subNum, subDate, subScore, subrank = subtasks[0], subtasks[1], subtasks[2], subtasks[3], subtasks[4]
+                    commit_recency = subDate[0]-date
+                    commit_frequency = np.sum(subNum)
+                    last_perfromance = subScore[0]
+                    last_rank=subrank[0]
 
-                commit_recency = subDate[0]-date
-                commit_frequency = np.sum(subNum)
-                last_perfromance = subScore[0]
-                last_rank=subScore[0]
-                win_indices = np.where(subrank == 0)[0]
-                win_frequency = len(win_indices)
-                if win_frequency==0:
-                    #those without win history are filtered
-                    missinguser+=1
-                    continue
-                win_recency = -1
-                for i in range(len(subID)):
-                    if subrank[i] == 0:
-                        win_recency = subDate[i]
-                        break
+                    win_indices = np.where(subrank == 0)[0]
+                    win_frequency = len(win_indices)
+                    win_recency = 1e+6
+                    for i in range(len(subID)):
+                        if subrank[i] == 0:
+                            win_recency = subDate[i]
+                            break
+                else:
+                    commit_recency=1e+6
+                    commit_frequency=0
+                    last_perfromance=0
+                    last_rank=10
+                    win_frequency=0
+                    win_recency=1e+6
 
                 user=[tenure-date,date_interval,participate_recency,participate_frequency,commit_recency,commit_frequency,
                       win_recency,win_frequency,last_perfromance,last_rank]
@@ -626,14 +642,27 @@ class DataInstances(multiprocessing.Process):
 
 def genDataSet():
     process_pools=[]
-    with open("../data/TaskInstances/ClusterTaskIndex.data","rb") as f:
+    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
         tasktypes=pickle.load(f)
-
+    filters=loadFilteredTypes()
     with open("../data/runResults/types.txt","w") as f:
         for t in tasktypes:
+            if t in filters:
+                continue
+            if "#" in t:
+                pos=t.find("#")
+                if t[:pos] in filters:
+                    continue
+
             f.writelines(t+"\n")
 
         for t in tasktypes:
+            if t in filters:
+                continue
+            if "#" in t:
+                pos=t.find("#")
+                if t[:pos] in filters:
+                    continue
 
             proc=DataInstances(tasktype=t,cond=cond,usingmode=mode)
             proc.start()
