@@ -7,6 +7,7 @@ import time
 import gc
 import numpy as np
 from DataPrepare.DataContainer import Tasks,UserHistoryGenerator
+from Utility.SelectedTaskTypes import loadFilteredTypes
 #datastructure for reg and sub
 
 class DataURS:
@@ -200,13 +201,16 @@ class UserInteraction(multiprocessing.Process):
         self.finishSig.release()
 
 if __name__ == '__main__':
-    mode=1
-    with open("../data/Statistics/finalTypes.data","rb") as f:
+    mode=2
+    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
         tasktypes=pickle.load(f)
-
+    filters=loadFilteredTypes()
     for t in tasktypes:
+        if t in filters:
+            continue
+
         dataset=DataURS(t,mode)
-        taskData=Tasks(t,600)
+        taskData=Tasks(t,1500)
         dataGraph={}
         data={}
 

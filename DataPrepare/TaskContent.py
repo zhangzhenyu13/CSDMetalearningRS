@@ -1,12 +1,14 @@
 from DataPrepare.ConnectDB import *
-from sklearn import decomposition
+from Utility.FeatureEncoder import onehotFeatures
 import numpy as np
 import matplotlib.pyplot as plt
-import multiprocessing
+import multiprocessing,pickle
 from DataPrepare.DataContainer import TaskDataContainer
 from ML_Models.ClusteringModel import ClusteringModel
+from ML_Models.DocTopicsModel import LDAFlow
 from Utility.TagsDef import *
-from Utility.genFilters import *
+from Utility import SelectedTaskTypes
+
 warnings.filterwarnings("ignore")
 
 def showData(X):
@@ -37,6 +39,8 @@ def initDataSet():
 
         for data in dataset:
             #print(data)
+            if data[9]  in SelectedTaskTypes.filteredtypes:
+                continue
             if data[1] is None:
                 continue
             ids.append(data[0])
@@ -76,7 +80,19 @@ def initDataSet():
 
         print("task size=",len(ids),len(docs),len(techs),len(lans),len(startdates),len(durations),len(prizes),len(diffdegs),len(tasktypes))
 
+        print("saving global encoding")
+        techs_enc=onehotFeatures(techs)
+        lans_enc=onehotFeatures(lans)
+        print(techs_enc)
+        print(lans_enc)
+        lda=LDAFlow()
+        lda.name="global"
+        lda.train_doctopics(docs)
+        with open("../data/TaskInstances/GlobalEncoding.data","wb") as f:
+            pickle.dump({"techs":techs_enc,"lans":lans_enc},f)
+
         #adding to corresponding type
+        print("init data set types")
 
         dataSet={}
         for i in range(len(tasktypes)):
@@ -113,32 +129,9 @@ def initDataSet():
 
                 dataSet[t]=container
 
-        typeInfo={}
-        selTypeInfo={}
-        for t in dataSet.keys():
-            typeInfo[t]=dataSet[t].ids
-            if len(dataSet[t].ids)>TaskFilterThreshold:
-                selTypeInfo[t]=dataSet[t].ids
-
-        with open("../data/TaskInstances/OriginalTasktype.data","wb") as f:
-            pickle.dump(typeInfo,f)
-
-        with open("../data/TaskInstances/SelTasktype.data","wb") as f:
-            pickle.dump(selTypeInfo,f)
-
-        with open("../data/TaskInstances/OriginalTasktype.data", "rb") as f:
-            typeInfo=pickle.load(f)
-            total=0
-            for k in typeInfo.keys():print(k,",",len(typeInfo[k]));total+=len(typeInfo[k])
-        print("original task num=%d of %d" %(total,len(ids)))
+        print("slected types(%d):"%len(dataset),dataSet.keys())
         print()
 
-        print("Selected Task Item Type")
-        with open("../data/TaskInstances/SelTasktype.data", "rb") as f:
-            selTypeInfo=pickle.load(f)
-            total=0
-            for k in selTypeInfo.keys():print(k,",",len(selTypeInfo[k]));total+=len(selTypeInfo[k])
-        print("Selected task num=%d of %d" %(total,len(ids)))
         return dataSet
 
 def clusterVec(taskdata,docX):
@@ -188,24 +181,18 @@ def genResultOfTasktype(tasktype,taskdata,choice):
 
     taskdata.encodingFeature(choice)
     docX=taskdata.docs
-
-    #save vec representaion of all the tasks
     saveTaskData(taskdata)
 
-    with open("../data/TaskInstances/SelTasktype.data","rb") as f:
-        clusterTypes=pickle.load(f)
-
-    if tasktype not in clusterTypes:
-        saveTaskData(taskdata)
+    clusterEXP=800
+    n_clusters=max(1,len(taskdata.ids)//clusterEXP)
+    if n_clusters==1:
         return
 
     #cluster task based on its feature
     X=clusterVec(taskdata,docX)
 
-    clusterEXP=800
     model=ClusteringModel()
     model.name=tasktype+"-clusteringModel"
-    n_clusters=max(1,len(taskdata.ids)//clusterEXP)
 
     model.trainCluster(X=X,n_clusters=n_clusters,minibatch=False)
 
@@ -274,16 +261,12 @@ def genResultOfTasktype(tasktype,taskdata,choice):
 def genResults():
     dataSet=initDataSet()
 
-    filtertypes=loadFilteredTypes()
     choice=eval(input("1:LDA; 2:LSA \t"))
     print("+++++++++++++++++++++++++++++++++++++++++++++++++")
-    with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
-        tasktypes=pickle.load(f)
+    tasktypes=dataSet.keys()
     for t in tasktypes:
         taskdata=dataSet[t]
         tasktype=taskdata.taskType
-        if tasktype in filtertypes:
-            continue
 
         #print(taskdata.ids);exit(10)
         multiprocessing.Process(target=genResultOfTasktype,args=(tasktype,taskdata,choice)).start()

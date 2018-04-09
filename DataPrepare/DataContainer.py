@@ -1,9 +1,8 @@
-from ML_Models.DocTopicsModel import LSAFlow,LDAFlow
 from Utility.TagsDef import *
+from ML_Models.DocTopicsModel import LDAFlow,LSAFlow
 from DataPrepare.ConnectDB import ConnectDB
-from Utility.FeatureEncoder import onehotFeatures
+from Utility.FeatureEncoder import *
 from Utility.TagsDef import  *
-import numpy as np
 import pickle,copy
 import warnings
 warnings.filterwarnings("ignore")
@@ -23,28 +22,34 @@ class TaskDataContainer:
     def encodingFeature(self,choice):
         self.choice=choice
 
+
+        print("loading encoding data",self.taskType)
+        with open("../data/TaskInstances/GlobalEncoding.data","wb") as f:
+            encoder=pickle.load(f)
+        techs_dict=encoder["techs"]
+        lans_dict=encoder["lans"]
+
         docsEncoder={1:LDAFlow,2:LSAFlow}
-        print("encoding docs",self.taskType)
         doc_model=docsEncoder[choice]()
-        doc_model.name=self.taskType
+        doc_model.name="global"
         try:
             doc_model.loadModel()
         except :
             print("loading doc model failed, now begin to train the model")
+            doc_model.name=self.taskType
             doc_model.train_doctopics(self.docs)
         finally:
-            print("model construct finished")
+            print("model loaded")
             print()
-
         self.docs=doc_model.transformVec(self.docs)
         print(self.taskType,"docs shape",self.docs.shape)
 
         print("encoding techs",self.taskType)
-        self.techs_vec=onehotFeatures(self.techs,feature_num=TaskTechs)
+        self.techs_vec=EncodeByDict(self.techs,techs_dict,TaskTechs)
         print(self.taskType,"techs shape",self.techs_vec.shape)
 
         print("encoding lans",self.taskType)
-        self.lans_vec=onehotFeatures(self.lans,feature_num=TaskLans)
+        self.lans_vec=EncodeByDict(self.lans,lans_dict,TaskLans)
         print(self.taskType,"lans shape",self.lans_vec.shape)
 
 class UserDataContainer:
@@ -489,6 +494,8 @@ class UserHistoryGenerator:
 import matplotlib.pyplot as plt
 from Utility.personalizedSort import *
 if __name__ == '__main__':
+
+    '''
     Users=UserData()
     Users=Users.getSelUsers(Users.name[np.where(Users.memberage>600)])
     y=Users.tenure.reshape((len(Users.tenure),1)).tolist()
@@ -497,3 +504,5 @@ if __name__ == '__main__':
     x=np.arange(len(y))
     plt.plot(x,y)
     plt.show()
+    '''
+

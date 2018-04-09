@@ -106,43 +106,7 @@ def countUsers():
                 print(count,tasktype,ModeTag[mode]+":%d"%len(userdata))
             print()
 
-def genTaskFileIndex():
 
-    alltypes=np.array(os.listdir("../data/TaskInstances/taskDataSet/"))
-    for i in range(len(alltypes)):
-        alltypes[i]=alltypes[i][:-14]
-    types=[]
-    clustertypes=[]
-    tmp=[]
-    for t in alltypes:
-        if "#" not in t:
-            types.append(t)
-        else:
-            pos=t.find("#")
-            tmp.append(t[:pos])
-
-    for t in alltypes:
-        if "#" in t:
-            clustertypes.append(t)
-        else:
-            if t not in tmp:
-                clustertypes.append(t)
-
-    print(len(types),types)
-    print(len(clustertypes),clustertypes)
-    print("First2Finish" in types,"First2Finish" in clustertypes)
-    #exit(10)
-    with open("../data/TaskInstances/TaskIndex.data","wb") as f:
-        pickle.dump(types,f)
-
-    with open("../data/TaskInstances/ClusterTaskIndex.data","wb") as f:
-        pickle.dump(clustertypes,f)
-
-    with open("../data/TaskInstances/ClusterTaskIndex.data","rb") as f:
-        print(pickle.load(f))
-    print()
-    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
-        print(pickle.load(f))
 
 
 
@@ -151,6 +115,6 @@ if __name__ == '__main__':
     #testReg()
     #scanID()
     #testFileIndex()
-    #countUsers()
-    genTaskFileIndex()
+    countUsers()
+
 

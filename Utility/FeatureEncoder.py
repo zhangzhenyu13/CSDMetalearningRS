@@ -1,10 +1,9 @@
-from scipy import sparse
-from Utility.personalizedSort import *
-
-def onehotFeatures(data,feature_num=20):
+from Utility.personalizedSort import MySort
+import numpy as np
+def onehotFeatures(data):
     '''
     :param data:str data
-    :return: one-hot vector representation
+    :return: one-hot feature_dict
     '''
     c = {}
     for r in data:
@@ -18,45 +17,52 @@ def onehotFeatures(data,feature_num=20):
                 c[x] = 1
     #print(data)
     #print("doc item",c)
+    rmK=[]
+    for k in c.keys():
+        if "Other" in k:
+            rmK.append(k)
+    for k in rmK:
+        del c[k]
 
-    while len(c)>feature_num:
-        minNum=1e+5
-        rmK=None
-        for k in c.keys():
-            if c[k]<minNum :
-                rmK=k
-                minNum=c[k]
+    features=[]
+    for k in c.keys():
+        features.append([k,c[k]])
+    ms=MySort(features)
+    ms.compare_vec_index=-1
+    features=ms.mergeSort()
+    features_dict={}
 
-        del c[rmK]
+    for i in range(len(features)):
+        item=features[i]
+        features_dict[item[0]]=item[1]
+    print(features_dict)
 
-    c=c.keys()
-    i_c = {}
-    count = 0
-    for i in c:
-        i_c[i] = count
-        count += 1
-    #print(i_c)
-    X = sparse.dok_matrix((len(data), feature_num))
-    row = 0
-    for r in data:
+    features_dict={}
+    for i in range(len(features)):
+        features_dict[features[i][0]]=i
 
-        if r is None:
-            row += 1
-            continue
+    return features_dict
 
-        xs = r.split(",")
-        for x in xs:
-            if x not in c:
-                continue
-            col = i_c[x]
-            try:
-                X[row, col] = 1
-            except:
+def EncodeByDictOne(record,feature_dict,clip_num):
+    x=np.zeros(shape=min(len(feature_dict),clip_num))
+    if record is None:
+        record=""
+    record=record.split(",")
+    for r in record:
+        if r in feature_dict.keys():
+            index=feature_dict[r]
+            if index<len(x):
+                x[index]=1
+    return x
 
-                print("~~~~~~",row,col,X.shape)
-        row += 1
-    #print("one-hot feature size=%d"%(len(c)),"removed feature size=%d"%(len(rmKs)))
+def EncodeByDict(data,feature_dict,clip_num):
+    X=[]
 
-    return X.toarray()
+    for i in range(len(data)):
+        record=data[i]
+        x=EncodeByDictOne(record,feature_dict,clip_num)
+        X.insert(i,x)
 
+    X=np.array(X)
 
+    return X

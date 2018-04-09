@@ -95,13 +95,20 @@ def testWinRankClassification(tasktype,queue):
 
 #test the performance
 if __name__ == '__main__':
-
+    from Utility.SelectedTaskTypes import loadFilteredTypes
     with open("../data/TaskInstances/TaskIndex.data","rb") as f:
         tasktypes=pickle.load(f)
+    filters=loadFilteredTypes()
     mode=1
     queue=multiprocessing.Queue()
     pool_processes=[]
     for t in tasktypes:
+        if t in filters:
+            continue
+        if "#" in t:
+            pos=t.find("#")
+            if t[:pos] in filters:
+                continue
         #if t=="Architecture":continue
 
         #testWinRankClassification(t)

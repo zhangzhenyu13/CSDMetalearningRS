@@ -1,7 +1,7 @@
 from DataPrepare.ConnectDB import *
 import multiprocessing,threading
 from DataPrepare.DataContainer import *
-from Utility.genFilters import loadFilteredTypes
+from Utility.SelectedTaskTypes import loadFilteredTypes
 warnings.filterwarnings("ignore")
 
 

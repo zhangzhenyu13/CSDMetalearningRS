@@ -19,13 +19,15 @@ class LDAFlow:
         self.name=""
     def cleanDocs(self,docs_o):
         docs=copy.deepcopy(docs_o)
+
         stop = set(stopwords.words('english'))
         exclude = set(string.punctuation)
         lemma = WordNetLemmatizer()
+
         for i in range(len(docs)):
             doc = docs[i]
-            doc = " ".join([i for i in doc.lower().split() if i not in stop])
             doc = ''.join(ch for ch in doc if ch not in exclude)
+            doc = " ".join([i for i in doc.lower().split() if i not in stop])
             doc = " ".join(lemma.lemmatize(word) for word in doc.split())
             docs[i] = doc.split()
         return  docs

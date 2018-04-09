@@ -2,7 +2,7 @@ import multiprocessing
 import time,gc
 from DataPrepare.DataContainer import *
 from Utility.TagsDef import *
-from Utility.genFilters import loadFilteredTypes
+from Utility.SelectedTaskTypes import loadFilteredTypes
 
 class DataInstances(multiprocessing.Process):
     maxProcessNum=16
@@ -644,33 +644,27 @@ def genDataSet():
     process_pools=[]
     with open("../data/TaskInstances/TaskIndex.data","rb") as f:
         tasktypes=pickle.load(f)
+    with open("../data/TaskInstances/ClusterTaskIndex.data","rb") as f:
+        cltasktypes=pickle.load(f)
     filters=loadFilteredTypes()
-    with open("../data/runResults/types.txt","w") as f:
-        for t in tasktypes:
-            if t in filters:
+
+    for t in cltasktypes:
+        if t in filters:
+            continue
+        if t in tasktypes:
+            continue
+
+        if "#" in t:
+            pos=t.find("#")
+            if t[:pos] in filters:
                 continue
-            if "#" in t:
-                pos=t.find("#")
-                if t[:pos] in filters:
-                    continue
 
-            f.writelines(t+"\n")
-
-        for t in tasktypes:
-            if t in filters:
-                continue
-            if "#" in t:
-                pos=t.find("#")
-                if t[:pos] in filters:
-                    continue
-
-            proc=DataInstances(tasktype=t,cond=cond,usingmode=mode)
-            proc.start()
-            process_pools.append(proc)
-
+        proc=DataInstances(tasktype=t,cond=cond,usingmode=mode)
+        proc.start()
+        process_pools.append(proc)
 
 if __name__ == '__main__':
     cond=multiprocessing.Condition()
 
-    mode=0
+    mode=2
     genDataSet()
