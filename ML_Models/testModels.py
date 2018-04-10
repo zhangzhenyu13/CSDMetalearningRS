@@ -1,10 +1,11 @@
 from ML_Models.TraditionalModel import *
 from ML_Models.CascadingModel import *
+from ML_Models.DNNModel import *
 from DataPrepare.TopcoderDataSet import *
 from sklearn import metrics
 import multiprocessing
 
-def testRegClassification(tasktype,queue):
+def testRegClassification(tasktype,queue,model=TraditionalClassifier()):
     data=TopcoderReg(tasktype,testratio=0.2,validateratio=0.1)
 
     data.loadData()
@@ -13,17 +14,15 @@ def testRegClassification(tasktype,queue):
     data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
 
-    model=TraditionalClassifier()
-    model.dataSet=data
     model.name=data.tasktype+"-classifier(Reg)"
-    model.trainModel()
+    model.trainModel(data)
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
     print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
-def testSubClassification(tasktype,queue):
+def testSubClassification(tasktype,queue,model=TraditionalClassifier()):
     data=TopcoderSub(tasktype,testratio=0.2,validateratio=0.1)
 
     data.loadData()
@@ -31,10 +30,9 @@ def testSubClassification(tasktype,queue):
     data.SubmitClassificationData()
     data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
-    model=TraditionalClassifier()
-    model.dataSet=data
+
     model.name=data.tasktype+"-classifier(Reg)"
-    model.trainModel()
+    model.trainModel(data)
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
@@ -42,16 +40,15 @@ def testSubClassification(tasktype,queue):
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
 
-def testWinClassification(tasktype,queue):
+def testWinClassification(tasktype,queue,model=TraditionalClassifier()):
     data=TopcoderWin(tasktype,testratio=0.2,validateratio=0.1)
     data.loadData()
     data.WinClassificationData()
     data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
-    model=TraditionalClassifier()
-    model.dataSet=data
+
     model.name=data.tasktype+"-classifier(Win)"
-    model.trainModel()
+    model.trainModel(data)
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
@@ -67,12 +64,38 @@ def testWinClassification(tasktype,queue):
     print()
     queue.put(kacc)
 
+def testCascadingModel(tasktype,queue):
+    data=TopcoderWin(tasktype,testratio=0.2,validateratio=0.1)
+    data.loadData()
+    data.WinClassificationData()
+    data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
+    data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
+
+    model=CascadingModel()
+    model.loadModel(tasktype)
+
+    Y_predict2=model.predict(data.testX)
+    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
+    print("Confusion matrix ")
+    print(metrics.confusion_matrix(data.testLabel,Y_predict2))
+    kacc=[data.tasktype]
+    for k in (3,5,10,20):
+        acc=topKAccuracyWithDIG(Y_predict2,data,k)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+        kacc=kacc+[acc]
+    print()
+    queue.put(kacc)
+
+
+
 #test the performance
 if __name__ == '__main__':
     testMethod={
         1:testRegClassification,
         2:testSubClassification,
-        3:testWinClassification
+        3:testWinClassification,
+        4:testCascadingModel
     }
     selectedmethod=1
 

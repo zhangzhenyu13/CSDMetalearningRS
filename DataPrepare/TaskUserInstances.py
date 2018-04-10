@@ -121,15 +121,11 @@ class DataInstances(multiprocessing.Process):
                         regtasks[l] = np.delete(regtasks[l], 0, axis=0)
                 userData[name]["regtasks"] = regtasks
 
-
                 subtasks = userData[name]["subtasks"]
                 while len(subtasks[0]) > 0 and subtasks[2][0] <= date:
                     for l in range(len(subtasks)):
                         subtasks[l] = np.delete(subtasks[l], 0, axis=0)
                 userData[name]["subtasks"] = subtasks
-
-
-                #print("reg and sub history of",name,len(regtasks[0]),len(subtasks[0]))
 
                 # reg history info
                 if len(regtasks[0])>0:
@@ -317,6 +313,6 @@ if __name__ == '__main__':
     cond=multiprocessing.Condition()
     queue=multiprocessing.Queue()
 
-    mode=2
+    mode=0
     genDataSet()
 

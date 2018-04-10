@@ -5,7 +5,6 @@ class ML_model:
     def __init__(self):
         self.model=None
         self.name=""
-        self.dataSet=None
 
     def predict(self,X):
         '''
@@ -13,7 +12,7 @@ class ML_model:
         :param X: input samples,(n,D)
         :return: given result, class or a real num
         '''
-    def trainModel(self):
+    def trainModel(self,dataSet):
         pass
 
     def findPath(self):

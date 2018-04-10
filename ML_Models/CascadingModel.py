@@ -14,7 +14,10 @@ class CascadingModel:
         self.regModel.name=tasktype+"-classifier(Reg)"
         self.subModel.name=tasktype+"-classifier(Sub)"
         self.winModel.name=tasktype+"-classifier(Win)"
-        pass
+        self.regModel.loadModel()
+        self.subModel.loadModel()
+        self.winModel.loadModel()
+
     def predict(self,X):
         print("Cascading Model is predicting")
         regY=self.regModel.predict(X)
