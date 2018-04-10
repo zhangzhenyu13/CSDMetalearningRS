@@ -1,35 +1,13 @@
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-
-def countUserTaskType():
+from Utility import SelectedTaskTypes
+def genCRTable(tasktypes):
     from DataPrepare.DataContainer import UserHistoryGenerator
     userhis=UserHistoryGenerator()
     usertypesReg={}
     usertypesSub={}
     usertypesWin={}
-
-    with open("../data/TaskInstances/ClusterTaskIndex.data","rb") as f:
-        tasktypes=pickle.load(f)
-    with open("../data/Statistics/typefilters.data","rb") as f:
-        filtertypes=pickle.load(f)
-    ts1=[]
-    for t in tasktypes:
-        if t in filtertypes:
-            continue
-        if "#" in t:
-            pos=t.find("#")
-            if t[:pos] in filtertypes:
-                continue
-        ts1.append(t)
-
-    tasktypes=ts1
-
-    tasktypes=set(tasktypes).difference(filtertypes)
-    tasktypes=list(tasktypes)
-
-    with open("../data/Statistics/finalTypes.data","wb") as f:
-        pickle.dump(tasktypes,f)
 
     #print(len(tasktypes),tasktypes);exit(10)
 
@@ -173,5 +151,6 @@ def gentransferNeighbors(cr_threshold_reg=0.8,cr_threshold_sub=0.6,cr_threshold_
         print()
 
 if __name__ == '__main__':
-    countUserTaskType()
+    tasktypes=SelectedTaskTypes.loadTaskTypes()
+    genCRTable(tasktypes["keeped"])
     gentransferNeighbors()

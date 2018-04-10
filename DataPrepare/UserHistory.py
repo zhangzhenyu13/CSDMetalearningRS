@@ -1,7 +1,7 @@
 from DataPrepare.ConnectDB import *
 import multiprocessing,threading
 from DataPrepare.DataContainer import *
-from Utility.SelectedTaskTypes import loadFilteredTypes
+from Utility import SelectedTaskTypes
 warnings.filterwarnings("ignore")
 
 
@@ -15,7 +15,10 @@ def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
     selnames=regdata.getAllUsers()
 
     userdata=(Users.getSelUsers(usernames=selnames))
-    userdata.skills_vec=onehotFeatures(data=userdata.skills,feature_num=10)
+    with open("../data/UserInstances/SkillEncoding.data","rb") as f:
+        skills_feature=pickle.load(f)
+
+    userdata.skills_vec=EncodeByDict(userdata.skills,skills_feature,UserSkills)
 
     for i in range(len(userdata.names)):
         if userdata.skills[i] is None:
@@ -44,27 +47,36 @@ def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
     for mode in (0,1,2):
         userhistory.genActiveUserHistory(userdata=userdata,regdata=regdata,subdata=subdata,mode=mode,tasktype=tasktype)
 
+def skillEncoding():
+    #skill feature_dict
+    print("saving skills features")
+    with open("../data/TaskInstances/GlobalEncoding.data","rb") as f:
+        data=pickle.load(f)
+        taskids=data["ids"]
+    gsubdata=Subs.getSelSubmission("global",taskids)
+    allsubusers=gsubdata.getAllUsers()
+    allsubskills=[]
+    for i in range(len(Users.name)):
+        name=Users.name[i]
+        if name in allsubusers:
+            allsubskills.append(Users.skills[i])
+    skills_feature=onehotFeatures(allsubskills)
+    print(skills_feature)
+    with open("../data/UserInstances/SkillEncoding.data","wb") as f:
+        pickle.dump(skills_feature,f)
 
 if __name__ == '__main__':
     #init data set
     Regs=Registration()
     Subs=Submission()
     Users=UserData()
-
+    #
+    # skillEncoding()
     userhistory=UserHistoryGenerator()
     #construct history for users of given tasktype
 
-    with open("../data/TaskInstances/ClusterTaskIndex.data","rb") as f:
-        tasktypes=pickle.load(f)
-    filers=loadFilteredTypes()
-    for t in tasktypes:
-        if t in filers:
-            continue
-
-        if "#" in t:
-            pos=t.find("#")
-            if t[:pos] in filers:
-                continue
+    tasktypes=SelectedTaskTypes.loadTaskTypes()
+    for t in tasktypes["clustered"]:
 
         #genUserHistoryOfTaskType(userhistory=userhistory,tasktype=t,Users=Users,Regs=Regs,Subs=Subs)
         multiprocessing.Process(target=genUserHistoryOfTaskType,args=(userhistory,t,Users,Regs,Subs)).start()

@@ -24,7 +24,7 @@ class TaskDataContainer:
 
 
         print("loading encoding data",self.taskType)
-        with open("../data/TaskInstances/GlobalEncoding.data","wb") as f:
+        with open("../data/TaskInstances/GlobalEncoding.data","rb") as f:
             encoder=pickle.load(f)
         techs_dict=encoder["techs"]
         lans_dict=encoder["lans"]
@@ -201,8 +201,6 @@ class UserData:
                 skills.append(self.skills[i])
 
         return UserDataContainer(names,tenure,skills)
-
-
 
 class Registration:
     def __init__(self,):

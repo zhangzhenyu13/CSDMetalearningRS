@@ -3,4 +3,4 @@ TestDate=600
 TaskFeatures=100
 TaskLans=18
 TaskTechs=100
-UserSkills=10
+UserSkills=100

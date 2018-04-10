@@ -39,7 +39,8 @@ def initDataSet():
 
         for data in dataset:
             #print(data)
-            if data[9]  in SelectedTaskTypes.filteredtypes:
+
+            if data[9].replace("/","_") in SelectedTaskTypes.filteredtypes:
                 continue
             if data[1] is None:
                 continue
@@ -76,7 +77,7 @@ def initDataSet():
             else:
                 diffdegs.append(data[8])
 
-            tasktypes.append(data[9])
+            tasktypes.append(data[9].replace("/","_"))
 
         print("task size=",len(ids),len(docs),len(techs),len(lans),len(startdates),len(durations),len(prizes),len(diffdegs),len(tasktypes))
 
@@ -89,7 +90,7 @@ def initDataSet():
         lda.name="global"
         lda.train_doctopics(docs)
         with open("../data/TaskInstances/GlobalEncoding.data","wb") as f:
-            pickle.dump({"techs":techs_enc,"lans":lans_enc},f)
+            pickle.dump({"techs":techs_enc,"lans":lans_enc,"ids":ids},f)
 
         #adding to corresponding type
         print("init data set types")
@@ -129,7 +130,7 @@ def initDataSet():
 
                 dataSet[t]=container
 
-        print("slected types(%d):"%len(dataset),dataSet.keys())
+        print("slected types(%d):"%len(dataSet),dataSet.keys())
         print()
 
         return dataSet

@@ -1,13 +1,12 @@
-import json,pickle
+import pickle
 import multiprocessing
-from DataPrepare.ConnectDB import *
 from multiprocessing import Condition,Queue
 from scipy import sparse
 import time
-import gc
 import numpy as np
 from DataPrepare.DataContainer import Tasks,UserHistoryGenerator
-from Utility.SelectedTaskTypes import loadFilteredTypes
+from Utility import SelectedTaskTypes
+from CompetitionGraph.UserRank import rankOnDIG
 #datastructure for reg and sub
 
 class DataURS:
@@ -202,21 +201,18 @@ class UserInteraction(multiprocessing.Process):
 
 if __name__ == '__main__':
     mode=2
-    with open("../data/TaskInstances/TaskIndex.data","rb") as f:
-        tasktypes=pickle.load(f)
-    filters=loadFilteredTypes()
-    for t in tasktypes:
-        if t in filters:
-            continue
+    tasktypes=SelectedTaskTypes.loadTaskTypes()
+
+    for t in tasktypes["keeped"]:
 
         dataset=DataURS(t,mode)
-        taskData=Tasks(t,1500)
+        taskData=Tasks(t)
         dataGraph={}
         data={}
 
         users=list(dataset.getRegUsers())
         print("builiding DIG,users=%d, challenges=%d"%(len(users),len(taskData.taskIDs)))
-        print()
+        #print()
         t0=time.time()
         taskids,postingdate=taskData.taskIDs,taskData.postingdate
         #print(postingdate[:30]); exit(10)
@@ -249,6 +245,11 @@ if __name__ == '__main__':
                     data={}
                     data["users"]=users
                     data["data"]=user_m
+                    ranks,names=rankOnDIG(data)
+                    data={"users":names,"ranks":ranks}
+                    #print(ranks)
+                    #print(names)
+                    #exit(10)
                     #print("fetched",taskid)
                     dataGraph[taskid]=data
 
@@ -271,15 +272,7 @@ if __name__ == '__main__':
 
                 finishSig.release()
 
-        #finishSig.acquire()
-        #print("gathering final part")
         while len(pool_processes)>0:
-            #if queue.empty()==True:
-                #print("wait",len(dataGraph))
-                #finishSig.wait()
-                #print("wake")
-                #finishSig.release()
-                #finishSig.acquire()
 
             rmPs=[]
             while queue.empty()==False:
@@ -289,6 +282,8 @@ if __name__ == '__main__':
                 data={}
                 data["users"]=users
                 data["data"]=user_m
+                ranks,names=rankOnDIG(data)
+                data={"users":names,"ranks":ranks}
                 #print("fetched",taskid)
                 dataGraph[taskid]=data
 
@@ -308,8 +303,6 @@ if __name__ == '__main__':
             for i in rmPs:
                 #pool_processes[i].join()
                 del pool_processes[i]
-
-        #finishSig.release()
 
         with open("../data/UserInstances/UserGraph/SubNumBased/"+t+"-UserInteraction.data","wb") as f:
             pickle.dump(dataGraph,f)

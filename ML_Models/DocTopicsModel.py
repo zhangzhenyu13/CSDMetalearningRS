@@ -13,6 +13,7 @@ import copy,time
 import pickle
 from scipy import sparse
 from Utility.TagsDef import *
+
 class LDAFlow:
     def __init__(self):
         self.n_features=TaskFeatures
