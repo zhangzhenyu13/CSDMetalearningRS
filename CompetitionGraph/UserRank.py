@@ -2,8 +2,6 @@ import networkx as nx
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import Utility.personalizedSort as ps
-import matplotlib.pyplot as plt
-import pickle
 
 class SelectPowerfulUser:
 
@@ -24,11 +22,10 @@ class SelectPowerfulUser:
         m_s.compare_vec_index=-1
         X=m_s.mergeSort()
         X=np.array(X)
-        print()
+        #print()
         #print(X[:3])
         names=X[:,1]
-        X=np.array(np.delete(X,[0,1],1),dtype=np.float32)
-        X=np.reshape(X,newshape=len(X))
+        X=np.array(np.delete(X,1,1),dtype=np.float32)
 
         return X,names
 

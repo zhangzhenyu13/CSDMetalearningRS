@@ -80,13 +80,6 @@ class DataSetTopcoder:
         self.IDIndex=self.indexDataPoint(taskids=self.taskids)
         tp=int(self.testRatio*len(self.IDIndex))
         self.testPoint=self.IDIndex[tp][1]
-
-        while dates[self.testPoint]>TestDate and tp>0:
-            tp-=1
-            self.testPoint=self.IDIndex[tp][1]
-
-        self.testPoint+=1
-
         vp=int((self.testRatio+self.validateRatio)*len(self.IDIndex))
         self.validatePoint=self.IDIndex[vp][1]
 
@@ -99,7 +92,7 @@ class DataSetTopcoder:
         print("loaded all the instances, size=%d"%len(self.taskids),
               "test point=%d, validate point=%d"%(self.testPoint,self.validatePoint))
 
-    def ReSampling(self,data,labels):
+    def ReSampling(self,data,labels,resampling=over_sampling.ADASYN(),over_s=True):
 
         label_status=Counter(labels)
         print(self.tasktype,"data "+self.tasktype,label_status)
@@ -112,12 +105,14 @@ class DataSetTopcoder:
                 n_samples=label_status[k]
         #print("n_neighbors<=",n_samples)
         try:
-            resampling=over_sampling.ADASYN(n_neighbors=n_samples)
-
             data,labels=resampling.fit_sample(data,labels)
         except ValueError:
             print(self.tasktype,"resampling using random method")
-            resampling=over_sampling.RandomOverSampler()
+            if over_s:
+                resampling=over_sampling.RandomOverSampler()
+            else:
+                resampling=under_sampling.RandomUnderSampler()
+
             data,labels=resampling.fit_sample(data,labels)
 
         label_status=Counter(labels)
@@ -132,16 +127,17 @@ class TopcoderReg(DataSetTopcoder):
 
     def RegisterRegressionData(self):
         Y=self.fetchData(self.dataSet,"regists")
+        self.registLabelRegression=Y
         self.trainLabel=Y[self.validatePoint:]
         self.validateLabel=Y[self.testPoint:self.validatePoint]
         self.testLabel=Y[:self.testPoint]
 
     def RegisterClassificationData(self):
         self.RegisterRegressionData()
+        self.registLabelClassification=np.array(self.registLabelRegression>0,dtype=np.int)
         self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
         self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
         self.testLabel=np.array(self.testLabel>0,dtype=np.int)
-
 
 class TopcoderSub(DataSetTopcoder):
     def __init__(self,tasktype,testratio=0.2,validateratio=0.1):
@@ -149,38 +145,60 @@ class TopcoderSub(DataSetTopcoder):
         self.setParameter(tasktype,1)
 
 
-    def CommitRegressionData(self):
-        Y=self.fetchData(self.dataSet,"regists")
-        indices=np.where(Y>0)[0]
+    def constructTrainInstances(self):
+        self.registLabelClassification=self.fetchData(self.dataSet,"regists")
+        trainReg=self.registLabelClassification[self.validatePoint:]
+        validateReg=self.registLabelClassification[self.testPoint:self.validatePoint]
+        indices=np.where(trainReg==1)
+        self.trainX=self.trainX[indices]
+        self.trainLabel=self.trainLabel[indices]
+        indices=np.where(validateReg==1)
+        self.validateX=self.validateX[indices]
+        self.validateLabel=self.validateLabel[indices]
+        print("after refactoring, train size=%d,validate size=%d,test size=%d"%(
+            len(self.trainLabel),len(self.validateLabel),len(self.testLabel)))
+    def SubmitRegressionData(self):
 
         Y=self.fetchData(self.dataSet,"submits")
-
         self.trainLabel=Y[self.validatePoint:]
         self.validateLabel=Y[self.testPoint:self.validatePoint]
         self.testLabel=Y[:self.testPoint]
+        self.constructTrainInstances()
 
-    def CommitClassificationData(self):
-        self.CommitRegressionData()
+    def SubmitClassificationData(self):
+        self.SubmitRegressionData()
         self.trainLabel=np.array(self.trainLabel>0,dtype=np.int)
         self.validateLabel=np.array(self.validateLabel>0,dtype=np.int)
         self.testLabel=np.array(self.testLabel>0,dtype=np.int)
 
 class TopcoderWin(DataSetTopcoder):
+
     def __init__(self,tasktype,testratio=0.2,validateratio=0.1):
         DataSetTopcoder.__init__(self,testratio=testratio,validateratio=validateratio)
         self.setParameter(tasktype,2)
 
+    def constructTrainInstances(self):
+        self.submitLabelClassification=self.fetchData(self.dataSet,"submits")
+        trainReg=self.submitLabelClassification[self.validatePoint:]
+        validateReg=self.submitLabelClassification[self.testPoint:self.validatePoint]
+        indices=np.where(trainReg==1)
+        self.trainX=self.trainX[indices]
+        self.trainLabel=self.trainLabel[indices]
+        indices=np.where(validateReg==1)
+        self.validateX=self.validateX[indices]
+        self.validateLabel=self.validateLabel[indices]
+        print("after refactoring, train size=%d,validate size=%d,test size=%d"%(
+            len(self.trainLabel),len(self.validateLabel),len(self.testLabel)))
 
     def WinRankData(self):
         Y=self.fetchData(self.dataSet,"ranks")
         self.trainLabel=Y[self.validatePoint:]
         self.validateLabel=Y[self.testPoint:self.validatePoint]
         self.testLabel=Y[:self.testPoint]
+        self.constructTrainInstances()
 
     def WinClassificationData(self):
         self.WinRankData()
         self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
         self.validateLabel=np.array(self.validateLabel==0,dtype=np.int)
         self.testLabel=np.array(self.testLabel==0,dtype=np.int)
-
-

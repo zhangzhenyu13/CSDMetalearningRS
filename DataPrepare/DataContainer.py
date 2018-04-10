@@ -400,6 +400,7 @@ class Tasks:
                 break
 
         self.taskIDs = self.taskIDs[:pos]
+        self.docX=self.docX[:pos]
         self.lans=self.lans[:pos]
         self.techs=self.techs[:pos]
         self.diffdegs=self.diffdegs[:pos]
@@ -409,19 +410,16 @@ class Tasks:
 
         print(self.tasktype+": task size=%d"%len(self.taskIDs))
 
-    def filteredTasks(self,taskids):
-        index=len(self.taskIDs)-1
-        ids=[]
-        postingdate=[]
-        dataIndex={}
-        while index>=0:
-            if self.taskIDs[index] in taskids:
-                ids.insert(0,self.taskIDs[index])
-                postingdate.insert(0,self.postingdate[index])
-                dataIndex[self.taskIDs[index]]=index
-            index-=1
-
-        return ids,postingdate,dataIndex
+    def ClipRatio(self,ratio=0.4):
+        clip_pos=int(ratio*len(self.taskIDs))
+        self.taskIDs=self.taskIDs[:clip_pos]
+        self.docX=self.docX[:clip_pos]
+        self.lans=self.lans[:clip_pos]
+        self.techs=self.techs[:clip_pos]
+        self.diffdegs=self.diffdegs[:clip_pos]
+        self.postingdate=self.postingdate[:clip_pos]
+        self.durations=self.durations[:clip_pos]
+        self.prizes=self.prizes[:clip_pos]
 
 class UserHistoryGenerator:
 

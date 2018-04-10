@@ -203,10 +203,11 @@ if __name__ == '__main__':
     mode=2
     tasktypes=SelectedTaskTypes.loadTaskTypes()
 
-    for t in tasktypes["keeped"]:
+    for t in tasktypes["clustered"]:
 
         dataset=DataURS(t,mode)
         taskData=Tasks(t)
+        taskData.ClipRatio(0.4)
         dataGraph={}
         data={}
 
@@ -231,6 +232,7 @@ if __name__ == '__main__':
                 p.start()
                 pool_processes.append(p)
                 i+=1
+
             else:
                 finishSig.acquire()
                 #print("pool full")
