@@ -74,7 +74,6 @@ class UserInteraction(multiprocessing.Process):
         self.n_users=len(users)
         self.user_m=sparse.dok_matrix((self.n_users,self.n_users),dtype=np.float32)
 
-
     def ScoreBasedMeasure(self,index):
         n_users=self.n_users
         # user a : register and submit
@@ -121,10 +120,11 @@ class UserInteraction(multiprocessing.Process):
 
             com_a /= len(comtasks)
             com_b /= len(comtasks)
-
+            com_a=max(1,com_a)
+            com_b=max(1,com_b)
             # total avg submit times
-            score_a = np.sum(subscoreA)/len(regtaskA)
-            score_b = np.sum(subscoreB)/len(regtaskB)
+            score_a = max(np.sum(subscoreA)/len(regtaskA),1)
+            score_b = max(np.sum(subscoreB)/len(regtaskB),1)
 
             # set entry as outperform degree
             self.user_m[index,j]=(com_a - score_a) / score_a
@@ -177,15 +177,15 @@ class UserInteraction(multiprocessing.Process):
 
             com_a /= len(comtasks)
             com_b /= len(comtasks)
-
+            com_a=max(1,com_a)
+            com_b=max(1,com_b)
             # total avg submit times
-            sub_a = np.sum(subnumA)/len(regtaskA)
-            sub_b = np.sum(subnumB)/len(regtaskB)
+            sub_a = max(np.sum(subnumA)/len(regtaskA),1)
+            sub_b = max(np.sum(subnumB)/len(regtaskB),1)
 
             # set entry as outperform degree
             self.user_m[index,j]=(com_a - sub_a) / sub_a
             self.user_m[j,index]=(com_b - sub_b) / sub_b
-
 
     def run(self):
         for index in range(self.n_users):
@@ -218,7 +218,7 @@ if __name__ == '__main__':
         taskids,postingdate=taskData.taskIDs,taskData.postingdate
         #print(postingdate[:30]); exit(10)
         pool_processes=[]
-        max_threads_num=30
+        max_process_num=30
         queue=Queue()
         finishSig=Condition()
         i=0
@@ -226,9 +226,9 @@ if __name__ == '__main__':
 
             date=postingdate[i]
 
-            if max_threads_num>len(pool_processes):
+            if max_process_num>len(pool_processes):
                 p=UserInteraction(taskid=taskids[i],date=date,dataset=dataset,users=users,
-                                  queue=queue,finishSig=finishSig,scoretag=False)
+                                  queue=queue,finishSig=finishSig,scoretag=True)
                 p.start()
                 pool_processes.append(p)
                 i+=1
@@ -306,7 +306,7 @@ if __name__ == '__main__':
                 #pool_processes[i].join()
                 del pool_processes[i]
 
-        with open("../data/UserInstances/UserGraph/SubNumBased/"+t+"-UserInteraction.data","wb") as f:
+        with open("../data/UserInstances/UserGraph/ScoreBased/"+t+"-UserInteraction.data","wb") as f:
             pickle.dump(dataGraph,f)
 
         print("time=%ds"%(time.time()-t0))

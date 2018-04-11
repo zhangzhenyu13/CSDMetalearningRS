@@ -1,5 +1,6 @@
-from ML_Models.TraditionalModel import TraditionalClassifier
+from ML_Models.Model_def import *
 import numpy as np
+from Utility.TagsDef import getUsers
 
 class CascadingModel:
     def __init__(self):
@@ -7,10 +8,10 @@ class CascadingModel:
         self.subModel=None
         self.winModel=None
 
-    def loadModel(self,tasktype):
-        self.regModel=TraditionalClassifier()
-        self.subModel=TraditionalClassifier()
-        self.winModel=TraditionalClassifier()
+    def loadModel(self,tasktype,model):
+        self.regModel=model()
+        self.subModel=model()
+        self.winModel=model()
         self.regModel.name=tasktype+"-classifier(Reg)"
         self.subModel.name=tasktype+"-classifier(Sub)"
         self.winModel.name=tasktype+"-classifier(Win)"
@@ -18,21 +19,37 @@ class CascadingModel:
         self.subModel.loadModel()
         self.winModel.loadModel()
 
-    def predict(self,X):
+        self.subExpr=getSubnumOfDIG(tasktype)
+        self.scoreExpr=getScoreOfDIG(tasktype)
+        self.users=getUsers(tasktype,mode=2)
+
+    def predict(self,X,taskids):
         print("Cascading Model is predicting")
         regY=self.regModel.predict(X)
         subY=self.subModel.predict(X)
         winY=self.winModel.predict(X)
         Y=np.zeros(shape=len(X))
+        taskNum=len(X)//len(self.users)
 
-        for i in range(len(X)):
-            if regY[i]==0:
-                continue
-            if subY[i]==0:
-                continue
-            if winY[i]==0:
-                continue
-            Y[i]=1
+        for i in range(taskNum):
+            for j in range(len(self.users)):
+                pos=i*len(self.users)+j
+                taskid=taskids[pos]
+                #reg
+                if regY[pos]==0:
+                    continue
+                #sub
+                topN=int(0.5*len(self.users))
+                selectedusers=reRankSubUsers(self.subExpr,taskid,topN)
+                print(taskid,selectedusers)
+                if subY[pos]==0 and j not in selectedusers:
+                    continue
+                #winner
+                topN=int(0.3*len(self.users))
+                selectedusers=reRankWinUsers(self.scoreExpr,taskid,topN)
+                if winY[pos]==0 and j not in selectedusers:
+                    continue
+                Y[pos]=1
 
         return Y
 

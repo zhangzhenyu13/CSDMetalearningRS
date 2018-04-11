@@ -5,7 +5,7 @@ from DataPrepare.TopcoderDataSet import *
 from sklearn import metrics
 import multiprocessing
 
-def testRegClassification(tasktype,queue,model=TraditionalClassifier()):
+def testRegClassification(tasktype,queue,model=TraditionalClassifier):
     data=TopcoderReg(tasktype,testratio=0.2,validateratio=0.1)
 
     data.loadData()
@@ -14,6 +14,7 @@ def testRegClassification(tasktype,queue,model=TraditionalClassifier()):
     data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
 
+    model=model()
     model.name=data.tasktype+"-classifier(Reg)"
     model.trainModel(data)
     model.saveModel()
@@ -22,7 +23,7 @@ def testRegClassification(tasktype,queue,model=TraditionalClassifier()):
     print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
-def testSubClassification(tasktype,queue,model=TraditionalClassifier()):
+def testSubClassification(tasktype,queue,model=TraditionalClassifier):
     data=TopcoderSub(tasktype,testratio=0.2,validateratio=0.1)
 
     data.loadData()
@@ -31,7 +32,8 @@ def testSubClassification(tasktype,queue,model=TraditionalClassifier()):
     data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
 
-    model.name=data.tasktype+"-classifier(Reg)"
+    model=model()
+    model.name=data.tasktype+"-classifier(Sub)"
     model.trainModel(data)
     model.saveModel()
     model.loadModel()
@@ -40,13 +42,14 @@ def testSubClassification(tasktype,queue,model=TraditionalClassifier()):
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
 
-def testWinClassification(tasktype,queue,model=TraditionalClassifier()):
+def testWinClassification(tasktype,queue,model=TraditionalClassifier):
     data=TopcoderWin(tasktype,testratio=0.2,validateratio=0.1)
     data.loadData()
     data.WinClassificationData()
     data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
 
+    model=model()
     model.name=data.tasktype+"-classifier(Win)"
     model.trainModel(data)
     model.saveModel()
@@ -64,17 +67,17 @@ def testWinClassification(tasktype,queue,model=TraditionalClassifier()):
     print()
     queue.put(kacc)
 
-def testCascadingModel(tasktype,queue):
+def testCascadingModel(tasktype,queue,metamodel):
     data=TopcoderWin(tasktype,testratio=0.2,validateratio=0.1)
     data.loadData()
     data.WinClassificationData()
-    data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
+    #data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
 
     model=CascadingModel()
-    model.loadModel(tasktype)
-
-    Y_predict2=model.predict(data.testX)
+    model.loadModel(tasktype,metamodel)
+    taskids=data.taskids[:data.testPoint]
+    Y_predict2=model.predict(data.testX,taskids)
     print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
@@ -91,26 +94,34 @@ def testCascadingModel(tasktype,queue):
 
 #test the performance
 if __name__ == '__main__':
+
     testMethod={
         1:testRegClassification,
         2:testSubClassification,
         3:testWinClassification,
         4:testCascadingModel
     }
-    selectedmethod=1
+    ml_model={
+        1:DNNCLassifier,
+        2:TraditionalClassifier
+    }
+
+    selectedmethod=3
+
+    selectedmodel=2
 
     # begin test
     from Utility import SelectedTaskTypes
     tasktypes=SelectedTaskTypes.loadTaskTypes()
-    mode=1
+
     queue=multiprocessing.Queue()
     pool_processes=[]
-    for t in tasktypes["keeped"]:
-        if t !="Conceptualization":
+    for t in tasktypes["clustered"]:
+        if "First2Finish#3" not in t:
             continue
         #testWinRankClassification(t)
 
-        p=multiprocessing.Process(target=testMethod[selectedmethod],args=(t,queue))
+        p=multiprocessing.Process(target=testMethod[selectedmethod],args=(t,queue,ml_model[selectedmodel]))
         pool_processes.append(p)
         p.start()
         #p.join()
@@ -121,5 +132,5 @@ if __name__ == '__main__':
     while queue.empty()==False:
         data=queue.get()
         result=result+data[0]+" : %f"%data[1]
-    with open("../data/runResults/rankPrediction.txt","w") as f:
+    with open("../data/runResults/testmodels"+str(selectedmethod)+".txt","w") as f:
         f.writelines(result)

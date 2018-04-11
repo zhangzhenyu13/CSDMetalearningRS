@@ -1,8 +1,7 @@
 import pickle
 import os
 import numpy as np
-import gc
-from numpy import linalg as LA
+from Utility import SelectedTaskTypes
 import matplotlib.pyplot as plt
 from Utility.TagsDef import *
 openMode="rb"
@@ -96,18 +95,15 @@ def countUsers():
     from DataPrepare.DataContainer import UserHistoryGenerator
     userhis=UserHistoryGenerator()
     count=0
-    with open("../data/TaskInstances/OriginalTasktype.data","rb") as f:
-        tasktypes=pickle.load(f)
-        for t in tasktypes.keys():
-            count+=1
-            tasktype=t.replace("/","_")
-            for mode in (0,1,2):
-                userdata=userhis.loadActiveUserHistory(tasktype=tasktype,mode=mode)
-                print(count,tasktype,ModeTag[mode]+":%d"%len(userdata))
-            print()
-
-
-
+    tasktypes=SelectedTaskTypes.loadTaskTypes()
+    for t in tasktypes["keeped"]:
+        count+=1
+        if t !="Architecture":continue
+        for mode in (2,):
+            userdata=userhis.loadActiveUserHistory(tasktype=t,mode=mode)
+            print(count,t,ModeTag[mode]+":%d"%len(userdata))
+            print(list(userdata.keys()))
+        print()
 
 
 if __name__ == '__main__':
@@ -116,5 +112,5 @@ if __name__ == '__main__':
     #scanID()
     #testFileIndex()
     countUsers()
-
-
+    countUsers()
+    countUsers()

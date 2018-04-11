@@ -57,9 +57,13 @@ class DataSetTopcoder:
         :return:
         '''
         t0=time.time()
-        with open(file,"rb") as f:
-            data=pickle.load(f)
-            X=np.array(data[key])
+        try:
+            with open(file,"rb") as f:
+                data=pickle.load(f)
+        except:
+            print(self.tasktype,"dataSegment Error",index)
+
+        X=np.array(data[key])
         vecX[index]=X
         #print(X.shape)
         print(" fetched segment:",index,"in %ds"%(time.time()-t0))
@@ -72,10 +76,8 @@ class DataSetTopcoder:
         users=self.fetchData(self.dataSet,"users")
         tasks=self.fetchData(self.dataSet,"tasks")
         self.taskids=self.fetchData(self.dataSet,"taskids")
-
+        #self.usernames=self.fetchData(self.dataSet,"usernames")
         X=np.concatenate((tasks,users),axis=1)
-
-        dates=self.fetchData(self.dataSet,"dates")
 
         self.IDIndex=self.indexDataPoint(taskids=self.taskids)
         tp=int(self.testRatio*len(self.IDIndex))
@@ -106,7 +108,7 @@ class DataSetTopcoder:
         #print("n_neighbors<=",n_samples)
         try:
             data,labels=resampling.fit_sample(data,labels)
-        except ValueError:
+        except :
             print(self.tasktype,"resampling using random method")
             if over_s:
                 resampling=over_sampling.RandomOverSampler()

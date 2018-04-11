@@ -30,14 +30,24 @@ class ML_model:
             data["name"]=self.name
             pickle.dump(data,f)
 
-
 #acc metrics
-def getResultOfDID(tasktype):
-
+def getSubnumOfDIG(tasktype):
     with open("../data/UserInstances/UserGraph/SubNumBased/"+tasktype+"-UserInteraction.data","rb") as f:
         dataRank=pickle.load(f)
-
     return dataRank
+
+def getScoreOfDIG(tasktype):
+    with open("../data/UserInstances/UserGraph/ScoreBased/"+tasktype+"-UserInteraction.data","wb") as f:
+        rankData=pickle.load(f)
+    return rankData
+
+def reRankSubUsers(rankData,taskid,topN=20):
+    userRank=rankData[taskid]["ranks"]
+    return np.array(userRank[:topN,0],dtype=np.int)
+
+def reRankWinUsers(rankData,taskid,topN=20):
+    userRank=rankData[taskid]["ranks"]
+    return np.array(userRank[:topN,0],dtype=np.int)
 
 def topKAccuracyWithDIG(Y_predict2,data,k,adding=False):
     '''
@@ -49,7 +59,7 @@ def topKAccuracyWithDIG(Y_predict2,data,k,adding=False):
     '''
     print("using DIG,adding=",adding)
     # measure top k accuracy
-    dataRank=getResultOfDID(data.tasktype)
+    dataRank=getSubnumOfDIG(data.tasktype)
 
     # batch data into task centered array
     ids=data.taskids[:data.testPoint]

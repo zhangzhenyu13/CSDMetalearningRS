@@ -13,31 +13,42 @@ class DNNCLassifier(ML_model):
         self.defineModelLayer()
     #define dnn layer
     def defineModelLayer(self):
-        inputDim=415
+        inputDim=215
         ouputDim=2
-        model = models.Sequential()
-        model.add(layers.Embedding(20000, 200))
-        model.add(layers.LSTM(200, dropout=0.2, recurrent_dropout=0.2))
-        model.add(layers.Dense(ouputDim, activation='sigmoid'))
+        x=layers.Input(shape=(inputDim,))
 
-        model.add(layers.Activation("softmax"))
-        self.model=model
+        #model1
+        model1=layers.Dense(160, activation="relu")(x)
+        model1=layers.Dropout(0.5)(model1)
+        #model2
+        model2=layers.Dense(200,activation="relu")(x)
+        model2=layers.Dropout(0.5)(model2)
+        #model3
+
+        model3=layers.Dense(ouputDim,activation="softmax")(model1)
+
+        #final model
+        self.model=models.Model(inputs=[x],outputs=[model3])
 
         opt = optimizers.Adagrad(lr=0.001)
         self.model.compile(optimizer=opt,loss='categorical_crossentropy',metrics=["accuracy"])
 
     def trainModel(self,dataSet):
         dataSet.trainLabel=np_utils.to_categorical(dataSet.trainLabel,num_classes=2)
+        dataSet.validateLabel=np_utils.to_categorical(dataSet.validateLabel,num_classes=2)
+        X=np.concatenate((dataSet.trainX,dataSet.validateX),axis=0)
+        #print(dataSet.trainLabel.shape,dataSet.validateLabel.shape)
+        Y=np.concatenate((dataSet.trainLabel,dataSet.validateLabel),axis=0)
 
         print(self.name+" training")
         t0=time.time()
-        self.model.fit(x=dataSet.trainX,y=dataSet.trainLabel,epochs=5,batch_size=500)
+        self.model.fit(x=X,y=Y,epochs=5,batch_size=100)
         t1=time.time()
-        loss,accuracy=self.model.evaluate(x=dataSet.trainX,y=dataSet.trainLabel,batch_size=10000)
+        loss,accuracy=self.model.evaluate(x=X,y=Y,batch_size=10000)
         print("finished in %ds"%(t1-t0),"accuracy=%f"%accuracy,"loss=%f"%loss)
 
     def predict(self,X):
-        print("dnn model predicting ")
+        print(self.name,"(DNN) is predicting ")
         Y=self.model.predict(X,batch_size=10000)
         Y=np.argmax(Y,axis=1)
         print("finished predicting ",len(Y))

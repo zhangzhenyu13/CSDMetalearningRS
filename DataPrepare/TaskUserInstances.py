@@ -280,8 +280,9 @@ def genDataSet():
     process_pools=[]
 
     tasktypes=SelectedTaskTypes.loadTaskTypes()
+    tasktypes=["First2Finish#1"]
+    for t in tasktypes:#["clustered"]:
 
-    for t in tasktypes["keeped"]:
         if len(process_pools)<DataInstances.maxProcessNum:
             proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode)
             proc.start()
