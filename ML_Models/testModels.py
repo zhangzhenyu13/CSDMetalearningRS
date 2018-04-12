@@ -90,8 +90,6 @@ def testCascadingModel(tasktype,queue,metamodel):
     print()
     queue.put(kacc)
 
-
-
 #test the performance
 if __name__ == '__main__':
 
@@ -106,7 +104,7 @@ if __name__ == '__main__':
         2:TraditionalClassifier
     }
 
-    selectedmethod=3
+    selectedmethod=1
 
     selectedmodel=2
 
@@ -117,8 +115,8 @@ if __name__ == '__main__':
     queue=multiprocessing.Queue()
     pool_processes=[]
     for t in tasktypes["clustered"]:
-        if "First2Finish#3" not in t:
-            continue
+        #if "First2Finish#3" not in t:
+        #    continue
         #testWinRankClassification(t)
 
         p=multiprocessing.Process(target=testMethod[selectedmethod],args=(t,queue,ml_model[selectedmodel]))

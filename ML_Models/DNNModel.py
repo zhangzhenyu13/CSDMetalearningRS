@@ -2,7 +2,6 @@ from ML_Models.Model_def import *
 from keras import models,layers,optimizers,losses
 from keras.utils import np_utils
 import numpy as np
-from sklearn import metrics
 import time
 
 
@@ -18,12 +17,9 @@ class DNNCLassifier(ML_model):
         x=layers.Input(shape=(inputDim,))
 
         #model1
-        model1=layers.Dense(160, activation="relu")(x)
+        model1=layers.Dense(400,activation="relu")(x)
+        model1=layers.Dense(160, activation="relu")(model1)
         model1=layers.Dropout(0.5)(model1)
-        #model2
-        model2=layers.Dense(200,activation="relu")(x)
-        model2=layers.Dropout(0.5)(model2)
-        #model3
 
         model3=layers.Dense(ouputDim,activation="softmax")(model1)
 

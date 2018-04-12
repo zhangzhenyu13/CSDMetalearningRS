@@ -201,9 +201,10 @@ class UserInteraction(multiprocessing.Process):
 
 if __name__ == '__main__':
     mode=2
+    scoreTag=True
     tasktypes=SelectedTaskTypes.loadTaskTypes()
 
-    for t in tasktypes["clustered"]:
+    for t in tasktypes["keeped"]:
 
         dataset=DataURS(t,mode)
         taskData=Tasks(t)
@@ -228,7 +229,7 @@ if __name__ == '__main__':
 
             if max_process_num>len(pool_processes):
                 p=UserInteraction(taskid=taskids[i],date=date,dataset=dataset,users=users,
-                                  queue=queue,finishSig=finishSig,scoretag=True)
+                                  queue=queue,finishSig=finishSig,scoretag=scoreTag)
                 p.start()
                 pool_processes.append(p)
                 i+=1

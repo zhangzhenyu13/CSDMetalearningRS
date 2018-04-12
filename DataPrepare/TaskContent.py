@@ -45,7 +45,7 @@ def initDataSet():
             if data[1] is None:
                 continue
             ids.append(data[0])
-            docs.append(data[2]+"\n"+data[1])
+            docs.append(data[2]+" "+data[1])
 
             if data[3]>50:
                 durations.append(50)

@@ -434,15 +434,15 @@ class UserHistoryGenerator:
                 continue
 
             regids, regdates = regdata.getUserHistory(username)
-            if len(regids) == 0:
+            if len(regids) ==minRegNum:
                 #default for those have registered
                 continue
             subids, subnum, subdates, score, rank = subdata.getUserHistory(username)
             winindices=np.where(rank==0)[0]
-            if mode==1 and np.sum(subnum)<1:
+            if mode==1 and np.sum(subnum)<minSubNum:
                 #for those ever submitted
                 continue
-            if mode==2 and len(winindices)==0:
+            if mode==2 and len(winindices)<minWinNum:
                 #for those ever won
                 continue
 

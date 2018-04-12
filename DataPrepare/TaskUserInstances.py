@@ -70,7 +70,7 @@ class DataInstances(multiprocessing.Process):
                 data.append(filepath+str(seg))
             pickle.dump(data,f)
 
-    def createInstancesWithHistoryInfo(self,threshold=3e+5,verboseNum=1e+5):
+    def createInstancesWithHistoryInfo(self,threshold=5e+5,verboseNum=1e+5):
         filepath="../data/TopcoderDataSet/"+ModeTag[self.usingMode].lower()+\
                  "HistoryBasedData/"+self.tasktype+"-user_task.data"
 
@@ -95,6 +95,8 @@ class DataInstances(multiprocessing.Process):
         dataSegment=0
         t0=time.time()
 
+        UsersIndex=getUsers(self.tasktype,self.usingMode)
+
         for index in range(len(self.selTasks.taskIDs)):
             if (index+1)%verboseNum==0:
                 print(self.tasktype+"=>:",index+1,"of",len(self.selTasks.taskIDs),
@@ -109,7 +111,8 @@ class DataInstances(multiprocessing.Process):
             if reg_usernams is None:
                 missingtask+=1
                 continue
-            for name in userData.keys():
+            for nth in range(len(UsersIndex)):
+                name=UsersIndex[nth]
 
                 tenure, skills,skills_vec = \
                     userData[name]["tenure"],userData[name]["skills"],userData[name]["skills_vec"]
@@ -280,8 +283,8 @@ def genDataSet():
     process_pools=[]
 
     tasktypes=SelectedTaskTypes.loadTaskTypes()
-    tasktypes=["First2Finish#1"]
-    for t in tasktypes:#["clustered"]:
+
+    for t in tasktypes["keeped"]:
 
         if len(process_pools)<DataInstances.maxProcessNum:
             proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode)
@@ -314,6 +317,6 @@ if __name__ == '__main__':
     cond=multiprocessing.Condition()
     queue=multiprocessing.Queue()
 
-    mode=0
+    mode=1
     genDataSet()
 

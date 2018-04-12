@@ -45,7 +45,7 @@ class CascadingModel:
                 if subY[pos]==0 and j not in selectedusers:
                     continue
                 #winner
-                topN=int(0.3*len(self.users))
+                topN=int(0.1*len(self.users))
                 selectedusers=reRankWinUsers(self.scoreExpr,taskid,topN)
                 if winY[pos]==0 and j not in selectedusers:
                     continue
