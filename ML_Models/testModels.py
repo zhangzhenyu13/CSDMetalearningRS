@@ -1,6 +1,7 @@
 from ML_Models.TraditionalModel import *
 from ML_Models.CascadingModel import *
 from ML_Models.DNNModel import *
+from ML_Models.UserMetrics import topKAccuracyWithDIG,topKAccuracy
 from DataPrepare.TopcoderDataSet import *
 from sklearn import metrics
 import multiprocessing

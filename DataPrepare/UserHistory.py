@@ -76,7 +76,7 @@ if __name__ == '__main__':
     #construct history for users of given tasktype
 
     tasktypes=SelectedTaskTypes.loadTaskTypes()
-    for t in tasktypes["clustered"]:
+    for t in tasktypes["keeped"]:
 
         #genUserHistoryOfTaskType(userhistory=userhistory,tasktype=t,Users=Users,Regs=Regs,Subs=Subs)
         multiprocessing.Process(target=genUserHistoryOfTaskType,args=(userhistory,t,Users,Regs,Subs)).start()

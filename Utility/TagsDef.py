@@ -26,7 +26,7 @@ def genSelectedUserlist(tasktype,mode=2):
 if __name__ == '__main__':
     from Utility.SelectedTaskTypes import loadTaskTypes
     tasltypes=loadTaskTypes()
-    mode=0
+    mode=2
     for t in tasltypes["keeped"]:
         genSelectedUserlist(t,mode)
-        print(getUsers(t,mode))
+        print(t,len(getUsers(t,mode)))

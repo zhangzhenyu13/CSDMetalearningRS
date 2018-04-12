@@ -181,12 +181,12 @@ class TopcoderWin(DataSetTopcoder):
 
     def constructTrainInstances(self):
         self.submitLabelClassification=self.fetchData(self.dataSet,"submits")
-        trainReg=self.submitLabelClassification[self.validatePoint:]
-        validateReg=self.submitLabelClassification[self.testPoint:self.validatePoint]
-        indices=np.where(trainReg==1)
+        trainSub=self.submitLabelClassification[self.validatePoint:]
+        validateSub=self.submitLabelClassification[self.testPoint:self.validatePoint]
+        indices=np.where(trainSub==1)
         self.trainX=self.trainX[indices]
         self.trainLabel=self.trainLabel[indices]
-        indices=np.where(validateReg==1)
+        indices=np.where(validateSub==1)
         self.validateX=self.validateX[indices]
         self.validateLabel=self.validateLabel[indices]
         print("after refactoring, train size=%d,validate size=%d,test size=%d"%(

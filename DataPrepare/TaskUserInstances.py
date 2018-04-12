@@ -87,15 +87,14 @@ class DataInstances(multiprocessing.Process):
         dataIndex=self.selTasks.dataIndex
 
         userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=self.usingMode)
+        UsersIndex=getUsers(self.tasktype,self.usingMode)
 
         print(self.tasktype+"(mode:%d)=>:"%self.usingMode,"construct instances with %d tasks and %d users" %
-              (len(dataIndex), len(userData.keys())))
+              (len(dataIndex), len(UsersIndex)) )
 
         missingtask=0
         dataSegment=0
         t0=time.time()
-
-        UsersIndex=getUsers(self.tasktype,self.usingMode)
 
         for index in range(len(self.selTasks.taskIDs)):
             if (index+1)%verboseNum==0:
@@ -317,6 +316,6 @@ if __name__ == '__main__':
     cond=multiprocessing.Condition()
     queue=multiprocessing.Queue()
 
-    mode=1
+    mode=0
     genDataSet()
 

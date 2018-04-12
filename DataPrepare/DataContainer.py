@@ -434,7 +434,7 @@ class UserHistoryGenerator:
                 continue
 
             regids, regdates = regdata.getUserHistory(username)
-            if len(regids) ==minRegNum:
+            if mode==0 and len(regids) <minRegNum:
                 #default for those have registered
                 continue
             subids, subnum, subdates, score, rank = subdata.getUserHistory(username)
