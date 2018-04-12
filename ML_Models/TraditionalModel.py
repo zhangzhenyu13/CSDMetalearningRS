@@ -28,9 +28,7 @@ class TraditionalClassifier(ML_model):
         candidate_model=self.ModelTuning()
         max_acc=0
         sel_model=None
-        dataSet.validateX,dataSet.validateLabel=dataSet.ReSampling(
-            dataSet.validateX,dataSet.validateLabel
-        )
+
         for key in candidate_model.keys():
             self.model=candidate_model[key]
             if self.model is not None:

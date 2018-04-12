@@ -8,7 +8,7 @@ def getSubnumOfDIG(tasktype):
     return dataRank
 
 def getScoreOfDIG(tasktype):
-    with open("../data/UserInstances/UserGraph/ScoreBased/"+tasktype+"-UserInteraction.data","wb") as f:
+    with open("../data/UserInstances/UserGraph/ScoreBased/"+tasktype+"-UserInteraction.data","rb") as f:
         rankData=pickle.load(f)
     return rankData
 

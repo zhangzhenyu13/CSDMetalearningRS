@@ -283,7 +283,7 @@ def genDataSet():
 
     tasktypes=SelectedTaskTypes.loadTaskTypes()
 
-    for t in tasktypes["keeped"]:
+    for t in tasktypes["clustered"]:
 
         if len(process_pools)<DataInstances.maxProcessNum:
             proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode)
@@ -316,6 +316,6 @@ if __name__ == '__main__':
     cond=multiprocessing.Condition()
     queue=multiprocessing.Queue()
 
-    mode=0
+    mode=2
     genDataSet()
 

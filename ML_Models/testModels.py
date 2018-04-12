@@ -1,6 +1,7 @@
 from ML_Models.TraditionalModel import *
 from ML_Models.CascadingModel import *
 from ML_Models.DNNModel import *
+from ML_Models.XGBoostModel import *
 from ML_Models.UserMetrics import topKAccuracyWithDIG,topKAccuracy
 from DataPrepare.TopcoderDataSet import *
 from sklearn import metrics
@@ -66,7 +67,8 @@ def testWinClassification(tasktype,queue,model=TraditionalClassifier):
         print(data.tasktype,"top %d"%k,acc)
         kacc=kacc+[acc]
     print()
-    queue.put(kacc)
+    if queue is not None:
+        queue.put(kacc)
 
 def testCascadingModel(tasktype,queue,metamodel):
     data=TopcoderWin(tasktype,testratio=0.2,validateratio=0.1)
@@ -89,26 +91,12 @@ def testCascadingModel(tasktype,queue,metamodel):
         print(data.tasktype,"top %d"%k,acc)
         kacc=kacc+[acc]
     print()
-    queue.put(kacc)
+    if queue is not None:
+        queue.put(kacc)
 
 #test the performance
-if __name__ == '__main__':
-
-    testMethod={
-        1:testRegClassification,
-        2:testSubClassification,
-        3:testWinClassification,
-        4:testCascadingModel
-    }
-    ml_model={
-        1:DNNCLassifier,
-        2:TraditionalClassifier
-    }
-
-    selectedmethod=1
-
-    selectedmodel=2
-
+#parallel test method
+def parallelRun():
     # begin test
     from Utility import SelectedTaskTypes
     tasktypes=SelectedTaskTypes.loadTaskTypes()
@@ -133,3 +121,24 @@ if __name__ == '__main__':
         result=result+data[0]+" : %f"%data[1]
     with open("../data/runResults/testmodels"+str(selectedmethod)+".txt","w") as f:
         f.writelines(result)
+
+if __name__ == '__main__':
+
+    testMethod={
+        1:testRegClassification,
+        2:testSubClassification,
+        3:testWinClassification,
+        4:testCascadingModel
+    }
+    ml_model={
+        1:DNNCLassifier,
+        2:TraditionalClassifier,
+        3:XGBoostClassifier
+    }
+
+    selectedmethod=1
+
+    selectedmodel=3
+
+    tasktype="Architecture"
+    testMethod[selectedmethod](tasktype,None,ml_model[selectedmodel])

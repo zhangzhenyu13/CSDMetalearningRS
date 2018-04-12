@@ -57,6 +57,7 @@ class DataSetTopcoder:
         :return:
         '''
         t0=time.time()
+        data=None
         try:
             with open(file,"rb") as f:
                 data=pickle.load(f)
@@ -89,7 +90,7 @@ class DataSetTopcoder:
         self.validateX=X[self.testPoint:self.validatePoint]
         self.testX=X[:self.testPoint]
 
-        print("feature length for user(%d) and task(%d) is %d"%(len(users[0]),len(tasks[0]),len(X[0])))
+        print("total feature length for user(%d) and task(%d) is %d"%(len(users[0]),len(tasks[0]),len(X[0])))
         print("total tasks size=%d,test size=%d, validate size=%d"%(len(self.IDIndex),tp,vp-tp))
         print("loaded all the instances, size=%d"%len(self.taskids),
               "test point=%d, validate point=%d"%(self.testPoint,self.validatePoint))
@@ -101,11 +102,10 @@ class DataSetTopcoder:
         if len(label_status)<2:
             print(self.tasktype,"no need to resample")
             return data,labels
-        n_samples=1e+10
-        for k in label_status.keys():
-            if label_status[k]<n_samples:
-                n_samples=label_status[k]
-        #print("n_neighbors<=",n_samples)
+        if label_status[1]/label_status[0]<4. or label_status[1]/label_status[0]>0.25:
+            print("data are not biased too much")
+            return data,labels
+
         try:
             data,labels=resampling.fit_sample(data,labels)
         except :
@@ -151,10 +151,10 @@ class TopcoderSub(DataSetTopcoder):
         self.registLabelClassification=self.fetchData(self.dataSet,"regists")
         trainReg=self.registLabelClassification[self.validatePoint:]
         validateReg=self.registLabelClassification[self.testPoint:self.validatePoint]
-        indices=np.where(trainReg==1)
+        indices=np.where(trainReg>0)
         self.trainX=self.trainX[indices]
         self.trainLabel=self.trainLabel[indices]
-        indices=np.where(validateReg==1)
+        indices=np.where(validateReg>0)
         self.validateX=self.validateX[indices]
         self.validateLabel=self.validateLabel[indices]
         print("after refactoring, train size=%d,validate size=%d,test size=%d"%(
@@ -183,10 +183,10 @@ class TopcoderWin(DataSetTopcoder):
         self.submitLabelClassification=self.fetchData(self.dataSet,"submits")
         trainSub=self.submitLabelClassification[self.validatePoint:]
         validateSub=self.submitLabelClassification[self.testPoint:self.validatePoint]
-        indices=np.where(trainSub==1)
+        indices=np.where(trainSub>0)
         self.trainX=self.trainX[indices]
         self.trainLabel=self.trainLabel[indices]
-        indices=np.where(validateSub==1)
+        indices=np.where(validateSub>0)
         self.validateX=self.validateX[indices]
         self.validateLabel=self.validateLabel[indices]
         print("after refactoring, train size=%d,validate size=%d,test size=%d"%(

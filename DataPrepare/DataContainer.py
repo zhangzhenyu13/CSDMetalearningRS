@@ -136,7 +136,12 @@ class SubmissionDataContainer:
         indices1=np.where(self.taskids[indices]==taskid)[0]
         if len(indices1)==0:
             return None
-        indices=indices1+indices[0]
+
+        indices2=[]
+        for i in range(len(indices1)):
+            indices2.insert(i,indices[indices1[i]])
+        indices=np.array(indices2,dtype=np.int)
+
         return [self.subnums[indices][0],self.finalranks[indices][0],self.scores[indices][0]]
 
     def getUserHistory(self,username):
