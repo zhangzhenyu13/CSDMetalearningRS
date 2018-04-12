@@ -1,21 +1,18 @@
 from ML_Models.Model_def import *
 from DataPrepare.TopcoderDataSet import *
-from sklearn import svm,linear_model,naive_bayes,tree
 from sklearn import ensemble
 from sklearn import metrics
 import time
 
 
-class TraditionalClassifier(ML_model):
+class EnsembleClassifier(ML_model):
     def ModelTuning(self):
         candite_selection = {
             "RandomFrorest": ensemble.RandomForestClassifier(),
-            "ExtraForest": ensemble.ExtraTreesClassifier(),
-            #"AdaBoost": ensemble.AdaBoostClassifier(),
-            #"GradientBoost": ensemble.GradientBoostingClassifier(),
-            #"SVM": svm.SVC(C=0.9)
+            "ExtraForest": ensemble.ExtraTreesClassifier()
         }
         return candite_selection
+
     def __init__(self):
         ML_model.__init__(self)
     def predict(self,X):

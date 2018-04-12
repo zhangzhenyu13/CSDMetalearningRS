@@ -21,8 +21,8 @@ class XGBoostClassifier(ML_model):
             'silent':0 ,#设置成1则没有运行信息输出，最好是设置为0.
             'eta': 0.007, # 如同学习率
             'seed':1000,
-            'nthread':7,# cpu 线程数
-            'eval_metric': 'auc'
+            #'nthread':7,# cpu 线程数
+            'eval_metric': 'error@'+str(self.threshold)
             }
         return params
     def __init__(self):
@@ -44,12 +44,12 @@ class XGBoostClassifier(ML_model):
 
         param =self.getParameters()#= {'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic'}
         watchlist = [(dvalidate, 'eval'), (dtrain, 'train')]
-
+        #xgboost.cv()
         self.model=xgboost.train(params=param,dtrain=dtrain,
                                  num_boost_round=self.trainEpchos,evals=watchlist,
                                  early_stopping_rounds=20)
-
-
+        #xgboost.XGBClassifier
+        '''
         ptrain = self.model.predict(dtrain, output_margin=True)
         ptest = self.model.predict(dvalidate, output_margin=True)
         dtrain.set_base_margin(ptrain)
@@ -57,14 +57,16 @@ class XGBoostClassifier(ML_model):
 
         print('this is result of running from initial prediction')
         self.model = xgboost.train(param, dtrain, 1, watchlist)
+        '''
+
 
         t1=time.time()
 
         #measure training result
         vpredict=self.model.predict(xgboost.DMatrix(dataSet.validateX),ntree_limit=self.model.best_ntree_limit)
-        print(vpredict)
+        #print(vpredict)
         vpredict=np.array(vpredict>self.threshold,dtype=np.int)
-        print(vpredict)
+        #print(vpredict)
         score=metrics.accuracy_score(dataSet.validateLabel,vpredict)
         cm=metrics.confusion_matrix(dataSet.validateLabel,vpredict)
         print("model",self.name,"trainning finished in %ds"%(t1-t0),"validate score=%f"%score,"CM=\n",cm)

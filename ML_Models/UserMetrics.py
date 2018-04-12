@@ -107,3 +107,37 @@ def topKAccuracy(Y_predict2,data,k):
             Y[i]=1
 
     return Y
+
+def topKAccuracyOnSubset(Y_predict2,data,k):
+    # measure top k accuracy
+    # batch data into task centered array
+    print("traditional assumption top k acc")
+
+    submitlabels=data.submitLabelClassification[:data.testPoint]
+    for p in range(len(submitlabels)):
+        if submitlabels[p]==0:
+            Y_predict2[p]=0
+
+    usersList=getUsers(data.tasktype)
+    Y_label=data.testLabel
+
+    taskNum=len(Y_label)//len(usersList)
+    Y=np.zeros(shape=taskNum,dtype=np.int)
+
+    for i in range(taskNum):
+        left=i*len(usersList)
+        right=(i+1)*len(usersList)
+
+        trueY=Y_label[left:right]
+        trueY=np.where(trueY==1)[0]
+        trueY=set(trueY)
+        if len(trueY)==0:continue
+
+        predictY=Y_predict2[left:right]
+        predictY=np.where(predictY==1)[0]
+        predictY=set(predictY[:k])
+
+        if len(trueY.intersection(predictY))>0:
+            Y[i]=1
+
+    return Y

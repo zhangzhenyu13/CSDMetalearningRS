@@ -8,10 +8,11 @@ class CascadingModel:
         self.subModel=None
         self.winModel=None
 
-    def loadModel(self,tasktype,model):
-        self.regModel=model()
-        self.subModel=model()
-        self.winModel=model()
+    def loadModel(self,tasktype,models):
+
+        self.regModel=models[0]()
+        self.subModel=models[1]()
+        self.winModel=models[2]()
         self.regModel.name=tasktype+"-classifier(Reg)"
         self.subModel.name=tasktype+"-classifier(Sub)"
         self.winModel.name=tasktype+"-classifier(Win)"

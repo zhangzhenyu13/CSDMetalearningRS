@@ -1,13 +1,13 @@
-from ML_Models.TraditionalModel import *
+from ML_Models.EnsembleModel import *
 from ML_Models.CascadingModel import *
 from ML_Models.DNNModel import *
 from ML_Models.XGBoostModel import *
-from ML_Models.UserMetrics import topKAccuracyWithDIG,topKAccuracy
+from ML_Models.UserMetrics import topKAccuracyWithDIG,topKAccuracy,topKAccuracyOnSubset
 from DataPrepare.TopcoderDataSet import *
 from sklearn import metrics
 import multiprocessing
 
-def testRegClassification(tasktype,queue,model=TraditionalClassifier):
+def testRegClassification(tasktype,queue,model=EnsembleClassifier):
     data=TopcoderReg(tasktype,testratio=0.2,validateratio=0.1)
 
     data.loadData()
@@ -25,7 +25,7 @@ def testRegClassification(tasktype,queue,model=TraditionalClassifier):
     print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
-def testSubClassification(tasktype,queue,model=TraditionalClassifier):
+def testSubClassification(tasktype,queue,model=EnsembleClassifier):
     data=TopcoderSub(tasktype,testratio=0.2,validateratio=0.1)
 
     data.loadData()
@@ -44,7 +44,7 @@ def testSubClassification(tasktype,queue,model=TraditionalClassifier):
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
 
-def testWinClassification(tasktype,queue,model=TraditionalClassifier):
+def testWinClassification(tasktype,queue,model=EnsembleClassifier):
     data=TopcoderWin(tasktype,testratio=0.2,validateratio=0.1)
     data.loadData()
     data.WinClassificationData()
@@ -70,15 +70,13 @@ def testWinClassification(tasktype,queue,model=TraditionalClassifier):
     if queue is not None:
         queue.put(kacc)
 
-def testCascadingModel(tasktype,queue,metamodel):
+def testCascadingModel(tasktype,queue,metamodels):
     data=TopcoderWin(tasktype,testratio=0.2,validateratio=0.1)
     data.loadData()
     data.WinClassificationData()
-    #data.trainX,data.trainLabel=data.ReSampling(data.trainX,data.trainLabel)
-    data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
 
     model=CascadingModel()
-    model.loadModel(tasktype,metamodel)
+    model.loadModel(tasktype,metamodels)
     taskids=data.taskids[:data.testPoint]
     Y_predict2=model.predict(data.testX,taskids)
     print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
@@ -86,7 +84,7 @@ def testCascadingModel(tasktype,queue,metamodel):
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
     kacc=[data.tasktype]
     for k in (1,3,5,10):
-        acc=topKAccuracyWithDIG(Y_predict2,data,k)
+        acc=topKAccuracyWithDIG(Y_predict2,data,k,True)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
         kacc=kacc+[acc]
@@ -128,17 +126,25 @@ if __name__ == '__main__':
         1:testRegClassification,
         2:testSubClassification,
         3:testWinClassification,
-        4:testCascadingModel
+
     }
     ml_model={
         1:DNNCLassifier,
-        2:TraditionalClassifier,
+        2:EnsembleClassifier,
         3:XGBoostClassifier
     }
 
-    selectedmethod=1
+    selectedmethod=3
 
     selectedmodel=3
 
     tasktype="Code#0"
     testMethod[selectedmethod](tasktype,None,ml_model[selectedmodel])
+    exit(10)
+
+    ml_models=[]
+    pos=0
+    for i in range(1,1,2):
+        ml_models.insert(pos,ml_model[i])
+        pos+=1
+    testCascadingModel(tasktype,None,ml_models)
