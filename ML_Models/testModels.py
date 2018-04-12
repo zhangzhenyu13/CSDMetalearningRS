@@ -85,7 +85,7 @@ def testCascadingModel(tasktype,queue,metamodel):
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict2))
     kacc=[data.tasktype]
-    for k in (3,5,10,20):
+    for k in (1,3,5,10):
         acc=topKAccuracyWithDIG(Y_predict2,data,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
@@ -140,5 +140,5 @@ if __name__ == '__main__':
 
     selectedmodel=3
 
-    tasktype="Architecture"
+    tasktype="Code#0"
     testMethod[selectedmethod](tasktype,None,ml_model[selectedmodel])

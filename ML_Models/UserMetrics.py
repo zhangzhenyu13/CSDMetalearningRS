@@ -58,7 +58,7 @@ def topKAccuracyWithDIG(Y_predict2,data,k,reranking=False):
         if len(predictY)<k:
             #add users to meet requirement
             pos=0
-            while len(predictY)<k:
+            while len(predictY)<k and pos<len(userRank):
                 predictY.add(userRank[pos][0])
                 pos+=1
         elif len(predictY)>k and reranking:

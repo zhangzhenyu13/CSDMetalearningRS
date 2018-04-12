@@ -95,16 +95,23 @@ class DataSetTopcoder:
         print("loaded all the instances, size=%d"%len(self.taskids),
               "test point=%d, validate point=%d"%(self.testPoint,self.validatePoint))
 
-    def ReSampling(self,data,labels,resampling=over_sampling.ADASYN(),over_s=True):
+    def ReSampling(self,data,labels,over_s=True):
 
         label_status=Counter(labels)
         print(self.tasktype,"data "+self.tasktype,label_status)
         if len(label_status)<2:
             print(self.tasktype,"no need to resample")
             return data,labels
-        if label_status[1]/label_status[0]<4. or label_status[1]/label_status[0]>0.25:
+        if label_status[1]/label_status[0]<5. and label_status[1]/label_status[0]>0.2:
             print("data are not biased too much")
             return data,labels
+
+        maxSamples=label_status[0]
+        if label_status[1]>label_status[0]:
+            maxSamples=label_status[1]
+            resampling=over_sampling.ADASYN(ratio={1:maxSamples,0:int(0.4*maxSamples)})
+        else:
+            resampling=over_sampling.ADASYN(ratio={0:maxSamples,1:int(0.4*maxSamples)})
 
         try:
             data,labels=resampling.fit_sample(data,labels)

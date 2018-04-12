@@ -1,4 +1,4 @@
-from ML_Models.Model_def import *
+from ML_Models.UserMetrics import *
 import numpy as np
 from Utility.TagsDef import getUsers
 
@@ -38,15 +38,18 @@ class CascadingModel:
                 #reg
                 if regY[pos]==0:
                     continue
+
                 #sub
                 topN=int(0.5*len(self.users))
                 selectedusers=reRankSubUsers(self.subExpr,taskid,topN)
-                print(taskid,selectedusers)
+
                 if subY[pos]==0 and j not in selectedusers:
                     continue
+
                 #winner
-                topN=int(0.1*len(self.users))
+                topN=int(0.2*len(self.users))
                 selectedusers=reRankWinUsers(self.scoreExpr,taskid,topN)
+
                 if winY[pos]==0 and j not in selectedusers:
                     continue
                 Y[pos]=1

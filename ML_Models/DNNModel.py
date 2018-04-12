@@ -51,7 +51,7 @@ class DNNCLassifier(ML_model):
         return Y
 
     def loadModel(self):
-        self.model=models.load_model("../data/saved_ML_models/" + self.name + ".h5")
+        self.model=models.load_model("../data/saved_ML_models/dnns/" + self.name + ".h5")
     def saveModel(self):
-        self.model.save("../data/saved_ML_models/" + self.name + ".h5")
+        self.model.save("../data/saved_ML_models/dnns/" + self.name + ".h5")
 

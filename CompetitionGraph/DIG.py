@@ -200,8 +200,9 @@ class UserInteraction(multiprocessing.Process):
         self.finishSig.release()
 
 if __name__ == '__main__':
+
     mode=2
-    scoreTag=False
+    scoreTag=True
     tasktypes=SelectedTaskTypes.loadTaskTypes()
 
     for t in tasktypes["keeped"]:
@@ -307,7 +308,7 @@ if __name__ == '__main__':
                 #pool_processes[i].join()
                 del pool_processes[i]
 
-        with open("../data/UserInstances/UserGraph/SubNumBased/"+t+"-UserInteraction.data","wb") as f:
+        with open("../data/UserInstances/UserGraph/ScoreBased/"+t+"-UserInteraction.data","wb") as f:
             pickle.dump(dataGraph,f)
 
         print("time=%ds"%(time.time()-t0))
