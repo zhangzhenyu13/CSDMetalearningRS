@@ -20,7 +20,19 @@ def showData(X):
     plt.plot(x,np.array(y)[:,0])
     plt.show()
 
-def initDataSet():
+def genGlobalFeatures(techs,lans,docs,ids):
+    print("saving global encoding")
+    techs_enc=onehotFeatures(techs)
+    lans_enc=onehotFeatures(lans)
+    print(techs_enc)
+    print(lans_enc)
+    lda=LDAFlow()
+    lda.name="global"
+    lda.train_doctopics(docs)
+    with open("../data/TaskInstances/GlobalEncoding.data","wb") as f:
+        pickle.dump({"techs":techs_enc,"lans":lans_enc,"ids":ids},f,True)
+
+def initDataSet(return_all=False,genFeatures=False):
         conn = ConnectDB()
         cur = conn.cursor()
         sqlcmd = 'select taskid,detail,taskname, duration,technology,languages,prize,postingdate,diffdeg,tasktype from task ' \
@@ -81,17 +93,21 @@ def initDataSet():
 
         print("task size=",len(ids),len(docs),len(techs),len(lans),len(startdates),len(durations),len(prizes),len(diffdegs),len(tasktypes))
 
-        print("saving global encoding")
-        techs_enc=onehotFeatures(techs)
-        lans_enc=onehotFeatures(lans)
-        print(techs_enc)
-        print(lans_enc)
-        lda=LDAFlow()
-        lda.name="global"
-        lda.train_doctopics(docs)
-        with open("../data/TaskInstances/GlobalEncoding.data","wb") as f:
-            pickle.dump({"techs":techs_enc,"lans":lans_enc,"ids":ids},f,True)
 
+        if genFeatures:
+            genGlobalFeatures(techs,lans,docs,ids)
+        if return_all:
+            container=TaskDataContainer(typename='global')
+
+            container.ids=ids
+            container.docs=docs
+            container.techs=techs
+            container.lans=lans
+            container.startdates=startdates
+            container.durations=durations
+            container.prizes=prizes
+            container.diffdegs=diffdegs
+            return container
         #adding to corresponding type
         print("init data set types")
 
@@ -281,5 +297,8 @@ def genResults():
         #genResultOfTasktype(tasktype=tasktype,taskdata=taskdata,choice=choice)
 
 if __name__ == '__main__':
-    genResults()
+    #genResults();exit(10)
 
+    dataSet=initDataSet(True)
+    dataSet.encodingFeature(1)
+    saveTaskData(dataSet)

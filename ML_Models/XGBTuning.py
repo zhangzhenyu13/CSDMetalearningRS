@@ -24,6 +24,11 @@ def loadData(tasktype,mode):
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
 
     return data
+def showMetrics(Y_predict2,threshold):
+    Y_predict1=np.array(Y_predict2>threshold,dtype=np.int)
+    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
+    print("Confusion matrix ")
+    print(metrics.confusion_matrix(data.testLabel,Y_predict1))
 
 def testReg(data):
     model=XGBoostClassifier()
@@ -32,10 +37,7 @@ def testReg(data):
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
-    Y_predict1=np.array(Y_predict2>model.threshold,dtype=np.int)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
-    print("Confusion matrix ")
-    print(metrics.confusion_matrix(data.testLabel,Y_predict1))
+    showMetrics(Y_predict2,model.threshold)
 
 def testSub(data):
     model=XGBoostClassifier()
@@ -44,10 +46,8 @@ def testSub(data):
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
-    Y_predict1=np.array(Y_predict2>model.threshold,dtype=np.int)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
-    print("Confusion matrix ")
-    print(metrics.confusion_matrix(data.testLabel,Y_predict1))
+    showMetrics(Y_predict2,model.threshold)
+
 
 def testWin(data):
     model=XGBoostClassifier()
@@ -56,10 +56,8 @@ def testWin(data):
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
-    Y_predict1=np.array(Y_predict2>model.threshold,dtype=np.int)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
-    print("Confusion matrix ")
-    print(metrics.confusion_matrix(data.testLabel,Y_predict1))
+    showMetrics(Y_predict2,model.threshold)
+
 
     for k in (1,3,5,10):
         acc=topKPossibleUsers(Y_predict2,data,k)

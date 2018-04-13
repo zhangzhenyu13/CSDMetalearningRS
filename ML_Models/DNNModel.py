@@ -3,8 +3,8 @@ from keras import models,layers,optimizers,losses
 from keras.utils import np_utils
 import numpy as np
 import time
-
-
+from Utility.TagsDef import ModeTag
+from sklearn import metrics
 
 class DNNCLassifier(ML_model):
     def __init__(self):
@@ -55,3 +55,14 @@ class DNNCLassifier(ML_model):
     def saveModel(self):
         self.model.save("../data/saved_ML_models/dnns/" + self.name + ".h5")
 
+if __name__ == '__main__':
+    from ML_Models.XGBTuning import loadData,showMetrics
+    mode=2
+    dnnmodel=DNNCLassifier()
+    dnnmodel.name="global-classifier"+ModeTag[mode]
+
+    data=loadData("global",2)
+
+    #measuer model
+    Y_predict2=dnnmodel.predict(data.testX)
+    showMetrics(Y_predict2,dnnmodel.threshold)

@@ -319,6 +319,7 @@ if __name__ == '__main__':
     cond=multiprocessing.Condition()
     queue=multiprocessing.Queue()
 
-    mode=2
+    mode=0
+    DataInstances(tasktype="global",cond=cond,queue=queue,usingmode=mode).start();exit()
     genDataSet()
 

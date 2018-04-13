@@ -26,9 +26,11 @@ def genSelectedUserlist(tasktype,mode=2):
 
 if __name__ == '__main__':
     from Utility.SelectedTaskTypes import loadTaskTypes
+
     tasltypes=loadTaskTypes()
 
     for mode in range(3):
+        #genSelectedUserlist("global",mode);continue
         for k in tasltypes.keys():
             for t in tasltypes[k]:
                 genSelectedUserlist(t,mode)

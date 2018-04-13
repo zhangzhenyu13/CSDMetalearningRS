@@ -6,7 +6,7 @@ warnings.filterwarnings("ignore")
 
 
 def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
-    with open("../data/TaskInstances/taskDataSet/"+t+"-taskData.data","rb") as f:
+    with open("../data/TaskInstances/taskDataSet/"+tasktype+"-taskData.data","rb") as f:
         taskdata=pickle.load(f)
     taskids=taskdata["ids"]
 
@@ -73,11 +73,12 @@ if __name__ == '__main__':
     #
     #skillEncoding()
     userhistory=UserHistoryGenerator()
+    #construct global users set
+    #genUserHistoryOfTaskType(userhistory,"global",Users,Regs,Subs);exit(10)
     #construct history for users of given tasktype
 
     tasktypes=SelectedTaskTypes.loadTaskTypes()
     for t in tasktypes["clustered"]:
-
         #genUserHistoryOfTaskType(userhistory=userhistory,tasktype=t,Users=Users,Regs=Regs,Subs=Subs)
         multiprocessing.Process(target=genUserHistoryOfTaskType,args=(userhistory,t,Users,Regs,Subs)).start()
 

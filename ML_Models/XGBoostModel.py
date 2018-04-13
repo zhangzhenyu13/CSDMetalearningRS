@@ -11,9 +11,10 @@ class XGBoostClassifier(ML_model):
         self.params={
             'booster':'gbtree',
             'objective':'binary:logistic', #多分类的问题
-            'n_estimators':500,
+            'n_estimators':350,
+            'learning_rate':0.25,
             'gamma':0.1,  # 用于控制是否后剪枝的参数,越大越保守，一般0.1、0.2这样子。
-            'max_depth':12, # 构建树的深度，越大越容易过拟合
+            'max_depth':4, # 构建树的深度，越大越容易过拟合
             'lambda':2,  # 控制模型复杂度的权重值的L2正则化项参数，参数越大，模型越不容易过拟合。
             'subsample':0.7, # 随机采样训练样本
             'colsample_bytree':0.7, # 生成树时进行的列采样
@@ -77,35 +78,36 @@ class XGBoostClassifier(ML_model):
 
         #begin to search best parameters
 
-        self.model=xgboost.XGBClassifier(**self.params)
         #step 1
-        print("step1")
-        param1={'n_estimators':[i for i in range(20,500)],'learning_rate':[i/100 for i in range(5,30)]}
-        gsearch=GridSearchCV(self.model,param1)
-        gsearch.fit(dataSet.trainX,dataSet.trainLabel)
-        print("best paras",gsearch.best_params_)
-        print("best score",gsearch.best_score_())
-        self.updateParameters(gsearch.best_params_)
-        # step 2
-        print("step 2")
-        self.model=xgboost.XGBClassifier(**self.params)
-        param2 = {'max_depth':[i for i in range(3,12)],'min_child_weight':[i for i in range(2,10)]}
-        gsearch=GridSearchCV(self.model,param2)
-        gsearch.fit(dataSet.trainX,dataSet.trainLabel)
-        print("best paras",gsearch.best_params_)
-        print("best score",gsearch.best_score_())
-        self.updateParameters(gsearch.best_params_)
+        paraSelection=[
+            #{'n_estimators':[i for i in range(100,500,50)],'learning_rate':[i/100 for i in range(5,30,5)]},
+            {'max_depth':[i for i in range(1,7)],'min_child_weight':[i for i in range(1,6)]}
+        ]
+
+        for i in range(len(paraSelection)):
+
+            para1=paraSelection[i]
+            print("step#%d"%(i+1),"select paras:",para1.keys())
+
+            self.model=xgboost.XGBClassifier(**self.params)
+            gsearch=GridSearchCV(self.model,para1)
+            gsearch.fit(dataSet.trainX,dataSet.trainLabel)
+            print("best paras",gsearch.best_params_)
+            print("best score",gsearch.best_score_)
+            self.updateParameters(gsearch.best_params_)
+
 
         #measure model performance
         self.model=xgboost.XGBClassifier(**self.params)
         self.model.fit(
             np.concatenate((dataSet.trainX,dataSet.validateX),axis=1),
-            np.concatenate((dataSet.trainLabel,dataSet.validateLabel),axis=1)
-                       )
+            np.concatenate((dataSet.trainLabel,dataSet.validateLabel),axis=1),
+            early_stopping_rounds=20,eval_set=[(dataSet.validateX,dataSet.validateLabel)]
+        )
 
         t1=time.time()
 
-        vpredict=self.model.predict(xgboost.DMatrix(dataSet.validateX),ntree_limit=self.model.best_ntree_limit)
+        vpredict=self.model.predict_proba(dataSet.validateX,ntree_limit=self.model.best_ntree_limit)
         #print(vpredict)
         vpredict=np.array(vpredict>self.threshold,dtype=np.int)
         #print(vpredict)
