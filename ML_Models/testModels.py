@@ -7,7 +7,8 @@ from DataPrepare.TopcoderDataSet import *
 from sklearn import metrics
 import multiprocessing
 
-def testRegClassification(tasktype,queue,model=EnsembleClassifier):
+#reg model tuning
+def testRegClassification(tasktype,queue,model):
     data=TopcoderReg(tasktype,testratio=0.2,validateratio=0.1)
 
     data.loadData()
@@ -22,10 +23,13 @@ def testRegClassification(tasktype,queue,model=EnsembleClassifier):
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
+    Y_predict1=np.array(Y_predict2>model.threshold,dtype=np.int)
+    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
     print("Confusion matrix ")
-    print(metrics.confusion_matrix(data.testLabel,Y_predict2))
-def testSubClassification(tasktype,queue,model=EnsembleClassifier):
+    print(metrics.confusion_matrix(data.testLabel,Y_predict1))
+
+#sub model tuning
+def testSubClassification(tasktype,queue,model):
     data=TopcoderSub(tasktype,testratio=0.2,validateratio=0.1)
 
     data.loadData()
@@ -40,11 +44,13 @@ def testSubClassification(tasktype,queue,model=EnsembleClassifier):
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
+    Y_predict1=np.array(Y_predict2>model.threshold,dtype=np.int)
+    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
     print("Confusion matrix ")
-    print(metrics.confusion_matrix(data.testLabel,Y_predict2))
+    print(metrics.confusion_matrix(data.testLabel,Y_predict1))
 
-def testWinClassification(tasktype,queue,model=EnsembleClassifier):
+#winning model tuning
+def testWinClassification(tasktype,queue,model):
     data=TopcoderWin(tasktype,testratio=0.2,validateratio=0.1)
     data.loadData()
     data.WinClassificationData()
@@ -57,12 +63,20 @@ def testWinClassification(tasktype,queue,model=EnsembleClassifier):
     model.saveModel()
     model.loadModel()
     Y_predict2=model.predict(data.testX)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
+    Y_predict1=np.array(Y_predict2>model.threshold,dtype=np.int)
+    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
     print("Confusion matrix ")
-    print(metrics.confusion_matrix(data.testLabel,Y_predict2))
+    print(metrics.confusion_matrix(data.testLabel,Y_predict1))
     kacc=[data.tasktype]
-    for k in (3,5,10,20):
-        acc=topKAccuracyWithDIG(Y_predict2,data,k)
+    for k in (1,3,5,10):
+        acc=topKPossibleUsers(Y_predict2,data,k)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
+        acc=topKDIGUsers(data,k)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
         kacc=kacc+[acc]
@@ -70,6 +84,7 @@ def testWinClassification(tasktype,queue,model=EnsembleClassifier):
     if queue is not None:
         queue.put(kacc)
 
+#run cascading models
 def testCascadingModel(tasktype,queue,metamodels):
     data=TopcoderWin(tasktype,testratio=0.2,validateratio=0.1)
     data.loadData()
@@ -79,12 +94,15 @@ def testCascadingModel(tasktype,queue,metamodels):
     model.loadModel(tasktype,metamodels)
     taskids=data.taskids[:data.testPoint]
     Y_predict2=model.predict(data.testX,taskids)
-    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict2)))
+
+    Y_predict1=np.array(Y_predict2>model.threshold,dtype=np.int)
+    print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
     print("Confusion matrix ")
-    print(metrics.confusion_matrix(data.testLabel,Y_predict2))
+    print(metrics.confusion_matrix(data.testLabel,Y_predict1))
+
     kacc=[data.tasktype]
     for k in (1,3,5,10):
-        acc=topKAccuracyWithDIG(Y_predict2,data,k,True)
+        acc=topKPossibleUsers(Y_predict2,data,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
         kacc=kacc+[acc]
@@ -134,17 +152,13 @@ if __name__ == '__main__':
         3:XGBoostClassifier
     }
 
-    selectedmethod=3
+    selectedmethod=1
 
     selectedmodel=3
 
     tasktype="Code#0"
-    testMethod[selectedmethod](tasktype,None,ml_model[selectedmodel])
-    exit(10)
+    #testMethod[selectedmethod](tasktype,None,ml_model[selectedmodel]);exit(10)
 
-    ml_models=[]
-    pos=0
-    for i in range(1,1,2):
-        ml_models.insert(pos,ml_model[i])
-        pos+=1
+    ml_models=[ml_model[3],ml_model[3],ml_model[3]]
+
     testCascadingModel(tasktype,None,ml_models)

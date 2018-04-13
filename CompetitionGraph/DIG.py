@@ -1,4 +1,4 @@
-import pickle
+import _pickle as pickle
 import multiprocessing
 from multiprocessing import Condition,Queue
 from scipy import sparse
@@ -309,7 +309,7 @@ if __name__ == '__main__':
                 del pool_processes[i]
 
         with open("../data/UserInstances/UserGraph/ScoreBased/"+t+"-UserInteraction.data","wb") as f:
-            pickle.dump(dataGraph,f)
+            pickle.dump(dataGraph,f,True)
 
         print("time=%ds"%(time.time()-t0))
         print()

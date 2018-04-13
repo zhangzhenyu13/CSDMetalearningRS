@@ -1,7 +1,7 @@
-from DataPrepare.ConnectDB import *
-import multiprocessing,threading
+import multiprocessing
 from DataPrepare.DataContainer import *
 from Utility import SelectedTaskTypes
+import _pickle as pickle
 warnings.filterwarnings("ignore")
 
 
@@ -29,7 +29,7 @@ def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
         data["taskids"]=regdata.taskids
         data["regdates"]=regdata.regdates
         data["names"]=regdata.names
-        pickle.dump(data,f)
+        pickle.dump(data,f,True)
         print("saved %d reg items"%len(regdata.taskids))
 
     with open("../data/TaskInstances/SubInfo/"+tasktype+"-subs.data","wb") as f:
@@ -40,7 +40,7 @@ def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
         data["subnums"]=subdata.subnums
         data["scores"]=subdata.scores
         data["finalranks"]=subdata.finalranks
-        pickle.dump(data,f)
+        pickle.dump(data,f,True)
         print("saved %d sub items"%len(subdata.taskids))
 
     #return
@@ -63,7 +63,7 @@ def skillEncoding():
     skills_feature=onehotFeatures(allsubskills)
     print(skills_feature)
     with open("../data/UserInstances/SkillEncoding.data","wb") as f:
-        pickle.dump(skills_feature,f)
+        pickle.dump(skills_feature,f,True)
 
 if __name__ == '__main__':
     #init data set

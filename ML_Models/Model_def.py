@@ -1,10 +1,10 @@
-import pickle
+import _pickle as pickle
 
 class ML_model:
     def __init__(self):
         self.model=None
         self.name=""
-
+        self.threshold=0.5
     def predict(self,X):
         '''
         predict the result based on given X
@@ -27,5 +27,5 @@ class ML_model:
             data={}
             data["model"]=self.model
             data["name"]=self.name
-            pickle.dump(data,f)
+            pickle.dump(data,f,True)
 

@@ -2,7 +2,7 @@ from DataPrepare.ConnectDB import *
 from Utility.FeatureEncoder import onehotFeatures
 import numpy as np
 import matplotlib.pyplot as plt
-import multiprocessing,pickle
+import multiprocessing,_pickle as pickle
 from DataPrepare.DataContainer import TaskDataContainer
 from ML_Models.ClusteringModel import ClusteringModel
 from ML_Models.DocTopicsModel import LDAFlow
@@ -90,7 +90,7 @@ def initDataSet():
         lda.name="global"
         lda.train_doctopics(docs)
         with open("../data/TaskInstances/GlobalEncoding.data","wb") as f:
-            pickle.dump({"techs":techs_enc,"lans":lans_enc,"ids":ids},f)
+            pickle.dump({"techs":techs_enc,"lans":lans_enc,"ids":ids},f,True)
 
         #adding to corresponding type
         print("init data set types")
@@ -139,17 +139,23 @@ def clusterVec(taskdata,docX):
 
     X_techs=taskdata.techs_vec
     X_lans=taskdata.lans_vec
-
+    X_diffdegs=np.reshape(np.log(taskdata.diffdegs),newshape=(len(docX),1))
+    X_durations=np.reshape(np.log(taskdata.durations),newshape=(len(docX),1))
+    X_prizes=np.reshape(np.log(taskdata.prizes),newshape=(len(docX),1))
+    X_startdates=np.reshape(np.log(taskdata.startdates),newshape=(len(docX),1))
     print("cluster shape: docs,techs,lans",docX.shape,X_techs.shape,X_lans.shape)
     X=np.concatenate((docX,X_techs),axis=1)
     X=np.concatenate((X,X_lans),axis=1)
-
+    X=np.concatenate((X,X_diffdegs),axis=1)
+    X=np.concatenate((X,X_durations),axis=1)
+    X=np.concatenate((X,X_prizes),axis=1)
+    X=np.concatenate((X,X_startdates),axis=1)
     data={}
     data["ids"]=taskdata.ids
     data["X"]=X
 
     with open("../data/TaskInstances/taskContent/"+taskdata.taskType+"-taskData.data","wb") as f:
-        pickle.dump(data,f)
+        pickle.dump(data,f,True)
 
     return X
 
@@ -176,7 +182,7 @@ def saveTaskData(taskdata):
     data["ids"]=taskdata.ids
 
     with open("../data/TaskInstances/taskDataSet/"+taskdata.taskType+"-taskData.data","wb") as f:
-        pickle.dump(data,f)
+        pickle.dump(data,f,True)
 
 def genResultOfTasktype(tasktype,taskdata,choice):
 

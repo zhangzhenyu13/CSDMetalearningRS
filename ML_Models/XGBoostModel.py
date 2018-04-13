@@ -33,7 +33,6 @@ class XGBoostClassifier(ML_model):
         print(self.name,"XGBoost model is predicting")
         inputTD=xgboost.DMatrix(data=X)
         Y=self.model.predict(inputTD)
-        Y=np.array(Y>self.threshold,dtype=np.int)
         return Y
     def trainModel(self,dataSet):
         print("training")

@@ -1,4 +1,4 @@
-import pickle
+import _pickle as pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from Utility import SelectedTaskTypes
@@ -63,7 +63,7 @@ def genCRTable(tasktypes):
     userCrossTypeData["subs"]=crossM_Sub
     userCrossTypeData["wins"]=crossM_Win
     with open("../data/Statistics/crossTypeUserData.data","wb") as f:
-        pickle.dump(userCrossTypeData,f)
+        pickle.dump(userCrossTypeData,f,True)
 
     with open("../data/Statistics/crossTypeUserData.data","rb") as f:
         userCrossTypeData=pickle.load(f)
@@ -117,7 +117,7 @@ def genCRTable(tasktypes):
             plt.gca().clear()
 
         with open("../data/Statistics/CR_Data.data","wb") as f:
-            pickle.dump(CR_Matrix,f)
+            pickle.dump(CR_Matrix,f,True)
 
 def gentransferNeighbors(cr_threshold_reg=0.8,cr_threshold_sub=0.6,cr_threshold_win=0.4):
 

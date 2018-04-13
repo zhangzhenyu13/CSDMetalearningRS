@@ -10,7 +10,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import Normalizer
 import copy,time
-import pickle
+import _pickle as pickle
 from scipy import sparse
 from Utility.TagsDef import *
 
@@ -64,7 +64,7 @@ class LDAFlow:
             model["n_features"]=self.n_features
             model["dict"]=self.dictionary
             model["lda"]=self.lda
-            pickle.dump(model,f)
+            pickle.dump(model,f,True)
         print()
 
 
@@ -125,7 +125,7 @@ class LSAFlow:
             model={}
             model["n_features"]=self.n_features
             model["lsa"]=self.lsa
-            pickle.dump(model,f)
+            pickle.dump(model,f,True)
         print()
 
 

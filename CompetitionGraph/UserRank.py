@@ -35,8 +35,7 @@ class SelectPowerfulUser:
         self.usernames=np.array(data["users"])
         minmax=MinMaxScaler(feature_range=(0,1))
         self.usermatrix=minmax.fit_transform(self.usermatrix)
-        self.usermatrix=np.transpose(self.usermatrix)
-        self.usermatrix=minmax.fit_transform(self.usermatrix)
+
 def rankOnDIG(data):
     '''
     :param data:{"data":i_matrix,"users":users_list}

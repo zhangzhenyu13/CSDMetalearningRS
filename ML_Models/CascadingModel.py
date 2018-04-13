@@ -9,7 +9,7 @@ class CascadingModel:
         self.winModel=None
 
     def loadModel(self,tasktype,models):
-
+        print(len(models),models)
         self.regModel=models[0]()
         self.subModel=models[1]()
         self.winModel=models[2]()
@@ -23,7 +23,7 @@ class CascadingModel:
         self.subExpr=getSubnumOfDIG(tasktype)
         self.scoreExpr=getScoreOfDIG(tasktype)
         self.users=getUsers(tasktype,mode=2)
-
+        self.threshold=self.winModel.threshold
     def predict(self,X,taskids):
         print("Cascading Model is predicting")
         regY=self.regModel.predict(X)
@@ -37,23 +37,19 @@ class CascadingModel:
                 pos=i*len(self.users)+j
                 taskid=taskids[pos]
                 #reg
-                if regY[pos]==0:
+                if regY[pos]<self.threshold:
                     continue
 
                 #sub
                 topN=int(0.5*len(self.users))
-                selectedusers=reRankSubUsers(self.subExpr,taskid,topN)
+                selectedusers=getTopNUsersOnDIG(self.subExpr,taskid,topN)
 
-                if subY[pos]==0 and j not in selectedusers:
+                if subY[pos]<self.threshold and j not in selectedusers:
                     continue
 
                 #winner
-                topN=int(0.2*len(self.users))
-                selectedusers=reRankWinUsers(self.scoreExpr,taskid,topN)
 
-                if winY[pos]==0 and j not in selectedusers:
-                    continue
-                Y[pos]=1
+                Y[pos]=winY[pos]
 
         return Y
 

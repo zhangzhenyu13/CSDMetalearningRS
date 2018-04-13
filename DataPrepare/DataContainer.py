@@ -1,9 +1,8 @@
-from Utility.TagsDef import *
 from ML_Models.DocTopicsModel import LDAFlow,LSAFlow
 from DataPrepare.ConnectDB import ConnectDB
 from Utility.FeatureEncoder import *
 from Utility.TagsDef import  *
-import pickle,copy
+import _pickle as pickle,copy
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -98,10 +97,8 @@ class RegistrationDataContainer:
             return (np.array([]),np.array([]))
 
         ids=self.taskids[indices]
-        date=self.regdates[indices]
-        return [ids,date]
-
-
+        dates=self.regdates[indices]
+        return [ids,dates]
 
 class SubmissionDataContainer:
     def __init__(self,tasktype,taskids,usernames,subnums,subdates,scores,finalranks):
@@ -137,12 +134,9 @@ class SubmissionDataContainer:
         if len(indices1)==0:
             return None
 
-        indices2=[]
-        for i in range(len(indices1)):
-            indices2.insert(i,indices[indices1[i]])
-        indices=np.array(indices2,dtype=np.int)
+        index=indices[indices1[0]]
 
-        return [self.subnums[indices][0],self.finalranks[indices][0],self.scores[indices][0]]
+        return [self.subnums[index],self.finalranks[index],self.scores[index]]
 
     def getUserHistory(self,username):
         indices=np.where(self.names==username)[0]
@@ -276,7 +270,7 @@ class Submission:
                 self.subdate.append(1)
             else:
                 self.subdate.append(data[3])
-            if data[4] is not None:
+            if data[4] is not None and data[4]>0:
                 self.score.append(data[4])
             else:
                 self.score.append(0)
@@ -313,7 +307,7 @@ class Submission:
             p=0
             rank=0
             while rank<10 and p<len(X):
-                if X[p][1]==0:
+                if abs(X[p][1])<0.5:
                     break
                 for j in range(p,len(X)):
                     if X[j][1]!=X[p][1]:
@@ -398,7 +392,7 @@ class Tasks:
 
         self.loadData(begindate)
 
-    def loadData(self,begindate=5000):
+    def loadData(self,begindate=4200):
         pos=0
         for pos in range(len(self.taskIDs)):
             if self.postingdate[pos]>=begindate:
@@ -480,7 +474,7 @@ class UserHistoryGenerator:
             filepath="../data/UserInstances/UserHistory/"+tasktype+"-UserHistory"+ModeTag[mode]+".data"
         print("saving %s history of %d users"%(ModeTag[mode], len(userhistory)),"type="+tasktype)
         with open(filepath, "wb") as f:
-            pickle.dump(userhistory, f)
+            pickle.dump(userhistory, f,True)
 
     def loadActiveUserHistory(self,tasktype,mode,filepath=None):
         print("loading %s history of active users "%ModeTag[mode])

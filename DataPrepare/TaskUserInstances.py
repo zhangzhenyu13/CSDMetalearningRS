@@ -3,6 +3,7 @@ import time,gc
 from DataPrepare.DataContainer import *
 from Utility.TagsDef import *
 from Utility import SelectedTaskTypes
+import _pickle as pickle
 
 class DataInstances(multiprocessing.Process):
     maxProcessNum=8
@@ -242,7 +243,7 @@ class DataInstances(multiprocessing.Process):
                 data["scores"]=scores
                 data["regists"]=regists
                 with open(filepath+str(dataSegment),"wb") as f:
-                    pickle.dump(data,f)
+                    pickle.dump(data,f,True)
                 #reset for next segment
                 data=None
                 tasks=[]
@@ -271,7 +272,7 @@ class DataInstances(multiprocessing.Process):
 
         #print(self.tasktype+"=>:","saving %d Instances, segment=%d"%(len(taskids),dataSegment))
         with open(filepath+str(dataSegment),"wb") as f:
-            pickle.dump(data,f)
+            pickle.dump(data,f,True)
 
         self.saveDataIndex(filepath=filepath,dataSegment=dataSegment+1)
         #print(self.tasktype+"=>:","missing task",missingtask,"missing user",missinguser,"instances size",len(taskids))
