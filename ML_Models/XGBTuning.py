@@ -77,4 +77,4 @@ if __name__ == '__main__':
     tasktype="Architecture"
     mode=0
     data=loadData(tasktype,mode)
-    testReg(data)
+    testSub(data)
