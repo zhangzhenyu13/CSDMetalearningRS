@@ -6,7 +6,7 @@ from Utility import SelectedTaskTypes
 import _pickle as pickle
 
 class DataInstances(multiprocessing.Process):
-    maxProcessNum=8
+    maxProcessNum=25
 
     def __init__(self,tasktype,cond,queue,usingmode):
         multiprocessing.Process.__init__(self)
@@ -71,7 +71,7 @@ class DataInstances(multiprocessing.Process):
                 data.append(filepath+str(seg))
             pickle.dump(data,f)
 
-    def createInstancesWithHistoryInfo(self,threshold=5e+5,verboseNum=1e+5):
+    def createInstancesWithHistoryInfo(self,threshold=6e+5,verboseNum=1e+5):
         filepath="../data/TopcoderDataSet/"+ModeTag[self.usingMode].lower()+\
                  "HistoryBasedData/"+self.tasktype+"-user_task.data"
 
@@ -177,6 +177,7 @@ class DataInstances(multiprocessing.Process):
                 taskPos=dataIndex[id]
                 lan,tech,prize,duration,diffdeg=self.selTasks.lans[taskPos],self.selTasks.techs[taskPos],\
                     self.selTasks.prizes[taskPos],self.selTasks.durations[taskPos],self.selTasks.diffdegs[taskPos]
+
                 task=[]
                 skills=set(skills)
                 if len(lan)==0:
@@ -192,6 +193,7 @@ class DataInstances(multiprocessing.Process):
                 task.append(diffdeg)
                 task.append(duration)
                 task.append(prize)
+                task.append(date)
 
                 #task vec
                 task=task+list(self.selTasks.docX[taskPos])
@@ -204,19 +206,19 @@ class DataInstances(multiprocessing.Process):
 
                 if name in reg_usernams:
                     regists.append(1)
+                    #performance
+                    curPerformance = self.subdata.getResultOfSubmit(name, id)
+                    if curPerformance is not None:
+                        submits.append(curPerformance[0])
+                        ranks.append(curPerformance[1])
+                        scores.append(curPerformance[2])
                 else:
                     regists.append(0)
-
-                #performance
-                curPerformance = self.subdata.getResultOfSubmit(name, id)
-                if curPerformance is not None:
-                    submits.append(curPerformance[0])
-                    ranks.append(curPerformance[1])
-                    scores.append(curPerformance[2])
-                else:
                     submits.append(0)
                     ranks.append(10)
                     scores.append(0)
+
+
 
                 '''
                 if len(userData[name]["regtasks"][1][:20])>10:
@@ -284,7 +286,7 @@ def genDataSet():
 
     tasktypes=SelectedTaskTypes.loadTaskTypes()
 
-    for t in tasktypes["clustered"]:
+    for t in tasktypes["keeped"]:
 
         if len(process_pools)<DataInstances.maxProcessNum:
             proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode)

@@ -71,12 +71,12 @@ if __name__ == '__main__':
     Subs=Submission()
     Users=UserData()
     #
-    # skillEncoding()
+    #skillEncoding()
     userhistory=UserHistoryGenerator()
     #construct history for users of given tasktype
 
     tasktypes=SelectedTaskTypes.loadTaskTypes()
-    for t in tasktypes["keeped"]:
+    for t in tasktypes["clustered"]:
 
         #genUserHistoryOfTaskType(userhistory=userhistory,tasktype=t,Users=Users,Regs=Regs,Subs=Subs)
         multiprocessing.Process(target=genUserHistoryOfTaskType,args=(userhistory,t,Users,Regs,Subs)).start()

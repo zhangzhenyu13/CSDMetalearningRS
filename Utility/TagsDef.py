@@ -1,9 +1,9 @@
 ModeTag={0:"Reg",1:"Sub",2:"Win"}
 TestDate=600
-TaskFeatures=100
+TaskFeatures=60
 TaskLans=18
 TaskTechs=100
-UserSkills=100
+UserSkills=50
 #reg, sub, win :threshold
 minRegNum=30
 minSubNum=10
@@ -27,7 +27,9 @@ def genSelectedUserlist(tasktype,mode=2):
 if __name__ == '__main__':
     from Utility.SelectedTaskTypes import loadTaskTypes
     tasltypes=loadTaskTypes()
-    mode=2
-    for t in tasltypes["keeped"]:
-        genSelectedUserlist(t,mode)
-        print(t,len(getUsers(t,mode)))
+
+    for mode in range(3):
+        for k in tasltypes.keys():
+            for t in tasltypes[k]:
+                genSelectedUserlist(t,mode)
+                print(t,len(getUsers(t,mode)))
