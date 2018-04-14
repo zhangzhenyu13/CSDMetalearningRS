@@ -6,9 +6,11 @@ import time
 from Utility.TagsDef import ModeTag
 
 class DNNCLassifier(ML_model):
+
     def __init__(self):
         ML_model.__init__(self)
         self.defineModelLayer()
+
     #define dnn layer
     def defineModelLayer(self):
         inputDim=215

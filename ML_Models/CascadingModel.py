@@ -31,6 +31,7 @@ class CascadingModel:
         regY=self.regModel.predict(X)
         subY=self.subModel.predict(X)
         winY=self.winModel.predict(X)
+
         Y=np.zeros(shape=len(X))
         taskNum=len(X)//len(self.users)
 
@@ -48,10 +49,8 @@ class CascadingModel:
 
                 if subY[pos]<self.threshold and j not in selectedusers:
                     continue
-
                 #winner
 
                 Y[pos]=winY[pos]
 
         return Y
-

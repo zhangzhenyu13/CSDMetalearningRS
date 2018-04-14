@@ -30,6 +30,28 @@ def showMetrics(Y_predict2,threshold):
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict1))
 
+def topKmetrocs(Y_predict2,data):
+
+    mymetric=TopKMetrics(data.tasktype)
+    for k in (1,3,5,10):
+        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
+        acc=mymetric.topKDIGUsers(data,k)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
+        acc=mymetric.topKPDIGUsers(Y_predict2,data,k,)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
+        acc=mymetric.topKSUsers(Y_predict2,data,k,)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
+        print()
+
 def testReg(data):
     model=XGBoostClassifier()
     model.name=data.tasktype+"-classifier(Sub)"
@@ -58,28 +80,10 @@ def testWin(data):
     Y_predict2=model.predict(data.testX)
     showMetrics(Y_predict2,model.threshold)
 
-    mymetric=TopKMetrics()
-    for k in (1,3,5,10):
-        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
-        acc=np.mean(acc)
-        print(data.tasktype,"top %d"%k,acc)
-
-        acc=mymetric.topKDIGUsers(data,k)
-        acc=np.mean(acc)
-        print(data.tasktype,"top %d"%k,acc)
-
-        acc=mymetric.topKPDIGUsers(Y_predict2,data,k,)
-        acc=np.mean(acc)
-        print(data.tasktype,"top %d"%k,acc)
-
-        acc=mymetric.topKSUsers(Y_predict2,data,k,)
-        acc=np.mean(acc)
-        print(data.tasktype,"top %d"%k,acc)
-
-    print()
+    topKmetrocs(Y_predict2,data)
 
 if __name__ == '__main__':
     tasktype="Architecture"
-    mode=0
+    mode=2
     data=loadData(tasktype,mode)
     testWin(data)
