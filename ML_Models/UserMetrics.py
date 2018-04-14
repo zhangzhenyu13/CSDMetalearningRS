@@ -2,7 +2,7 @@ import numpy as np
 from Utility.TagsDef import getUsers
 import pickle
 from Utility.personalizedSort import MySort
-
+from sklearn import preprocessing
 #metrics
 
 class TopKMetrics:
@@ -22,7 +22,7 @@ class TopKMetrics:
         return rankData
 
     #clip indices of top k data from given vector X
-    def __getTopKonPossibility(self,P,k):
+    def getTopKonPossibility(self,P,k):
         x_vec=[]
         for i in range(len(P)):
             x_vec.insert(i,[i,P[i]])
@@ -36,27 +36,40 @@ class TopKMetrics:
 
     #clip indices of top k data from DIG
     def getTopKonDIGRank(self,userRank,k):
-        predictY=userRank[:,0]
-        predictY=np.array(predictY[:k],dtype=np.int)
-        return predictY,np.array(userRank[:,1])
+
+        return np.array(userRank[:k,0],dtype=np.int),np.array(userRank[:k,1])
 
     #clip indices of top k data from weighted sum of P and R
-    def __getTopKonPDIGScore(self,predictP,predictR,rank_weight=0.5):
+    def getTopKonPDIGScore(self,predictP,predictR,rank_weight=0.8):
         Y=[]
-        for i in range(len(predictP)):
-            P=predictP[i]
-            index=np.where(predictR[:,0]==P[0])[0]
+        indexP=predictP[0]
+        indexR=predictR[0]
+        scoreP=predictP[1]
+        scoreR=predictR[1]
+
+        maxR=np.max(scoreR)
+        minR=np.min(scoreR)
+        scoreR=(scoreR-minR)/(maxR-minR)
+        #sort
+        n_users=len(indexP)
+        rmP=[]
+        rmR=[]
+        for i in range(n_users):
+
+            index=np.where(indexR==indexP[i])[0]
 
             if len(index)>0:
-                R=predictR[index]
-                Y.append([P[0],rank_weight*P[1]+(1-rank_weight)*R[1]])
-                predictP=np.delete(predictP,i,axis=0)
-                predictR=np.delete(predictR,index,axis=0)
+                index=index[0]
+                Y.append([indexP[i],rank_weight*scoreP[i]+(1-rank_weight)*scoreR[index]])
+                rmP.append(i)
+                rmR.append(index)
 
-        for P in predictP:
-            Y.append([P[0],rank_weight*P[1]])
-        for R in predictR:
-            Y.append([R[0],(1-rank_weight)*R[1]])
+        for i in range(n_users):
+            if i not in rmP:
+                Y.append([indexP[i],rank_weight*scoreP[i]])
+        for i in range(n_users):
+            if i not in rmR:
+                Y.append([indexR[i],(1-rank_weight)*scoreR[i]])
         #sort Y
         ms=MySort(Y)
         ms.compare_vec_index=-1
@@ -85,7 +98,7 @@ class TopKMetrics:
             if len(trueY)==0:continue
 
             predictY=Y_predict[left:right]
-            predictY,_ =self.__getTopKonPossibility(predictY,k)
+            predictY,_ =self.getTopKonPossibility(predictY,k)
             #print("true",trueY)
             #print("predict",predictY)
             if len(trueY.intersection(predictY))>0:
@@ -128,7 +141,7 @@ class TopKMetrics:
 
 
     #top k acc based on hard classification
-    def topKPDIGUsers(self,Y_predict2,data,k,rank_weight=0.5):
+    def topKPDIGUsers(self,Y_predict2,data,k,rank_weight=0.9):
         '''
         :return Y[i]=true if ith sample can intersect with each other in Y_predict[i] and Y_true[i]
                           else return false
@@ -136,7 +149,6 @@ class TopKMetrics:
         :param data: the data set containing actual labels
         :return: Y, array with each element indicate the result of ground-truth
         '''
-        print("",rank_weight)
 
         # measure top k accuracy
         dataRank=self.scoreRank
@@ -148,7 +160,7 @@ class TopKMetrics:
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
         print("top %d users from Possibility&DIG(using DIG,re-ranking=%f) for %d tasks(%d winners,%d users)"%
-              (k,taskNum,rank_weight,np.sum(Y_label),len(usersList)))
+              (k,rank_weight,taskNum,np.sum(Y_label),len(usersList)))
 
         for i in range(taskNum):
             left=i*len(usersList)
@@ -163,9 +175,9 @@ class TopKMetrics:
             if len(trueY)==0:continue
 
             predictY=Y_predict2[left:right]
-            predictP=self.__getTopKonPossibility(predictY,k)
+            predictP=self.getTopKonPossibility(predictY,k)
             predictR=self.getTopKonDIGRank(userRank,k)
-            predictY,_ =self.__getTopKonPDIGScore(predictP,predictR,rank_weight)
+            predictY,_ =self.getTopKonPDIGScore(predictP,predictR,rank_weight)
             predictY=predictY[:k]
             if len(trueY.intersection(predictY))>0:
                 Y[i]=1
@@ -200,7 +212,7 @@ class TopKMetrics:
             if len(trueY)==0:continue
 
             predictY=Y_predict2[left:right]
-            predictY, _=self.__getTopKonPossibility(predictY,k)
+            predictY, _=self.getTopKonPossibility(predictY,k)
             predictY=set(predictY[:k])
 
             if len(trueY.intersection(predictY))>0:

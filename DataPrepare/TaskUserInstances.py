@@ -212,6 +212,10 @@ class DataInstances(multiprocessing.Process):
                         submits.append(curPerformance[0])
                         ranks.append(curPerformance[1])
                         scores.append(curPerformance[2])
+                    else:
+                        submits.append(0)
+                        ranks.append(10)
+                        scores.append(0)
                 else:
                     regists.append(0)
                     submits.append(0)
@@ -286,7 +290,7 @@ def genDataSet():
 
     tasktypes=SelectedTaskTypes.loadTaskTypes()
 
-    for t in tasktypes["keeped"]:
+    for t in tasktypes["clustered"]:
 
         if len(process_pools)<DataInstances.maxProcessNum:
             proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode)
@@ -319,7 +323,7 @@ if __name__ == '__main__':
     cond=multiprocessing.Condition()
     queue=multiprocessing.Queue()
 
-    mode=0
+    mode=2
     DataInstances(tasktype="global",cond=cond,queue=queue,usingmode=mode).start();exit()
     genDataSet()
 

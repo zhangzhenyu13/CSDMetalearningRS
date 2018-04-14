@@ -69,6 +69,7 @@ class DataSetTopcoder:
         print(" fetched segment:",index,"in %ds"%(time.time()-t0))
 
     def loadData(self):
+
         print(self.tasktype,"loading data")
         with open(self.filepath,"rb") as f:
             self.dataSet=pickle.load(f)
@@ -157,14 +158,17 @@ class TopcoderSub(DataSetTopcoder):
         self.registLabelClassification=self.fetchData(self.dataSet,"regists")
         trainReg=self.registLabelClassification[self.validatePoint:]
         validateReg=self.registLabelClassification[self.testPoint:self.validatePoint]
-        indices=np.where(trainReg>0)
+        #print(len(trainReg),len(validateReg),len(self.trainLabel),len(self.validateLabel),
+        #      len(self.trainX),len(self.validateX))
+        indices=np.where(trainReg>0)[0]
         self.trainX=self.trainX[indices]
         self.trainLabel=self.trainLabel[indices]
-        indices=np.where(validateReg>0)
+        indices=np.where(validateReg>0)[0]
         self.validateX=self.validateX[indices]
         self.validateLabel=self.validateLabel[indices]
         print("after refactoring, train size=%d,validate size=%d,test size=%d"%(
             len(self.trainLabel),len(self.validateLabel),len(self.testLabel)))
+
     def SubmitRegressionData(self):
 
         Y=self.fetchData(self.dataSet,"submits")
@@ -189,10 +193,10 @@ class TopcoderWin(DataSetTopcoder):
         self.submitLabelClassification=self.fetchData(self.dataSet,"submits")
         trainSub=self.submitLabelClassification[self.validatePoint:]
         validateSub=self.submitLabelClassification[self.testPoint:self.validatePoint]
-        indices=np.where(trainSub>0)
+        indices=np.where(trainSub>0)[0]
         self.trainX=self.trainX[indices]
         self.trainLabel=self.trainLabel[indices]
-        indices=np.where(validateSub>0)
+        indices=np.where(validateSub>0)[0]
         self.validateX=self.validateX[indices]
         self.validateLabel=self.validateLabel[indices]
         print("after refactoring, train size=%d,validate size=%d,test size=%d"%(

@@ -1,38 +1,39 @@
 from ML_Models.Model_def import *
 from keras import models,layers,optimizers,losses
-from keras.utils import np_utils
 import numpy as np
 import time
 from Utility.TagsDef import ModeTag
 
+#model
 class DNNCLassifier(ML_model):
 
     def __init__(self):
         ML_model.__init__(self)
         self.defineModelLayer()
 
-    #define dnn layer
+    #define dnns layer
     def defineModelLayer(self):
-        inputDim=215
-        ouputDim=2
+        inputDim=126#user:60, task:66
+        ouputDim=1
         x=layers.Input(shape=(inputDim,))
 
         #model1
-        model1=layers.Dense(400,activation="relu")(x)
-        model1=layers.Dense(160, activation="relu")(model1)
+        model1=layers.Dense(64,activation="relu")(x)
+        model1=layers.Dense(64, activation="relu")(model1)
+        model1=layers.Dense(64, activation="relu")(model1)
+        model1=layers.Dense(32, activation="relu")(model1)
+        model1=layers.Dense(16, activation="relu")(model1)
         model1=layers.Dropout(0.5)(model1)
 
-        model3=layers.Dense(ouputDim,activation="softmax")(model1)
-
+        model3=layers.Dense(ouputDim,activation="sigmoid")(model1)
         #final model
         self.model=models.Model(inputs=[x],outputs=[model3])
 
         opt = optimizers.Adagrad(lr=0.001)
-        self.model.compile(optimizer=opt,loss='categorical_crossentropy',metrics=["accuracy"])
+        self.model.compile(optimizer=opt,loss=losses.mean_squared_error,metrics=["accuracy"])
 
     def trainModel(self,dataSet):
-        dataSet.trainLabel=np_utils.to_categorical(dataSet.trainLabel,num_classes=2)
-        dataSet.validateLabel=np_utils.to_categorical(dataSet.validateLabel,num_classes=2)
+
         X=np.concatenate((dataSet.trainX,dataSet.validateX),axis=0)
         Y=np.concatenate((dataSet.trainLabel,dataSet.validateLabel),axis=0)
 
@@ -46,7 +47,6 @@ class DNNCLassifier(ML_model):
     def predict(self,X):
         print(self.name,"(DNN) is predicting ")
         Y=self.model.predict(X,batch_size=10000)
-        Y=np.argmax(Y,axis=1)
         print("finished predicting ",len(Y))
         return Y
 
@@ -56,13 +56,20 @@ class DNNCLassifier(ML_model):
         self.model.save("../data/saved_ML_models/dnns/" + self.name + ".h5")
 
 if __name__ == '__main__':
-    from ML_Models.XGBTuning import loadData,showMetrics
+    from ML_Models.ModelTuning import loadData,showMetrics,topKmetrics
     mode=0
+    tasktype="Architecture"
     dnnmodel=DNNCLassifier()
-    dnnmodel.name="global-classifier"+ModeTag[mode]
+    dnnmodel.name=tasktype+"-classifier"+ModeTag[mode]
 
-    data=loadData("global",0)
-
+    data=loadData(tasktype,mode)
+    #train model
+    dnnmodel.trainModel(data);dnnmodel.saveModel()
     #measuer model
+    dnnmodel.loadModel()
     Y_predict2=dnnmodel.predict(data.testX)
-    showMetrics(Y_predict2,dnnmodel.threshold)
+    showMetrics(Y_predict2,data,dnnmodel.threshold)
+
+    #winners
+    if mode==2:
+        topKmetrics(Y_predict2,data)

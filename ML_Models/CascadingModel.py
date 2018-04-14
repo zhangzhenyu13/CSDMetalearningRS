@@ -7,15 +7,18 @@ class CascadingModel:
         self.regModel=None
         self.subModel=None
         self.winModel=None
+        self.regThreshold=0.3
+        self.subThreshold=0.3
+        self.winThreshol=0.5
 
     def loadModel(self,tasktype,models):
         print(len(models),models)
         self.regModel=models[0]()
         self.subModel=models[1]()
         self.winModel=models[2]()
-        self.regModel.name=tasktype+"-classifier(Reg)"
-        self.subModel.name=tasktype+"-classifier(Sub)"
-        self.winModel.name=tasktype+"-classifier(Win)"
+        self.regModel.name=tasktype+"-classifierReg"
+        self.subModel.name=tasktype+"-classifierSub"
+        self.winModel.name=tasktype+"-classifierWin"
         self.regModel.loadModel()
         self.subModel.loadModel()
         self.winModel.loadModel()
@@ -40,14 +43,14 @@ class CascadingModel:
                 pos=i*len(self.users)+j
                 taskid=taskids[pos]
                 #reg
-                if regY[pos]<self.threshold:
+                if regY[pos]<self.regThreshold:
                     continue
 
                 #sub
                 topN=int(0.5*len(self.users))
                 selectedusers,_ =self.mymetric.getTopKonDIGRank(self.subExpr[taskid]["ranks"],topN)
 
-                if subY[pos]<self.threshold and j not in selectedusers:
+                if subY[pos]<self.subThreshold and j not in selectedusers:
                     continue
                 #winner
 

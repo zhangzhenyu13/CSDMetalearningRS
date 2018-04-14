@@ -1,5 +1,3 @@
-from ML_Models.CascadingModel import *
-from ML_Models.XGBoostModel import *
 from ML_Models.UserMetrics import *
 from DataPrepare.TopcoderDataSet import *
 from sklearn import metrics
@@ -24,13 +22,21 @@ def loadData(tasktype,mode):
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
 
     return data
-def showMetrics(Y_predict2,threshold):
+def showMetrics(Y_predict2,data,threshold):
     Y_predict1=np.array(Y_predict2>threshold,dtype=np.int)
     print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict1))
 
-def topKmetrocs(Y_predict2,data):
+def bestPDIG(mymetric,Y_predict2,data):
+    print("tuning re-rank weight")
+    for k in (1,3,5,10):
+        for w in range(10):
+            acc=mymetric.topKPDIGUsers(Y_predict2,data,k,w/10)
+            acc=np.mean(acc)
+            print(data.tasktype,"top %d"%k,acc)
+        print()
+def topKmetrics(Y_predict2,data):
 
     mymetric=TopKMetrics(data.tasktype)
     for k in (1,3,5,10):
@@ -42,7 +48,7 @@ def topKmetrocs(Y_predict2,data):
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
-        acc=mymetric.topKPDIGUsers(Y_predict2,data,k,)
+        acc=mymetric.topKPDIGUsers(Y_predict2,data,k,0.8)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
@@ -52,38 +58,5 @@ def topKmetrocs(Y_predict2,data):
 
         print()
 
-def testReg(data):
-    model=XGBoostClassifier()
-    model.name=data.tasktype+"-classifier(Sub)"
-    model.trainModel(data)
-    model.saveModel()
-    model.loadModel()
-    Y_predict2=model.predict(data.testX)
-    showMetrics(Y_predict2,model.threshold)
+    bestPDIG(mymetric,Y_predict2,data)
 
-def testSub(data):
-    model=XGBoostClassifier()
-    model.name=data.tasktype+"-classifier(Sub)"
-    model.trainModel(data)
-    model.saveModel()
-    model.loadModel()
-    Y_predict2=model.predict(data.testX)
-    showMetrics(Y_predict2,model.threshold)
-
-
-def testWin(data):
-    model=XGBoostClassifier()
-    model.name=data.tasktype+"-classifier(Win)"
-    model.trainModel(data)
-    model.saveModel()
-    model.loadModel()
-    Y_predict2=model.predict(data.testX)
-    showMetrics(Y_predict2,model.threshold)
-
-    topKmetrocs(Y_predict2,data)
-
-if __name__ == '__main__':
-    tasktype="Architecture"
-    mode=2
-    data=loadData(tasktype,mode)
-    testWin(data)
