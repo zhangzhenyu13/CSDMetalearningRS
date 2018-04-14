@@ -71,7 +71,7 @@ class DataInstances(multiprocessing.Process):
                 data.append(filepath+str(seg))
             pickle.dump(data,f)
 
-    def createInstancesWithHistoryInfo(self,threshold=6e+5,verboseNum=1e+5):
+    def createInstancesWithHistoryInfo(self,threshold=6e+5,verboseNum=1e+3):
         filepath="../data/TopcoderDataSet/"+ModeTag[self.usingMode].lower()+\
                  "HistoryBasedData/"+self.tasktype+"-user_task.data"
 

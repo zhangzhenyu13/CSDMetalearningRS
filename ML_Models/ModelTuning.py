@@ -22,6 +22,7 @@ def loadData(tasktype,mode):
     data.validateX,data.validateLabel=data.ReSampling(data.validateX,data.validateLabel)
 
     return data
+
 def showMetrics(Y_predict2,data,threshold):
     Y_predict1=np.array(Y_predict2>threshold,dtype=np.int)
     print("test score=%f"%(metrics.accuracy_score(data.testLabel,Y_predict1)))
@@ -36,8 +37,9 @@ def bestPDIG(mymetric,Y_predict2,data):
             acc=np.mean(acc)
             print(data.tasktype,"top %d"%k,acc)
         print()
-def topKmetrics(Y_predict2,data):
 
+def topKmetrics(Y_predict2,data):
+    print("\n meta-learning model top k acc")
     mymetric=TopKMetrics(data.tasktype)
     for k in (1,3,5,10):
         acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
@@ -58,5 +60,5 @@ def topKmetrics(Y_predict2,data):
 
         print()
 
-    bestPDIG(mymetric,Y_predict2,data)
+    return mymetric
 

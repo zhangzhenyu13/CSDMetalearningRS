@@ -102,7 +102,7 @@ class XGBoostClassifier(ML_model):
             print("step#%d"%(i+1),"select paras:",para1.keys())
 
             self.model=xgboost.XGBClassifier(**self.params)
-            gsearch=GridSearchCV(self.model,para1)
+            gsearch=GridSearchCV(self.model,para1,scoring=metrics.make_scorer(metrics.precision_score))
             gsearch.fit(dataSet.trainX,dataSet.trainLabel)
             print("best paras",gsearch.best_params_)
             print("best score",gsearch.best_score_)

@@ -8,17 +8,17 @@ from sklearn.model_selection import GridSearchCV
 class EnsembleClassifier(ML_model):
     def initParameters(self):
         self.params={
-            'n_estimators':10,
+            'n_estimators':60,
             'criterion':"gini",
             'max_depth':12,
-            'min_samples_split':20,
-            'min_samples_leaf':5,
+            'min_samples_split':25,
+            'min_samples_leaf':13,
             'max_features':"auto",
             'max_leaf_nodes':None,
             'bootstrap':False,
             'n_jobs':-1,
             'verbose':1,
-            'class_weight':{0:1,1:5}
+            'class_weight':{0:1,1:1}
         }
     def __init__(self):
         ML_model.__init__(self)
@@ -39,22 +39,25 @@ class EnsembleClassifier(ML_model):
             self.params[k]=paras[k]
     def searchParameters(self,dataSet):
         print("searching for best parameters")
+
         selParas=[
             {'n_estimators':[i for i in range(10,200,10)]},
             {'criterion':["gini","entropy"]},
-            {'max_depth':[i for i in range(3,13)]},
+            {'max_depth':[i for i in range(3,20)]},
             {'min_samples_split':[i for i in range(20,100,5)]},
             {'min_samples_leaf':[i for i in range(5,30,2)]},
             {'max_features':["auto","sqrt","log2",None]},
             {'class_weight':[{0:1,1:i} for i in range(1,7)]}
         ]
+
         for i in range(len(selParas)):
             para=selParas[i]
             model=ensemble.ExtraTreesClassifier(**self.params)
-            gsearch=GridSearchCV(model,para)
+            gsearch=GridSearchCV(model,para,scoring=metrics.make_scorer(metrics.precision_score))
             gsearch.fit(dataSet.trainX,dataSet.trainLabel)
             print("best para",gsearch.best_params_)
             self.updateParameters(gsearch.best_params_)
+
         self.saveConf()
         self.model=ensemble.ExtraTreesClassifier(**self.params)
 
@@ -84,7 +87,7 @@ class EnsembleClassifier(ML_model):
 
 if __name__ == '__main__':
     from ML_Models.ModelTuning import loadData,showMetrics,topKmetrics
-    mode=0
+    mode=2
     tasktype="Architecture"
     dnnmodel=EnsembleClassifier()
     dnnmodel.name=tasktype+"-classifier"+ModeTag[mode]
