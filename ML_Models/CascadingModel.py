@@ -20,10 +20,12 @@ class CascadingModel:
         self.subModel.loadModel()
         self.winModel.loadModel()
 
-        self.subExpr=getSubnumOfDIG(tasktype)
-        self.scoreExpr=getScoreOfDIG(tasktype)
+        self.mymetric=TopKMetrics(tasktype)
+        self.subExpr=self.mymetric.subRank
+        self.scoreExpr=self.mymetric.scoreRank
         self.users=getUsers(tasktype,mode=2)
         self.threshold=self.winModel.threshold
+
     def predict(self,X,taskids):
         print("Cascading Model is predicting")
         regY=self.regModel.predict(X)
@@ -42,7 +44,7 @@ class CascadingModel:
 
                 #sub
                 topN=int(0.5*len(self.users))
-                selectedusers=getTopNUsersOnDIG(self.subExpr,taskid,topN)
+                selectedusers,_ =self.mymetric.getTopKonDIGRank(self.subExpr[taskid]["ranks"],topN)
 
                 if subY[pos]<self.threshold and j not in selectedusers:
                     continue

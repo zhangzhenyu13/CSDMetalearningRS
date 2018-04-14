@@ -58,21 +58,21 @@ def testWin(data):
     Y_predict2=model.predict(data.testX)
     showMetrics(Y_predict2,model.threshold)
 
-
+    mymetric=TopKMetrics()
     for k in (1,3,5,10):
-        acc=topKPossibleUsers(Y_predict2,data,k)
+        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
-        acc=topKDIGUsers(data,k)
+        acc=mymetric.topKDIGUsers(data,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
-        acc=topKonPDIGUsers(Y_predict2,data,k,)
+        acc=mymetric.topKPDIGUsers(Y_predict2,data,k,)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
-        acc=topKonSubUsers(Y_predict2,data,k,)
+        acc=mymetric.topKSUsers(Y_predict2,data,k,)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
