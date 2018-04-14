@@ -68,6 +68,11 @@ def testWin(data):
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
+        acc=topKonPDIGUsers(Y_predict2,data,k,)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
+        acc=topKonSubUsers(Y_predict2,data,k,)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
@@ -77,4 +82,4 @@ if __name__ == '__main__':
     tasktype="Architecture"
     mode=0
     data=loadData(tasktype,mode)
-    testSub(data)
+    testWin(data)

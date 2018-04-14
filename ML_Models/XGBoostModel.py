@@ -7,6 +7,7 @@ from sklearn.model_selection import GridSearchCV
 
 
 class XGBoostClassifier(ML_model):
+
     def initParameters(self):
         self.params={
             'booster':'gbtree',
@@ -19,16 +20,17 @@ class XGBoostClassifier(ML_model):
             'subsample':0.7, # 随机采样训练样本
             'colsample_bytree':0.7, # 生成树时进行的列采样
             'min_child_weight':1,
-            # 这个参数默认是 1，是每个叶子里面 h 的和至少是多少，对正负样本不均衡时的 0-1 分类而言
-            #，假设 h 在 0.01 附近，min_child_weight 为 1 意味着叶子节点中最少需要包含 100 个样本。
+            #这个参数默认是 1，是每个叶子里面 h 的和至少是多少，对正负样本不均衡时的 0-1 分类而言,
+            #假设 h 在 0.01 附近，min_child_weight 为 1 意味着叶子节点中最少需要包含 100 个样本。
             #这个参数非常影响结果，控制叶子节点中二阶导的和的最小值，该参数值越小，越容易 overfitting。
             'silent':0 ,#设置成1则没有运行信息输出，最好是设置为0.
             'eta': 0.007, # 如同学习率
             'seed':1000,
             'reg_alpha':100,
-            #'nthread':7,# cpu 线程数
+            'nthread':8,# cpu 线程数
             'eval_metric': 'error@'+str(self.threshold)
             }
+
     def updateParameters(self,new_paras):
         for k in new_paras:
             self.params[k]=new_paras[k]
@@ -41,11 +43,11 @@ class XGBoostClassifier(ML_model):
 
     def predict(self,X):
         print(self.name,"XGBoost model is predicting")
-        Y2=self.model.predict(X,ntree_limit=self.model.best_ntree_limit)
-        #Y=np.zeros(shape=len(X),dtype=np.int)
-        #for i in range(len(X)):
-        #    Y[i]=Y2[i][0]>Y2[i][1]
-        return Y2
+        InputData=xgboost.DMatrix(data=X)
+        Y=self.model.predict(InputData,ntree_limit=self.model.best_ntree_limit)
+
+        return Y
+
     def navieTrain(self,dataSet):
         print(" navie training")
         t0=time.time()
@@ -53,7 +55,6 @@ class XGBoostClassifier(ML_model):
         dtrain=xgboost.DMatrix(data=dataSet.trainX,label=dataSet.trainLabel)
         dvalidate=xgboost.DMatrix(data=dataSet.validateX,label=dataSet.validateLabel)
 
-        param =self.initParameters()
         watchlist = [(dvalidate, 'eval'), (dtrain, 'train')]
 
         #begin to search best parameters
@@ -72,22 +73,18 @@ class XGBoostClassifier(ML_model):
         cm=metrics.confusion_matrix(dataSet.validateLabel,vpredict)
         print("model",self.name,"trainning finished in %ds"%(t1-t0),"validate score=%f"%score,"CM=\n",cm)
 
-    def trainModel(self,dataSet):
+    def searchParameters(self,dataSet):
         print(" search training")
         t0=time.time()
 
-        #init parameters
-        param =self.initParameters()#= {'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic'}
-
-        #begin to search best parameters
-
-        #step 1
+        #procedure 1=>search best parameters
         paraSelection=[
             {'n_estimators':[i for i in range(100,500,50)],'learning_rate':[i/100 for i in range(5,30,5)]},
             {'max_depth':[i for i in range(1,7)],'min_child_weight':[i for i in range(1,6)]},
             {'gamma':[i/10.0 for i in range(0,5)]},
             {'subsample':[i/10.0 for i in range(6,10)],'colsample_bytree':[i/10.0 for i in range(6,10)]},
             {'reg_alpha':[1e-5, 1e-2, 0.1, 1, 100]},
+            {'eval_metric':['error@'+str(i/10) for i in range(3,8)]}
         ]
 
         for i in range(len(paraSelection)):
@@ -102,31 +99,31 @@ class XGBoostClassifier(ML_model):
             print("best score",gsearch.best_score_)
             self.updateParameters(gsearch.best_params_)
 
-        print("save params of", dataSet.tasktype)
-        with open("../data/saved_ML_models/boosts/config/"+dataSet.tasktype+".json","w") as f:
+        print("save params of", dataSet.tasktype,"para search finished in %ds"%(time.time()-t0))
+        with open("../data/saved_ML_models/boosts/config/"+self.name+".json","w") as f:
             import json
             json.dump(self.params,f)
 
-        #measure model performance
-        self.model=xgboost.XGBClassifier(**self.params)
-        self.model.fit(
-            np.concatenate((dataSet.trainX,dataSet.validateX),axis=0),
-            np.concatenate((dataSet.trainLabel,dataSet.validateLabel),axis=0),
-            early_stopping_rounds=20,eval_set=[(dataSet.validateX,dataSet.validateLabel)]
-        )
+    def trainModel(self,dataSet):
 
-        t1=time.time()
+        reSearch=False
+        loadedConf=True
 
-        vpredict=self.predict(dataSet.validateX)
-        print(vpredict)
+        try:
+            with open("../data/saved_ML_models/boosts/config/"+self.name+".json","r") as f:
+                import json
+                paras=json.load(f)
+                self.params=paras
+        except:
+            print("configuration of "+self.name+" loading failed")
+            loadedConf=False
 
-        score=metrics.accuracy_score(dataSet.validateLabel,vpredict)
-        cm=metrics.confusion_matrix(dataSet.validateLabel,vpredict)
-        print("model",self.name,"trainning finished in %ds"%(t1-t0),"validate score=%f"%score,"CM=\n",cm)
+        if reSearch and loadedConf==False:
+            self.searchParameters(dataSet)
+
+        #procedure 2=> train true model
+        self.navieTrain(dataSet)
 
     def findPath(self):
         modelpath="../data/saved_ML_models/boosts/"+self.name+".pkl"
         return modelpath
-
-
-
