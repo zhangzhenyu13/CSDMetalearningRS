@@ -49,7 +49,8 @@ class TopKMetrics:
 
         maxR=np.max(scoreR)
         minR=np.min(scoreR)
-        scoreR=(scoreR-minR)/(maxR-minR)
+        if maxR-minR>0:
+            scoreR=(scoreR-minR)/(maxR-minR)
         #sort
         n_users=len(indexP)
         rmP=[]

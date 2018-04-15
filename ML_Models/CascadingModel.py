@@ -10,7 +10,6 @@ class CascadingModel:
         self.winModel=None
         self.regThreshold=0.3
         self.subThreshold=0.3
-        self.winThreshold=0.5
 
     def loadModel(self,tasktype,models):
         print(len(models),models)
@@ -65,7 +64,7 @@ class CascadingModel:
         return Y
 
     def saveConf(self):
-        params={"regThreshold":self.regThreshold,"subThreshold":self.subThreshold,"winThreshold":self.winThreshol}
+        params={"regThreshold":self.regThreshold,"subThreshold":self.subThreshold}
         with open("../data/saved_ML_models/MetaPredictor/"+self.name+".json","w") as f:
             json.dump(params,f)
 
@@ -74,4 +73,3 @@ class CascadingModel:
             params=json.load(f)
         self.regThreshold=params["regThreshold"]
         self.subThreshold=params["subThreshold"]
-        self.winThreshold=params["winThreshold"]

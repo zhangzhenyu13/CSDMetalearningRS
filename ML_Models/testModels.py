@@ -17,9 +17,9 @@ def testCascadingModel(tasktype,metamodels):
     w2=0
     w3=0
 
-    for w1 in range(0,10):
-        for w2 in range(0,10):
-            for w3 in range(0,10):
+    for w1 in range(0,11):
+        for w2 in range(0,11):
+            for w3 in range(0,11):
                 model.regThreshold=w1/10
                 model.subThreshold=w2/10
                 model.winThreshol=w3/10
@@ -29,7 +29,7 @@ def testCascadingModel(tasktype,metamodels):
                 if acc>maxAcc[0]:
                     maxAcc=[acc,(w1,w2,w3)]
     model.saveConf()
-    print("best threshold, reg:%f, sub:%f, win:%f"%(w1,w2,w3))
+    print("\nbest threshold, reg:%f, sub:%f, win:%f=>acc:%f"%(w1,w2,w3,maxAcc[0]))
 
     Y_predict2=model.predict(data.testX,taskids)
 

@@ -28,14 +28,13 @@ class XGBoostClassifier(ML_model):
             'seed':1000,
             'reg_alpha':100,
             'nthread':8,# cpu 线程数
-            'eval_metric': 'error@'+str(self.threshold)
+            'verbose':0
             }
 
     def updateParameters(self,new_paras):
         for k in new_paras:
             self.params[k]=new_paras[k]
 
-        self.threshold=eval(self.params['eval_metric'][6:])
 
     def loadConf(self):
         with open("../data/saved_ML_models/boosts/config/"+self.name+".json","r") as f:
@@ -43,11 +42,9 @@ class XGBoostClassifier(ML_model):
             paras=json.load(f)
             self.params=paras
 
-        self.threshold=eval(self.params['eval_metric'][6:])
-
     def __init__(self):
         ML_model.__init__(self)
-        self.trainEpchos=5000
+        self.trainEpchos=500
         self.threshold=0.5
         self.initParameters()
 
@@ -70,7 +67,7 @@ class XGBoostClassifier(ML_model):
         #begin to search best parameters
         self.model=xgboost.train(params=self.params,dtrain=dtrain,
                                  num_boost_round=self.trainEpchos,evals=watchlist,
-                                 early_stopping_rounds=20)
+                                 early_stopping_rounds=20,verbose_eval=False)
 
         t1=time.time()
 
@@ -89,11 +86,10 @@ class XGBoostClassifier(ML_model):
 
         paraSelection=[
             {'n_estimators':[i for i in range(100,500,50)],'learning_rate':[i/100 for i in range(5,30,5)]},
-            {'max_depth':[i for i in range(1,7)],'min_child_weight':[i for i in range(1,6)]},
+            {'max_depth':[i for i in range(6,15)],'min_child_weight':[i for i in range(1,6)]},
             {'gamma':[i/10.0 for i in range(0,5)]},
             {'subsample':[i/10.0 for i in range(6,10)],'colsample_bytree':[i/10.0 for i in range(6,10)]},
             {'reg_alpha':[1e-5, 1e-2, 0.1, 1, 100]},
-            {'eval_metric':['error@'+str(i/10) for i in range(3,8)]}
         ]
 
         for i in range(len(paraSelection)):
@@ -115,17 +111,11 @@ class XGBoostClassifier(ML_model):
 
     def trainModel(self,dataSet):
 
-        reSearch=True
-        loadedConf=True
-
         #procedure 1=>search best parameters
         try:
             self.loadConf()
         except:
             print("configuration of "+self.name+" loading failed")
-            loadedConf=False
-
-        if reSearch or loadedConf==False:
             self.searchParameters(dataSet)
 
         #procedure 2=> train true model
@@ -138,17 +128,21 @@ class XGBoostClassifier(ML_model):
 if __name__ == '__main__':
     from Utility.TagsDef import ModeTag
     from ML_Models.ModelTuning import loadData,showMetrics,topKmetrics
-    mode=0
-    tasktype="Architecture"
-    model=XGBoostClassifier()
-    model.name=tasktype+"-classifier"+ModeTag[mode]
+    from Utility import SelectedTaskTypes
+    tasktypes=SelectedTaskTypes.loadTaskTypes()
+    for tasktype in tasktypes["keeped"]:
+        for mode in (0,1,2):
 
-    data=loadData(tasktype,mode)
-    model.trainModel(data);model.saveModel()
+            model=XGBoostClassifier()
+            model.name=tasktype+"-classifier"+ModeTag[mode]
 
-    model.loadModel()
-    Y_predict2=model.predict(data.testX)
-    showMetrics(Y_predict2,data,model.threshold)
+            data=loadData(tasktype,mode)
+            model.trainModel(data);model.saveModel()
 
-    if mode==2:
-        topKmetrics(Y_predict2,data)
+            model.loadModel()
+            Y_predict2=model.predict(data.testX)
+            showMetrics(Y_predict2,data,model.threshold)
+
+            if mode==2:
+                topKmetrics(Y_predict2,data)
+        print()
