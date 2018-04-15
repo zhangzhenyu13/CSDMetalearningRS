@@ -20,8 +20,8 @@ def createDNN(l1=64,l2=64,l3=64,l4=32,l5=32,l6=16,dp=0.5):
     DNNmodel.add(layers.Dropout(dp))
     DNNmodel.add(layers.Dense(units=ouputDim,activation="sigmoid"))
 
-    opt = optimizers.Adagrad()
-    DNNmodel.compile(optimizer=opt,loss=losses.mean_squared_error,metrics=["accuracy"])
+    opt = optimizers.Adadelta()
+    DNNmodel.compile(optimizer=opt,loss=losses.mean_squared_error)
     return DNNmodel
 
 #model
@@ -35,7 +35,7 @@ class DNNCLassifier(ML_model):
             'l5':32,
             'l6':16,
             'dp':0.5,
-            'verbose':0
+            'verbose':0,
         }
     def __init__(self):
         ML_model.__init__(self)
@@ -44,7 +44,9 @@ class DNNCLassifier(ML_model):
     def loadConf(self):
         with open("../data/saved_ML_models/dnns/config/"+self.name+".json","r") as f:
             paras=json.load(f)
-            self.params=paras
+        for k in paras.keys():
+            self.params[k]=paras[k]
+
     def saveConf(self):
         with open("../data/saved_ML_models/dnns/config/"+self.name+".json","w") as f:
             json.dump(self.params,f)
@@ -75,27 +77,27 @@ class DNNCLassifier(ML_model):
             self.updateParameters(gsearch.best_params_)
 
         self.saveConf()
-        self.model=KerasRegressor(createDNN,**self.params)
+        paras=self.params
+        self.model=createDNN(paras['l1'],paras['l2'],paras['l3'],paras['l4'],paras['l5'],
+                                 paras['l6'],paras['dp'])
 
     def trainModel(self,dataSet):
         print(self.name+" training")
         t0=time.time()
         try:
             self.loadConf()
-            self.model=KerasRegressor(createDNN,**self.params)
+            paras=self.params
+            self.model=createDNN(paras['l1'],paras['l2'],paras['l3'],paras['l4'],paras['l5'],
+                                 paras['l6'],paras['dp'])
         except:
             print("loading configuration failed")
             self.searchParameters(dataSet)
 
-        self.model.fit(dataSet.trainX,dataSet.trainLabel,)
-
+        self.model.fit(dataSet.trainX,dataSet.trainLabel,verbose=0,epochs=5,batch_size=500)
 
         t1=time.time()
-        loss=self.model.score(dataSet.validateX,dataSet.validateLabel)
-        Y_predict=self.model.predict(dataSet.validateX)
-        Y_predict=np.array(Y_predict>self.threshold,dtype=np.int)
-        accuracy=metrics.accuracy_score(dataSet.validateLabel,Y_predict)
-        print("finished in %ds"%(t1-t0),"accuracy=%f"%accuracy,"loss=%f"%loss)
+        mse=self.model.evaluate(dataSet.validateX,dataSet.validateLabel,verbose=0,batch_size=10000)
+        print("finished in %ds"%(t1-t0),"mse=%f"%mse)
 
     def predict(self,X):
         print(self.name,"(DNN) is predicting ")

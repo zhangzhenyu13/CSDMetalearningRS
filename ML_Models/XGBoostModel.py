@@ -4,7 +4,9 @@ import time
 import numpy as np
 from sklearn import metrics
 from sklearn.model_selection import GridSearchCV
+import warnings
 
+warnings.filterwarnings("ignore")
 
 class XGBoostClassifier(ML_model):
 
@@ -23,24 +25,25 @@ class XGBoostClassifier(ML_model):
             #这个参数默认是 1，是每个叶子里面 h 的和至少是多少，对正负样本不均衡时的 0-1 分类而言,
             #假设 h 在 0.01 附近，min_child_weight 为 1 意味着叶子节点中最少需要包含 100 个样本。
             #这个参数非常影响结果，控制叶子节点中二阶导的和的最小值，该参数值越小，越容易 overfitting。
-            'silent':0 ,#设置成1则没有运行信息输出，最好是设置为0.
+            #'silent':0 ,#设置成1则没有运行信息输出，最好是设置为0.
             'eta': 0.007, # 如同学习率
             'seed':1000,
             'reg_alpha':100,
-            'nthread':8,# cpu 线程数
-            'verbose':0
+            'verbose':0,
+            'n_jobs':-1,
+            'silent':1
             }
 
     def updateParameters(self,new_paras):
         for k in new_paras:
             self.params[k]=new_paras[k]
 
-
     def loadConf(self):
         with open("../data/saved_ML_models/boosts/config/"+self.name+".json","r") as f:
             import json
             paras=json.load(f)
-            self.params=paras
+        for k in paras.keys():
+            self.params[k]=paras[k]
 
     def __init__(self):
         ML_model.__init__(self)
@@ -95,13 +98,11 @@ class XGBoostClassifier(ML_model):
         for i in range(len(paraSelection)):
 
             para1=paraSelection[i]
-            print("step#%d"%(i+1),"select paras:",para1.keys())
 
             self.model=xgboost.XGBClassifier(**self.params)
-            gsearch=GridSearchCV(self.model,para1,scoring=metrics.make_scorer(metrics.precision_score))
+            gsearch=GridSearchCV(self.model,para1,verbose=0)
             gsearch.fit(dataSet.trainX,dataSet.trainLabel)
             print("best paras",gsearch.best_params_)
-            print("best score",gsearch.best_score_)
             self.updateParameters(gsearch.best_params_)
 
         print("save params of", dataSet.tasktype,"para search finished in %ds"%(time.time()-t0))

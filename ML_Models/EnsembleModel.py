@@ -30,7 +30,8 @@ class EnsembleClassifier(ML_model):
     def loadConf(self):
         with open("../data/saved_ML_models/classifiers/config/"+self.name+".json","r") as f:
             paras=json.load(f)
-            self.params=paras
+        for k in paras.keys():
+            self.params[k]=paras[k]
     def saveConf(self):
         with open("../data/saved_ML_models/classifiers/config/"+self.name+".json","w") as f:
             json.dump(self.params,f)

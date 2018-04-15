@@ -29,6 +29,7 @@ def testCascadingModel(tasktype,metamodels):
                 if acc>maxAcc[0]:
                     maxAcc=[acc,(w1,w2,w3)]
     model.saveConf()
+    w1,w2,w3=maxAcc[1]
     print("\nbest threshold, reg:%f, sub:%f, win:%f=>acc:%f"%(w1,w2,w3,maxAcc[0]))
 
     Y_predict2=model.predict(data.testX,taskids)
