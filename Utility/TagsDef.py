@@ -7,7 +7,7 @@ UserSkills=50
 #reg, sub, win :threshold
 minRegNum=30
 minSubNum=10
-minWinNum=5
+minWinNum=1
 
 import _pickle as pickle
 
@@ -28,10 +28,12 @@ if __name__ == '__main__':
     from Utility.SelectedTaskTypes import loadTaskTypes
 
     tasltypes=loadTaskTypes()
-
-    for mode in range(3):
+    testMode=True
+    for mode in (2,):
         #genSelectedUserlist("global",mode);continue
         for k in tasltypes.keys():
             for t in tasltypes[k]:
+                if testMode:
+                    t=t+"-test"
                 genSelectedUserlist(t,mode)
                 print(t,len(getUsers(t,mode)))

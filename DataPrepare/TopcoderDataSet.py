@@ -17,10 +17,14 @@ class DataSetTopcoder:
         self.testRatio=testratio
         self.validateRatio=validateratio
 
-    def setParameter(self,tasktype,mode):
+    def setParameter(self,tasktype,mode,testMode=False):
         #file data
-        self.tasktype=tasktype.replace("/","_")
+        self.tasktype=tasktype
         self.filepath="../data/TopcoderDataSet/"+ModeTag[mode].lower()+"HistoryBasedData/"+self.tasktype+"-user_task.data"
+        if testMode:
+            self.filepath="../data/TopcoderDataSet/"+ModeTag[mode].lower()+"HistoryBasedData/"\
+                          +self.tasktype+"-test-user_task.data"
+            print("\n Test Mode \n")
 
     def indexDataPoint(self,taskids):
         id=taskids[0]
@@ -73,6 +77,7 @@ class DataSetTopcoder:
         print(self.tasktype,"loading data")
         with open(self.filepath,"rb") as f:
             self.dataSet=pickle.load(f)
+        #print(self.dataSet)
 
         users=self.fetchData(self.dataSet,"users")
         tasks=self.fetchData(self.dataSet,"tasks")
@@ -82,9 +87,15 @@ class DataSetTopcoder:
 
         self.IDIndex=self.indexDataPoint(taskids=self.taskids)
         tp=int(self.testRatio*len(self.IDIndex))
-        self.testPoint=self.IDIndex[tp][1]
+        if tp==len(self.IDIndex):
+            self.testPoint=len(tasks)
+        else:
+            self.testPoint=self.IDIndex[tp][1]
         vp=int((self.testRatio+self.validateRatio)*len(self.IDIndex))
-        self.validatePoint=self.IDIndex[vp][1]
+        if vp==len(self.IDIndex):
+            self.validatePoint=len(tasks)
+        else:
+            self.validatePoint=self.IDIndex[vp][1]
 
         self.trainX=X[self.validatePoint:]
         self.validateX=X[self.testPoint:self.validatePoint]
@@ -190,6 +201,7 @@ class TopcoderWin(DataSetTopcoder):
         self.setParameter(tasktype,2)
 
     def constructTrainInstances(self):
+        self.registerLabelClassification=self.fetchData(self.dataSet,"regists")
         self.submitLabelClassification=self.fetchData(self.dataSet,"submits")
         trainSub=self.submitLabelClassification[self.validatePoint:]
         validateSub=self.submitLabelClassification[self.testPoint:self.validatePoint]

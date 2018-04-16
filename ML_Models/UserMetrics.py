@@ -6,9 +6,20 @@ from sklearn import preprocessing
 #metrics
 
 class TopKMetrics:
-    def __init__(self,tasktype):
-        self.subRank=self.__getSubnumOfDIG(tasktype)
+    def __init__(self,tasktype,verbose=1,testMode=False):
+        self.verbose=verbose
         self.scoreRank=self.__getScoreOfDIG(tasktype)
+        self.subRank=None
+        if "#" in tasktype:
+            pos=tasktype.find("#")
+            self.subRank=self.__getSubnumOfDIG(tasktype[:pos])
+        else:
+            self.subRank=self.__getSubnumOfDIG(tasktype)
+        if testMode:
+            self.userlist=getUsers(tasktype+"-test",2)
+        else:
+            self.userlist=getUsers(tasktype,2)
+
     #subnum based rank data
     def __getSubnumOfDIG(self,tasktype):
         with open("../data/UserInstances/UserGraph/SubNumBased/"+tasktype+"-UserInteraction.data","rb") as f:
@@ -81,12 +92,13 @@ class TopKMetrics:
     #select top k users based on its prediction possibility
     def topKPossibleUsers(self,Y_predict,data,k):
 
-        usersList=getUsers(data.tasktype)
+        usersList=self.userlist
         Y_label=data.testLabel
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
-        print("top %d users from possibility for %d tasks(%d winners,%d users) "%
+        if self.verbose==1:
+            print("top %d users from possibility for %d tasks(%d winners,%d users) "%
               (k,taskNum,np.sum(Y_label),len(usersList)))
 
         for i in range(taskNum):
@@ -110,7 +122,7 @@ class TopKMetrics:
     #select top k users based on DIG
     def topKDIGUsers(self,data,k):
 
-        usersList=getUsers(data.tasktype)
+        usersList=self.userlist
         Y_label=data.testLabel
 
         dataRank=self.scoreRank
@@ -118,7 +130,8 @@ class TopKMetrics:
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
-        print("top %d users from DIG for %d tasks(%d winners,%d users) "%
+        if self.verbose==1:
+            print("top %d users from DIG for %d tasks(%d winners,%d users) "%
               (k,taskNum,np.sum(Y_label),len(usersList)))
 
         for i in range(taskNum):
@@ -155,12 +168,13 @@ class TopKMetrics:
         dataRank=self.scoreRank
         taskids=data.taskids[:data.testPoint]
 
-        usersList=getUsers(data.tasktype)
+        usersList=self.userlist
         Y_label=data.testLabel
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
-        print("top %d users from Possibility&DIG(using DIG,re-ranking=%f) for %d tasks(%d winners,%d users)"%
+        if self.verbose==1:
+            print("top %d users from Possibility&DIG(using DIG,re-ranking=%f) for %d tasks(%d winners,%d users)"%
               (k,rank_weight,taskNum,np.sum(Y_label),len(usersList)))
 
         for i in range(taskNum):
@@ -190,14 +204,50 @@ class TopKMetrics:
     def topKSUsers(self,Y_predict2,data,k):
         # measure top k accuracy
         # batch data into task centered array
-        print("status observed assumption top k acc")
+        if self.verbose==1:
+            print("sub status observed assumption top k acc")
 
         submitlabels=data.submitLabelClassification[:data.testPoint]
         for p in range(len(submitlabels)):
             if submitlabels[p]==0:
                 Y_predict2[p]=0
 
-        usersList=getUsers(data.tasktype)
+        usersList=self.userlist
+        Y_label=data.testLabel
+
+        taskNum=len(Y_label)//len(usersList)
+        Y=np.zeros(shape=taskNum,dtype=np.int)
+
+        for i in range(taskNum):
+            left=i*len(usersList)
+            right=(i+1)*len(usersList)
+
+            trueY=Y_label[left:right]
+            trueY=np.where(trueY==1)[0]
+            trueY=set(trueY)
+            if len(trueY)==0:continue
+
+            predictY=Y_predict2[left:right]
+            predictY, _=self.getTopKonPossibility(predictY,k)
+            predictY=set(predictY[:k])
+
+            if len(trueY.intersection(predictY))>0:
+                Y[i]=1
+
+        return Y
+    #this method is to test topk acc when the register status is known
+    def topKRUsers(self,Y_predict2,data,k):
+        # measure top k accuracy
+        # batch data into task centered array
+        if self.verbose==1:
+            print("reg status observed assumption top k acc")
+
+        reglabels=data.registerLabelClassification[:data.testPoint]
+        for p in range(len(reglabels)):
+            if reglabels[p]==0:
+                Y_predict2[p]=0
+
+        usersList=self.userlist
         Y_label=data.testLabel
 
         taskNum=len(Y_label)//len(usersList)

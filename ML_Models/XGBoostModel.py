@@ -5,6 +5,7 @@ import numpy as np
 from sklearn import metrics
 from sklearn.model_selection import GridSearchCV
 import warnings
+from ML_Models.UserMetrics import TopKMetrics
 
 warnings.filterwarnings("ignore")
 
@@ -52,7 +53,8 @@ class XGBoostClassifier(ML_model):
         self.initParameters()
 
     def predict(self,X):
-        print(self.name,"XGBoost model is predicting")
+        if self.verbose>0:
+            print(self.name,"XGBoost model is predicting")
         InputData=xgboost.DMatrix(data=X)
         Y=self.model.predict(InputData,ntree_limit=self.model.best_ntree_limit)
 
@@ -145,5 +147,6 @@ if __name__ == '__main__':
             showMetrics(Y_predict2,data,model.threshold)
 
             if mode==2:
-                topKmetrics(Y_predict2,data)
+                mymetric=TopKMetrics(data.tasktype)
+                topKmetrics(mymetric,Y_predict2,data)
         print()

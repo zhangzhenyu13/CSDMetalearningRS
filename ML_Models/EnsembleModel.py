@@ -4,6 +4,10 @@ from sklearn import ensemble
 from sklearn import metrics
 import time,json
 from sklearn.model_selection import GridSearchCV
+import warnings
+from ML_Models.UserMetrics import TopKMetrics
+
+warnings.filterwarnings("ignore")
 
 class EnsembleClassifier(ML_model):
     def initParameters(self):
@@ -24,7 +28,11 @@ class EnsembleClassifier(ML_model):
         ML_model.__init__(self)
         self.initParameters()
     def predict(self,X):
-        print(self.name," Extrees is predicting")
+        if  len(X)==0:
+            return np.array([],dtype=np.int)
+        if self.verbose>0:
+            print(self.name," Extrees is predicting")
+
         Y=self.model.predict_proba(X)
         return Y[:,1]
     def loadConf(self):
@@ -92,7 +100,7 @@ if __name__ == '__main__':
     from Utility import SelectedTaskTypes
     tasktypes=SelectedTaskTypes.loadTaskTypes()
     for tasktype in tasktypes["keeped"]:
-        for mode in (0,1,2):
+        for mode in (2,):
 
             #if "Architecture" in tasktype:
             #    continue
@@ -109,4 +117,5 @@ if __name__ == '__main__':
 
             #winners
             if mode==2:
-                topKmetrics(Y_predict2,data)
+                mymetric=TopKMetrics(data.tasktype)
+                topKmetrics(mymetric,Y_predict2,data)

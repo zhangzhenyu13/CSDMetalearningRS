@@ -7,12 +7,13 @@ import numpy as np
 from DataPrepare.DataContainer import Tasks,UserHistoryGenerator
 from Utility import SelectedTaskTypes
 from CompetitionGraph.UserRank import rankOnDIG
+from Utility.TagsDef import getUsers
 #datastructure for reg and sub
 
 class DataURS:
 
     def __init__(self,tasktype,mode):
-        self.userData=UserHistoryGenerator().loadActiveUserHistory(tasktype,mode)
+        self.userData=UserHistoryGenerator(True).loadActiveUserHistory(tasktype,mode)
         self.mode=mode
         self.tasktype=tasktype
         for name in self.userData.keys():
@@ -26,7 +27,7 @@ class DataURS:
             self.userData[name]["subtasks"]=subtasks
 
     def getRegUsers(self):
-        return self.userData.keys()
+        return getUsers(self.tasktype+"-test",mode)
 
     def setTimeline(self,date):
         for name in self.userData.keys():
@@ -205,11 +206,11 @@ if __name__ == '__main__':
     scoreTag=True
     tasktypes=SelectedTaskTypes.loadTaskTypes()
 
-    for t in ["global",]:#tasktypes["keeped"]:
+    for t in tasktypes["clustered"]:
 
         dataset=DataURS(t,mode)
         taskData=Tasks(t)
-        taskData.ClipRatio(0.4)
+        taskData.ClipRatio(0.2)
         dataGraph={}
         data={}
 

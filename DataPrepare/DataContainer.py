@@ -421,7 +421,8 @@ class Tasks:
         self.prizes=self.prizes[:clip_pos]
 
 class UserHistoryGenerator:
-
+    def __init__(self,testMode=False):
+        self.testMode=testMode
     def genActiveUserHistory(self,userdata,regdata,subdata,mode,tasktype,filepath=None):
 
         userhistory = {}
@@ -470,6 +471,8 @@ class UserHistoryGenerator:
 
             #print(username, "sub histroy and reg histrory=", len(userData[username]["subtasks"][0]),
             #      len(userData[username]["regtasks"][0]))
+        if self.testMode:
+            tasktype=tasktype+"-test"
         if filepath is None:
             filepath="../data/UserInstances/UserHistory/"+tasktype+"-UserHistory"+ModeTag[mode]+".data"
         print("saving %s history of %d users"%(ModeTag[mode], len(userhistory)),"type="+tasktype)
@@ -478,8 +481,11 @@ class UserHistoryGenerator:
 
     def loadActiveUserHistory(self,tasktype,mode,filepath=None):
         print("loading %s history of active users "%ModeTag[mode])
+        if self.testMode:
+            tasktype=tasktype+"-test"
+
         if filepath is None:
-            filepath="../data/UserInstances/UserHistory/"+tasktype.replace("/","_")+"-UserHistory"+ModeTag[mode]+".data"
+            filepath="../data/UserInstances/UserHistory/"+tasktype+"-UserHistory"+ModeTag[mode]+".data"
         with open(filepath, "rb") as f:
             userData = pickle.load(f)
 

@@ -5,18 +5,23 @@ import time,json
 from Utility.TagsDef import ModeTag
 from keras.wrappers.scikit_learn import KerasRegressor
 from sklearn.model_selection import GridSearchCV
-from sklearn import metrics
+from ML_Models.UserMetrics import TopKMetrics
+import warnings
+
+warnings.filterwarnings("ignore")
+
 #create model
-def createDNN(l1=64,l2=64,l3=64,l4=32,l5=32,l6=16,dp=0.5):
+def createDNN(dp=0.5):
     inputDim=126#user:60, task:66
     ouputDim=1
     DNNmodel=models.Sequential()
-    DNNmodel.add(layers.Dense(units=l1,input_shape=(inputDim,),activation="relu"))
-    DNNmodel.add(layers.Dense(units=l2,activation="relu"))
-    DNNmodel.add(layers.Dense(units=l3,activation="relu"))
-    DNNmodel.add(layers.Dense(units=l4,activation="relu"))
-    DNNmodel.add(layers.Dense(units=l5,activation="relu"))
-    DNNmodel.add(layers.Dense(units=l6,activation="relu"))
+    DNNmodel.add(layers.Dense(units=96,input_shape=(inputDim,),activation="relu"))
+    DNNmodel.add(layers.Dense(units=96,activation="relu"))
+    DNNmodel.add(layers.Dense(units=64,activation="relu"))
+    DNNmodel.add(layers.Dense(units=64,activation="relu"))
+    DNNmodel.add(layers.Dense(units=32,activation="relu"))
+    DNNmodel.add(layers.Dense(units=32,activation="relu"))
+    DNNmodel.add(layers.Dense(units=16,activation="relu"))
     DNNmodel.add(layers.Dropout(dp))
     DNNmodel.add(layers.Dense(units=ouputDim,activation="sigmoid"))
 
@@ -28,12 +33,7 @@ def createDNN(l1=64,l2=64,l3=64,l4=32,l5=32,l6=16,dp=0.5):
 class DNNCLassifier(ML_model):
     def initParameters(self):
         self.params={
-            'l1':64,
-            'l2':64,
-            'l3':64,
-            'l4':32,
-            'l5':32,
-            'l6':16,
+
             'dp':0.5,
             'verbose':0,
         }
@@ -58,15 +58,8 @@ class DNNCLassifier(ML_model):
         print("searching for best parameters")
 
         selParas=[
-            {'l1':[i for i in range(64,128,8)]},
-            {'l2':[i for i in range(64,128,8)]},
-            {'l3':[i for i in range(64,96,8)]},
-            {'l4':[i for i in range(32,64,8)]},
-            {'l5':[i for i in range(32,64,8)]},
-            {'l6':[i for i in range(16,48,8)]},
-            {'dp':[i/10 for i in range(4,10)]}
+            {'dp':[i/10 for i in range(3,8)]}
         ]
-
 
         for i in range(len(selParas)):
             para=selParas[i]
@@ -78,8 +71,7 @@ class DNNCLassifier(ML_model):
 
         self.saveConf()
         paras=self.params
-        self.model=createDNN(paras['l1'],paras['l2'],paras['l3'],paras['l4'],paras['l5'],
-                                 paras['l6'],paras['dp'])
+        self.model=createDNN(paras['dp'])
 
     def trainModel(self,dataSet):
         print(self.name+" training")
@@ -87,8 +79,7 @@ class DNNCLassifier(ML_model):
         try:
             self.loadConf()
             paras=self.params
-            self.model=createDNN(paras['l1'],paras['l2'],paras['l3'],paras['l4'],paras['l5'],
-                                 paras['l6'],paras['dp'])
+            self.model=createDNN(paras['dp'])
         except:
             print("loading configuration failed")
             self.searchParameters(dataSet)
@@ -97,12 +88,13 @@ class DNNCLassifier(ML_model):
 
         t1=time.time()
         mse=self.model.evaluate(dataSet.validateX,dataSet.validateLabel,verbose=0,batch_size=10000)
-        print("finished in %ds"%(t1-t0),"mse=%f"%mse)
+        print("finished in %ds"%(t1-t0),"mse=",mse)
 
     def predict(self,X):
-        print(self.name,"(DNN) is predicting ")
+        if self.verbose>0:
+            print(self.name,"(DNN) is predicting ")
         Y=self.model.predict(X,batch_size=10000,verbose=0)
-        print("finished predicting ",len(Y))
+        #print("finished predicting ",len(Y))
         return Y
 
     def loadModel(self):
@@ -113,10 +105,10 @@ class DNNCLassifier(ML_model):
 if __name__ == '__main__':
     from ML_Models.ModelTuning import loadData,showMetrics,topKmetrics
     from Utility import SelectedTaskTypes
-    tasktypes=SelectedTaskTypes.loadTaskTypes()["keeped"]
-    #tasktypes=("global",)
+    tasktypes=SelectedTaskTypes.loadTaskTypes()["clustered"]
+    tasktypes=("global",)
     for tasktype in tasktypes:
-        for mode in (0,1,2):
+        for mode in (0,1):
 
             dnnmodel=DNNCLassifier()
             dnnmodel.name=tasktype+"-classifier"+ModeTag[mode]
@@ -131,5 +123,7 @@ if __name__ == '__main__':
 
             #winners
             if mode==2:
-                topKmetrics(Y_predict2,data)
+                mymetric=TopKMetrics(data.tasktype)
+
+                topKmetrics(mymetric,Y_predict2,data)
         print()

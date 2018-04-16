@@ -8,13 +8,19 @@ import _pickle as pickle
 class DataInstances(multiprocessing.Process):
     maxProcessNum=25
 
-    def __init__(self,tasktype,cond,queue,usingmode):
+    def __init__(self,tasktype,cond,queue,usingmode,testMode=False):
         multiprocessing.Process.__init__(self)
-        self.tasktype=tasktype.replace("/","_")
+        self.tasktype=tasktype
+        if testMode:
+            self.tasktype=tasktype+"-test"
+        self.testMode=testMode
         self.cond=cond
         self.queue=queue
         self.usingMode=usingmode
         self.running=True
+
+        self.filePath="../data/TopcoderDataSet/"+ModeTag[self.usingMode].lower()+\
+                 "HistoryBasedData/"+self.tasktype+"-user_task.data"
 
     def run(self):
         self.loadData()
@@ -32,13 +38,15 @@ class DataInstances(multiprocessing.Process):
 
     def loadData(self):
         #load task data
-        self.selTasks=Tasks(tasktype=self.tasktype)
+        self.selTasks=Tasks(tasktype=self.tasktype.replace("-test",""))
+        if self.testMode:
+            self.selTasks.ClipRatio(0.2)
         #print("posting date",self.selTasks.postingdate[:20])
         #load user data
         self.userdata=UserHistoryGenerator()
 
         #load reg data
-        with open("../data/TaskInstances/RegInfo/"+self.tasktype+"-regs.data","rb") as f:
+        with open("../data/TaskInstances/RegInfo/"+self.tasktype.replace("-test","")+"-regs.data","rb") as f:
             data=pickle.load(f)
             for k in data.keys():
                 data[k]=data[k].tolist()
@@ -51,7 +59,7 @@ class DataInstances(multiprocessing.Process):
             print("loaded %d reg items"%len(self.regdata.taskids))
 
         #load sub data
-        with open("../data/TaskInstances/SubInfo/"+self.tasktype+"-subs.data","rb") as f:
+        with open("../data/TaskInstances/SubInfo/"+self.tasktype.replace("-test","")+"-subs.data","rb") as f:
             data=pickle.load(f)
             ids=data["taskids"]
             dates=data["subdates"]
@@ -72,8 +80,7 @@ class DataInstances(multiprocessing.Process):
             pickle.dump(data,f)
 
     def createInstancesWithHistoryInfo(self,threshold=6e+5,verboseNum=1e+3):
-        filepath="../data/TopcoderDataSet/"+ModeTag[self.usingMode].lower()+\
-                 "HistoryBasedData/"+self.tasktype+"-user_task.data"
+        filepath=self.filePath
 
         tasks=[]
         users=[]
@@ -91,7 +98,7 @@ class DataInstances(multiprocessing.Process):
         UsersIndex=getUsers(self.tasktype,self.usingMode)
 
         print(self.tasktype+"(mode:%d)=>:"%self.usingMode,"construct instances with %d tasks and %d users" %
-              (len(dataIndex), len(UsersIndex)) )
+              (len(self.selTasks.taskIDs), len(UsersIndex)) )
 
         missingtask=0
         dataSegment=0
@@ -222,8 +229,6 @@ class DataInstances(multiprocessing.Process):
                     ranks.append(10)
                     scores.append(0)
 
-
-
                 '''
                 if len(userData[name]["regtasks"][1][:20])>10:
                     print()
@@ -293,7 +298,7 @@ def genDataSet():
     for t in tasktypes["clustered"]:
 
         if len(process_pools)<DataInstances.maxProcessNum:
-            proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode)
+            proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode,testMode=testInst)
             proc.start()
             process_pools.append(proc)
         else:
@@ -313,7 +318,7 @@ def genDataSet():
             for i in rmIndices:
                 del process_pools[i]
 
-            proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode)
+            proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode,testMode=testInst)
             proc.start()
             process_pools.append(proc)
             cond.release()
@@ -324,6 +329,7 @@ if __name__ == '__main__':
     queue=multiprocessing.Queue()
 
     mode=2
-    DataInstances(tasktype="global",cond=cond,queue=queue,usingmode=mode).start();exit()
+    testInst=True
+    #DataInstances(tasktype="global",cond=cond,queue=queue,usingmode=mode).start();exit()
     genDataSet()
 

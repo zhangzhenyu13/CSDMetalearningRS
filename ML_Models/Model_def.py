@@ -5,12 +5,14 @@ class ML_model:
         self.model=None
         self.name=""
         self.threshold=0.5
+        self.verbose=1
     def predict(self,X):
         '''
         predict the result based on given X
         :param X: input samples,(n,D)
         :return: given result, class or a real num
         '''
+
     def trainModel(self,dataSet):
         pass
 

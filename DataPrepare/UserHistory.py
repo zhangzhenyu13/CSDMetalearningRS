@@ -44,7 +44,7 @@ def genUserHistoryOfTaskType(userhistory,tasktype,Users,Regs,Subs):
         print("saved %d sub items"%len(subdata.taskids))
 
     #return
-    for mode in (0,1,2):
+    for mode in (2,):
         userhistory.genActiveUserHistory(userdata=userdata,regdata=regdata,subdata=subdata,mode=mode,tasktype=tasktype)
 
 def skillEncoding():
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     #
     #skillEncoding()
     userhistory=UserHistoryGenerator()
+    userhistory.testMode=True
     #construct global users set
     #genUserHistoryOfTaskType(userhistory,"global",Users,Regs,Subs);exit(10)
     #construct history for users of given tasktype

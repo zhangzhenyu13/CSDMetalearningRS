@@ -1,60 +1,108 @@
-from ML_Models.EnsembleModel import *
 from ML_Models.CascadingModel import *
-from ML_Models.DNNModel import *
-from ML_Models.XGBoostModel import *
-from ML_Models.ModelTuning import loadData,topKmetrics,showMetrics,bestPDIG
+from ML_Models.ModelTuning import bestPDIG
+from DataPrepare.TopcoderDataSet import TopcoderWin
+#cascading models
 
-#run cascading models
-def testCascadingModel(tasktype,metamodels):
-    data=loadData(tasktype,2)
+def searchParamForTopK(mymetric,taskids,data,k):
+    print("search for top %d"%k)
+    maxAcc=[0,(0,0,0,0,0)]
+    for w1 in range(0,4):
+        for w2 in range(0,4):
+            for w3 in range(5,11):
+                for w4 in range(1,6):
+                    for w5 in range(1,6):
+                        #params
+                        model.regThreshold=w1/10
+                        model.subThreshold=w2/10
+                        model.topSN=w3/10
+                        model.subhn=w4
+                        model.winhn=w5
+                        #predict test
+                        Y_predict2=model.predict(data.testX,taskids)
+                        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
+                        acc=np.mean(acc)
+                        if acc>maxAcc[0]:
+                            maxAcc=[acc,(w1/10,w2/10,w3/10,w4,w5)]
 
-    model=CascadingModel()
-    model.loadModel(tasktype,metamodels)
-    taskids=data.taskids[:data.testPoint]
-    mymetric=TopKMetrics(tasktype)
-    maxAcc=[0,(0,0,0)]
-    w1=0
-    w2=0
-    w3=0
-
-    for w1 in range(0,11):
-        for w2 in range(0,11):
-            for w3 in range(0,11):
-                model.regThreshold=w1/10
-                model.subThreshold=w2/10
-                model.winThreshol=w3/10
-                Y_predict2=model.predict(data.testX,taskids)
-                acc=mymetric.topKPossibleUsers(Y_predict2,data,3)
-                acc=np.mean(acc)
-                if acc>maxAcc[0]:
-                    maxAcc=[acc,(w1,w2,w3)]
     model.saveConf()
-    w1,w2,w3=maxAcc[1]
-    print("\nbest threshold, reg:%f, sub:%f, win:%f=>acc:%f"%(w1,w2,w3,maxAcc[0]))
+    w1,w2,w3,w4,w5=maxAcc[1]
+    print("\nbest threshold, reg:%f, sub:%f, topSN:%f, subn:%d, winn:%d=> acc:%f"%(w1,w2,w3,w4,w5,maxAcc[0]))
 
+    return maxAcc
+
+def testCascadingModel(tasktype):
+    data=TopcoderWin(tasktype,testratio=1,validateratio=0)
+    data.setParameter(tasktype,2,True)
+    data.loadData()
+    data.WinClassificationData()
+
+    taskids=data.taskids[:data.testPoint]
+    mymetric=model.mymetric
+
+    print("\n meta-learning model top k acc")
+    Y_predict2=model.predict(data.testX,taskids)
+    for k in (1,):
+        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
+        acc=mymetric.topKRUsers(Y_predict2,data,k,)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
+        acc=mymetric.topKSUsers(Y_predict2,data,k,)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
+
+        print()
+    exit(10)
+    mymetric.verbose=0
+
+    print("tuning cascading models")
+    for k in(1,3,5):
+        searchParamForTopK(mymetric,taskids,data,k)
+
+    mymetric.verbose=1
+    model.setVerbose(1)
     Y_predict2=model.predict(data.testX,taskids)
 
-    showMetrics(Y_predict2,data,model.threshold)
+    print("\n meta-learning model top k acc")
+    for k in (1,3,5,10):
+        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
 
-    mymetric=topKmetrics(Y_predict2,data)
+        acc=mymetric.topKRUsers(Y_predict2,data,k,)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
 
+        acc=mymetric.topKSUsers(Y_predict2,data,k,)
+        acc=np.mean(acc)
+        print(data.tasktype,"top %d"%k,acc)
 
-    bestPDIG(mymetric,Y_predict2,data)
+        print()
+
+    mymetric.verbose=0
+    params=bestPDIG(mymetric,Y_predict2,data)
+    print(params)
 
 if __name__ == '__main__':
 
+    '''
     ml_model={
         1:DNNCLassifier,
         2:EnsembleClassifier,
         3:XGBoostClassifier
     }
+    '''
 
-
-    selectedmodel=(2,2,2)
-
-    tasktype="Architecture"
-
-    ml_models=[ml_model[selectedmodel[0]],ml_model[selectedmodel[1]],ml_model[selectedmodel[2]]]
-
-    testCascadingModel(tasktype,ml_models)
+    for reg in (3,2,1):
+        for sub in (3,2,1):
+            for win in (3,2,1):
+                tasktype="Content Creation"
+                model=CascadingModel()
+                model.selKeys=[reg,sub,win]
+                model.loadModel(tasktype)
+                model.setVerbose(0)
+                testCascadingModel(tasktype)
 

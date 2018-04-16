@@ -1,4 +1,3 @@
-from ML_Models.UserMetrics import *
 from DataPrepare.TopcoderDataSet import *
 from sklearn import metrics
 
@@ -31,17 +30,23 @@ def showMetrics(Y_predict2,data,threshold):
 
 def bestPDIG(mymetric,Y_predict2,data):
     print("tuning re-rank weight")
-    for k in (1,3,5,10):
+    best_param={1:0,3:0,5:0}
+
+    for k in (1,3,5):
+        maxAcc=[0,0]
         for w in range(10):
             acc=mymetric.topKPDIGUsers(Y_predict2,data,k,w/10)
             acc=np.mean(acc)
-            print(data.tasktype,"top %d"%k,acc)
+            if acc>maxAcc[0]:
+                maxAcc=[acc,w]
+        best_param[k]=maxAcc[1]
+        print(data.tasktype,"top %d"%k,maxAcc[0])
         print()
+    return best_param
 
-def topKmetrics(Y_predict2,data):
+def topKmetrics(mymetric,Y_predict2,data):
     print("\n meta-learning model top k acc")
-    mymetric=TopKMetrics(data.tasktype)
-    for k in (1,3,5,10):
+    for k in (1,3,5):
         acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
@@ -50,7 +55,7 @@ def topKmetrics(Y_predict2,data):
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
-        acc=mymetric.topKPDIGUsers(Y_predict2,data,k,0.8)
+        acc=mymetric.topKSUsers(Y_predict2,data,k,)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
@@ -59,6 +64,4 @@ def topKmetrics(Y_predict2,data):
         print(data.tasktype,"top %d"%k,acc)
 
         print()
-
-    return mymetric
 
