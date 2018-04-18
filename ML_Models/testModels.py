@@ -11,10 +11,10 @@ def testCascadingModel(tasktype):
 
     taskids=data.taskids[:data.testPoint]
     mymetric=model.mymetric
-    mymetric.callall=True
+    mymetric.callall=False
     print("\n meta-learning model top k acc")
     Y_predict2=model.predict(data.testX,taskids)
-    for k in (1,3,5):
+    for k in (1,2,3,4,5):
         acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
@@ -31,10 +31,9 @@ def testCascadingModel(tasktype):
     #exit(10)
     print()
     mymetric.verbose=0
-    model.setVerbose(1)
     print("tuning cascading models")
-    for model.topK in(1,3,5):
-
+    for k in(1,3,5):
+        model.topK=k
         model.searchParameters(data)
         model.saveConf()
 
@@ -42,8 +41,8 @@ def testCascadingModel(tasktype):
     model.setVerbose(1)
 
     print("\n meta-learning model top k acc")
-    for model.topK in (1,3,5):
-
+    for k in (1,3,5):
+        model.topK=k
         model.loadConf()
 
         Y_predict2=model.predict(data.testX,taskids)
@@ -80,5 +79,5 @@ if __name__ == '__main__':
     tasktype="Content Creation"
     model=CascadingModel(tasktype)
     model.loadModel()
-    model.setVerbose(0)
+    model.setVerbose(1)
     testCascadingModel(tasktype)

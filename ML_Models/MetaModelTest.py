@@ -3,7 +3,7 @@ from ML_Models.XGBoostModel import XGBoostClassifier
 from ML_Models.EnsembleModel import EnsembleClassifier
 import numpy as np
 
-def testAcc(mymetric,model,data,testK=(1,3,5)):
+def testAcc(mymetric,model,data,testK=(3,5,10)):
     #mymetric.verbose=2
     Y_predict2=model.predict(data.testX)
     print("\n meta-learning model top k acc")
@@ -63,5 +63,5 @@ if __name__ == '__main__':
         data.loadData()
         data.WinClassificationData()
 
-        testAcc(mymetric=mymetric,model=model,data=data,testK=(1,3,5))
+        testAcc(mymetric=mymetric,model=model,data=data,testK=(3,5,10))
         print()

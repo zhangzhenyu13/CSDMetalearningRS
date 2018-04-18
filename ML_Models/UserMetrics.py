@@ -1,6 +1,6 @@
 import numpy as np
 from Utility.TagsDef import getUsers
-import pickle
+import pickle,copy
 from Utility.personalizedSort import MySort
 from sklearn import preprocessing
 #metrics
@@ -92,6 +92,7 @@ class TopKMetrics:
 
     #select top k users based on its prediction possibility
     def topKPossibleUsers(self,Y_predict,data,k):
+        Y_predict2=copy.deepcopy(Y_predict)
 
         usersList=self.userlist
         Y_label=data.testLabel
@@ -111,7 +112,7 @@ class TopKMetrics:
             trueY=set(trueY)
             if len(trueY)==0:continue
 
-            predictY=Y_predict[left:right]
+            predictY=Y_predict2[left:right]
             predictY,_ =self.getTopKonPossibility(predictY,k)
             if self.verbose>1:
                 print("true",trueY)
@@ -166,7 +167,7 @@ class TopKMetrics:
 
 
     #top k acc based on hard classification
-    def topKPDIGUsers(self,Y_predict2,data,k,rank_weight=0.9):
+    def topKPDIGUsers(self,Y_predict,data,k,rank_weight=0.9):
         '''
         :return Y[i]=true if ith sample can intersect with each other in Y_predict[i] and Y_true[i]
                           else return false
@@ -175,6 +176,7 @@ class TopKMetrics:
         :return: Y, array with each element indicate the result of ground-truth
         '''
 
+        Y_predict2=copy.deepcopy(Y_predict)
         # measure top k accuracy
         dataRank=self.scoreRank
         taskids=data.taskids[:data.testPoint]
@@ -219,12 +221,13 @@ class TopKMetrics:
 
 
     #this method is to test topk acc when the submit status is known
-    def topKSUsers(self,Y_predict2,data,k):
+    def topKSUsers(self,Y_predict,data,k):
         # measure top k accuracy
         # batch data into task centered array
         if self.verbose>0:
             print("sub status observed assumption top k acc")
 
+        Y_predict2=copy.deepcopy(Y_predict)
         submitlabels=data.submitLabelClassification[:data.testPoint]
         for p in range(len(submitlabels)):
             if submitlabels[p]==0:
@@ -260,12 +263,12 @@ class TopKMetrics:
 
         return Y
     #this method is to test topk acc when the register status is known
-    def topKRUsers(self,Y_predict2,data,k):
+    def topKRUsers(self,Y_predict,data,k):
         # measure top k accuracy
         # batch data into task centered array
         if self.verbose>0:
             print("reg status observed assumption top k acc")
-
+        Y_predict2=copy.deepcopy(Y_predict)
         reglabels=data.registerLabelClassification[:data.testPoint]
         for p in range(len(reglabels)):
             if reglabels[p]==0:

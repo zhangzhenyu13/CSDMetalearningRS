@@ -11,6 +11,7 @@ class CascadingModel:
         self.mymetric=TopKMetrics(tasktype=self.tasktype,testMode=True)
         self.subExpr=self.mymetric.subRank
         self.userIndex=getUsers(self.tasktype+"-test",mode=2)
+        print("model init for %d users"%len(self.userIndex),"%d tasks"%len(self.subExpr))
 
     def __init__(self,tasktype):
         #meta-learners
@@ -26,9 +27,9 @@ class CascadingModel:
         self.metaSub=1
         self.metaWin=1
         #parameters
-        self.regThreshold=0.1
-        self.subThreshold=0.1
-        self.topDig=0.8
+        self.regThreshold=0
+        self.subThreshold=0
+        self.topDig=1
 
         #aux info
         self.verbose=1
@@ -67,63 +68,70 @@ class CascadingModel:
             print("meta learner loaded",self.regModel,self.subModel,self.winModel)
 
     def searchParameters(self,data):
-        minRT=0
-        minST=0
-        minDn=0.5
+
+
+        print("search best parameters for top%d prediction"%self.topK)
+        minRT=self.regThreshold
+        minST=self.subThreshold
+        minDn=self.topDig
 
         reg=1
         sub=1
         win=1
         maxAcc=0
-        taskids=data.taskids[:data.testPoint]
         processing=0
-        for self.metaReg in range(1,2,3):
-            for self.metaSub in range(1,2,3):
-                for self.metaWin in range(1,2,3):
+        for self.metaReg in (1,2,3):
+            for self.metaSub in (1,2,3):
+                for self.metaWin in (1,2,3):
                     self.setVerbose(1)
                     self.loadModel()
                     processing+=1
-                    print("process=%d/9"%processing)
+                    print("process=%d/27,maxAcc=%f"%(processing,maxAcc))
                     self.setVerbose(0)
-                    for self.regThreshold in range(0,5):
-                        for self.subThreshold in range(0,5):
-                                for self.topDig in range(6,11):
 
-                                            self.regThreshold=self.regThreshold/10
-                                            self.subThreshold=self.subThreshold/10
-                                            self.topDig=self.topDig/10
+                    for self.regThreshold in range(0,10):
+                        self.regThreshold=self.regThreshold/10
 
-                                            Y=self.predict(data.testX,taskids)
-                                            Y=self.mymetric.topKPossibleUsers(Y,data,self.topK)
-                                            acc=np.mean(Y)
+                        for self.subThreshold in range(0,10):
+                            self.subThreshold=self.subThreshold/10
 
-                                            if maxAcc<acc:
-                                                #update para record when acc is higher
-                                                maxAcc=acc
+                            for self.topDig in range(0,11):
+                                self.topDig=self.topDig/10
 
-                                                minRT=self.regThreshold
-                                                minST=self.subThreshold
-                                                minDn=self.topDig
+                                Y=self.predict(data.testX,data.taskids)
+                                Y=self.mymetric.topKPossibleUsers(Y,data,self.topK)
+                                acc=np.mean(Y)
+                                print("top%d"%self.topK,acc,self.regThreshold,self.subThreshold,self.topDig)
+                                if maxAcc<acc:
+                                    #update para record when acc is higher
+                                    maxAcc=acc
 
-                                                reg=self.metaReg
-                                                sub=self.metaSub
-                                                win=self.metaWin
+                                    minRT=self.regThreshold
+                                    minST=self.subThreshold
+                                    minDn=self.topDig
 
-        self.regThreshold,self.subThreshold,self.topDig=\
-            minRT,minST,minDn
+                                    reg=self.metaReg
+                                    sub=self.metaSub
+                                    win=self.metaWin
+
+        self.regThreshold,self.subThreshold,self.topDig=minRT,minST,minDn
 
         self.metaReg,self.metaSub,self.metaWin=reg,sub,win
         print("\n searched best parameters for top%d(acc=%f) with meta learners="%(self.topK,maxAcc),
               self.metaReg,self.metaSub,self.metaWin)
 
-        print("regThreshold=%f,subThreshold=%f,topDig=%f"%(
+        print("regThreshold=%f,subThreshold=%f,topDig=%f\n"%(
             self.regThreshold,self.subThreshold,self.topDig
         ))
 
     def predict(self,X,taskids):
 
         if self.verbose>0:
-            print("Cascading Model is predicting for %d users"%len(self.userIndex))
+            print("Cascading Model is predicting top %d for %d users,parameters are"%(self.topK,
+                    len(self.userIndex)))
+            print("regThreshold=%f, subThreshold=%f, DigThreshold=%f"%(self.regThreshold,self.subThreshold,
+                  self.topDig))
+            print()
 
         regY=self.regModel.predict(X)
         subY=self.subModel.predict(X)
@@ -131,25 +139,27 @@ class CascadingModel:
 
         Y=np.zeros(shape=len(X))
         taskNum=len(X)//len(self.userIndex)
-
         for i in range(taskNum):
             for j in range(len(self.userIndex)):
                 pos=i*len(self.userIndex)+j
                 taskid=taskids[pos]
                 #reg
+
                 if regY[pos]<self.regThreshold:
+                    #count+=1
                     continue
 
                 #sub
                 topN=int(self.topDig*len(self.userIndex))
                 selectedusers,_ =self.mymetric.getTopKonDIGRank(self.subExpr[taskid]["ranks"],topN)
-
+                #print(taskid,len(selectedusers),len(self.subExpr[taskid]["ranks"]),topN)
                 if subY[pos]<self.subThreshold or j not in selectedusers:
+                    #count+=1
                     continue
                 #winner
 
                 Y[pos]=winY[pos]
-
+        #print("filtered %d in predict"%count)
         return Y
 
     def saveConf(self):
