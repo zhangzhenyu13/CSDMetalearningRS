@@ -6,8 +6,9 @@ from sklearn import preprocessing
 #metrics
 
 class TopKMetrics:
-    def __init__(self,tasktype,verbose=1,testMode=False):
+    def __init__(self,tasktype,callall=False,verbose=1,testMode=False):
         self.verbose=verbose
+        self.callall=callall
         self.scoreRank=self.__getScoreOfDIG(tasktype)
         self.subRank=None
         if "#" in tasktype:
@@ -97,7 +98,7 @@ class TopKMetrics:
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
-        if self.verbose==1:
+        if self.verbose>0:
             print("top %d users from possibility for %d tasks(%d winners,%d users) "%
               (k,taskNum,np.sum(Y_label),len(usersList)))
 
@@ -112,10 +113,15 @@ class TopKMetrics:
 
             predictY=Y_predict[left:right]
             predictY,_ =self.getTopKonPossibility(predictY,k)
-            #print("true",trueY)
-            #print("predict",predictY)
-            if len(trueY.intersection(predictY))>0:
+            if self.verbose>1:
+                print("true",trueY)
+                print("predict",predictY)
+
+            containUsers=trueY.intersection(predictY)
+            if len(containUsers)>0:
                 Y[i]=1
+                if self.callall:
+                    Y[i]=len(containUsers)/len(trueY)
 
         return Y
 
@@ -130,7 +136,7 @@ class TopKMetrics:
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
-        if self.verbose==1:
+        if self.verbose>0:
             print("top %d users from DIG for %d tasks(%d winners,%d users) "%
               (k,taskNum,np.sum(Y_label),len(usersList)))
 
@@ -146,10 +152,15 @@ class TopKMetrics:
 
             userRank=dataRank[taskid]["ranks"]
             predictY,_ =self.getTopKonDIGRank(userRank,k)
-            #print("true",trueY)
-            #print("predict",predictY)
-            if len(trueY.intersection(predictY))>0:
+            if self.verbose>1:
+                print("true",trueY)
+                print("predict",predictY)
+
+            containUsers=trueY.intersection(predictY)
+            if len(containUsers)>0:
                 Y[i]=1
+                if self.callall:
+                    Y[i]=len(containUsers)/len(trueY)
 
         return Y
 
@@ -173,7 +184,7 @@ class TopKMetrics:
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
-        if self.verbose==1:
+        if self.verbose>0:
             print("top %d users from Possibility&DIG(using DIG,re-ranking=%f) for %d tasks(%d winners,%d users)"%
               (k,rank_weight,taskNum,np.sum(Y_label),len(usersList)))
 
@@ -194,8 +205,15 @@ class TopKMetrics:
             predictR=self.getTopKonDIGRank(userRank,k)
             predictY,_ =self.getTopKonPDIGScore(predictP,predictR,rank_weight)
             predictY=predictY[:k]
-            if len(trueY.intersection(predictY))>0:
+            if self.verbose>1:
+                print("true",trueY)
+                print("predict",predictY)
+
+            containUsers=trueY.intersection(predictY)
+            if len(containUsers)>0:
                 Y[i]=1
+                if self.callall:
+                    Y[i]=len(containUsers)/len(trueY)
 
         return Y
 
@@ -204,7 +222,7 @@ class TopKMetrics:
     def topKSUsers(self,Y_predict2,data,k):
         # measure top k accuracy
         # batch data into task centered array
-        if self.verbose==1:
+        if self.verbose>0:
             print("sub status observed assumption top k acc")
 
         submitlabels=data.submitLabelClassification[:data.testPoint]
@@ -230,16 +248,22 @@ class TopKMetrics:
             predictY=Y_predict2[left:right]
             predictY, _=self.getTopKonPossibility(predictY,k)
             predictY=set(predictY[:k])
+            if self.verbose>1:
+                print("trueY",trueY)
+                print("predictY",predictY)
 
-            if len(trueY.intersection(predictY))>0:
+            containUsers=trueY.intersection(predictY)
+            if len(containUsers)>0:
                 Y[i]=1
+                if self.callall:
+                    Y[i]=len(containUsers)/len(trueY)
 
         return Y
     #this method is to test topk acc when the register status is known
     def topKRUsers(self,Y_predict2,data,k):
         # measure top k accuracy
         # batch data into task centered array
-        if self.verbose==1:
+        if self.verbose>0:
             print("reg status observed assumption top k acc")
 
         reglabels=data.registerLabelClassification[:data.testPoint]
@@ -265,8 +289,13 @@ class TopKMetrics:
             predictY=Y_predict2[left:right]
             predictY, _=self.getTopKonPossibility(predictY,k)
             predictY=set(predictY[:k])
+            if self.verbose>1:
+                print("trueY",trueY)
+                print("predictY",predictY)
 
-            if len(trueY.intersection(predictY))>0:
+            containUsers=trueY.intersection(predictY)
+            if len(containUsers)>0:
                 Y[i]=1
-
+                if self.callall:
+                    Y[i]=len(containUsers)/len(trueY)
         return Y
