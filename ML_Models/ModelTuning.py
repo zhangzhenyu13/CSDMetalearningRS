@@ -28,21 +28,6 @@ def showMetrics(Y_predict2,data,threshold):
     print("Confusion matrix ")
     print(metrics.confusion_matrix(data.testLabel,Y_predict1))
 
-def bestPDIG(mymetric,Y_predict2,data):
-    print("tuning re-rank weight")
-    best_param={1:0,3:0,5:0}
-
-    for k in (1,3,5):
-        maxAcc=[0,0]
-        for w in range(10):
-            acc=mymetric.topKPDIGUsers(Y_predict2,data,k,w/10)
-            acc=np.mean(acc)
-            if acc>maxAcc[0]:
-                maxAcc=[acc,w]
-        best_param[k]=maxAcc[1]
-        print(data.tasktype,"top %d"%k,maxAcc[0])
-        print()
-    return best_param
 
 def topKmetrics(mymetric,Y_predict2,data):
     print("\n meta-learning model top k acc")

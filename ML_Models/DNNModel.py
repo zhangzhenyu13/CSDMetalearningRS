@@ -106,7 +106,7 @@ if __name__ == '__main__':
     from ML_Models.ModelTuning import loadData,showMetrics,topKmetrics
     from Utility import SelectedTaskTypes
     tasktypes=SelectedTaskTypes.loadTaskTypes()["clustered"]
-    tasktypes=("global",)
+    #tasktypes=("global",)
     for tasktype in tasktypes:
         for mode in (0,1):
 

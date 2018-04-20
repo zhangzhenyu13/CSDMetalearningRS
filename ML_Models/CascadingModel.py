@@ -5,15 +5,20 @@ import json
 from ML_Models.XGBoostModel import XGBoostClassifier
 from ML_Models.DNNModel import DNNCLassifier
 from ML_Models.EnsembleModel import EnsembleClassifier
+from sklearn.base import BaseEstimator,RegressorMixin
+class CascadingModel(BaseEstimator,RegressorMixin):
 
-class CascadingModel:
     def initData(self):
+
         self.mymetric=TopKMetrics(tasktype=self.tasktype,testMode=True)
         self.subExpr=self.mymetric.subRank
         self.userIndex=getUsers(self.tasktype+"-test",mode=2)
-        print("model init for %d users"%len(self.userIndex),"%d tasks"%len(self.subExpr))
 
-    def __init__(self,tasktype):
+        if self.verbose>0:
+            print("model init for %d users"%len(self.userIndex),"%d tasks"%len(self.subExpr))
+
+    def __init__(self,tasktype=None,topK=3,verbose=0,metaReg=1,metaSub=1,metaWin=1,
+                 regThreshold=1,subThreshold=1,topDig=1):
         #meta-learners
         self.regModel=None
         self.subModel=None
@@ -23,26 +28,31 @@ class CascadingModel:
             2:XGBoostClassifier,
             3:DNNCLassifier
         }
-        self.metaReg=1
-        self.metaSub=1
-        self.metaWin=1
+        self.metaReg=metaReg
+        self.metaSub=metaSub
+        self.metaWin=metaWin
         #parameters
-        self.regThreshold=0
-        self.subThreshold=0
-        self.topDig=1
+        self.regThreshold=regThreshold
+        self.subThreshold=subThreshold
+        self.topDig=topDig
 
         #aux info
-        self.verbose=1
+        self.verbose=verbose
         self.tasktype=tasktype
         self.initData()
-        self.topK=-1
+        self.topK=topK
         self.name=tasktype+"rulePredictor"
+
+        self.loadModel()
+        self.bestScore=0
+        self.setVerbose(self.verbose)
 
     def setVerbose(self,verbose):
         self.verbose=verbose
         self.regModel.verbose=self.verbose-1
         self.subModel.verbose=self.verbose-1
         self.winModel.verbose=self.verbose-1
+        self.mymetric.verbose=verbose
 
     def loadModel(self):
         tasktype=self.tasktype
@@ -67,68 +77,22 @@ class CascadingModel:
         if self.verbose>0:
             print("meta learner loaded",self.regModel,self.subModel,self.winModel)
 
-    def searchParameters(self,data):
+    def score(self, data, y=None, sample_weight=None):
+        Y=self.predict(data.testX,data.taskids)
+        acc=self.mymetric.topKPossibleUsers(Y,data,self.topK)
+        acc=np.mean(acc)
+        return acc
 
+    def fit(self,x,y=None):
+        self.loadModel()
 
-        print("search best parameters for top%d prediction"%self.topK)
-        minRT=self.regThreshold
-        minST=self.subThreshold
-        minDn=self.topDig
+        return self
 
-        reg=1
-        sub=1
-        win=1
-        maxAcc=0
-        processing=0
-        for self.metaReg in (1,2,3):
-            for self.metaSub in (1,2,3):
-                for self.metaWin in (1,2,3):
-                    self.setVerbose(1)
-                    self.loadModel()
-                    processing+=1
-                    print("process=%d/27,maxAcc=%f"%(processing,maxAcc))
-                    self.setVerbose(0)
-
-                    for self.regThreshold in range(0,10):
-                        self.regThreshold=self.regThreshold/10
-
-                        for self.subThreshold in range(0,10):
-                            self.subThreshold=self.subThreshold/10
-
-                            for self.topDig in range(0,11):
-                                self.topDig=self.topDig/10
-
-                                Y=self.predict(data.testX,data.taskids)
-                                Y=self.mymetric.topKPossibleUsers(Y,data,self.topK)
-                                acc=np.mean(Y)
-                                print("top%d"%self.topK,acc,self.regThreshold,self.subThreshold,self.topDig)
-                                if maxAcc<acc:
-                                    #update para record when acc is higher
-                                    maxAcc=acc
-
-                                    minRT=self.regThreshold
-                                    minST=self.subThreshold
-                                    minDn=self.topDig
-
-                                    reg=self.metaReg
-                                    sub=self.metaSub
-                                    win=self.metaWin
-
-        self.regThreshold,self.subThreshold,self.topDig=minRT,minST,minDn
-
-        self.metaReg,self.metaSub,self.metaWin=reg,sub,win
-        print("\n searched best parameters for top%d(acc=%f) with meta learners="%(self.topK,maxAcc),
-              self.metaReg,self.metaSub,self.metaWin)
-
-        print("regThreshold=%f,subThreshold=%f,topDig=%f\n"%(
-            self.regThreshold,self.subThreshold,self.topDig
-        ))
-
-    def predict(self,X,taskids):
+    def predict(self,X,taskids=None):
 
         if self.verbose>0:
-            print("Cascading Model is predicting top %d for %d users,parameters are"%(self.topK,
-                    len(self.userIndex)))
+            print("Cascading Model(%d,%d,%d) is predicting top %d for %d users,parameters are"%(
+                self.metaReg,self.metaSub,self.metaWin,self.topK,len(self.userIndex)))
             print("regThreshold=%f, subThreshold=%f, DigThreshold=%f"%(self.regThreshold,self.subThreshold,
                   self.topDig))
             print()
@@ -139,21 +103,31 @@ class CascadingModel:
 
         Y=np.zeros(shape=len(X))
         taskNum=len(X)//len(self.userIndex)
+        topRN=int(self.regThreshold*len(self.userIndex))
+        topSN=int(self.subThreshold*len(self.userIndex))
+        topN=int(self.topDig*len(self.userIndex))
+
         for i in range(taskNum):
+            left=i*len(self.userIndex)
+            right=(i+1)*len(self.userIndex)
+            taskid=taskids[left]
+            topReg,_=self.mymetric.getTopKonPossibility(regY[left:right],topRN)
+            topSub,_=self.mymetric.getTopKonPossibility(subY[left:right],topSN)
+            selectedusers,_ =self.mymetric.getTopKonDIGRank(self.subExpr[taskid]["ranks"],topN)
+            #print("topR%d"%len(topReg),topReg)
+            #print("topS%d"%len(topSub),topSub)
+            #print("topD%d"%len(selectedusers),selectedusers)
             for j in range(len(self.userIndex)):
                 pos=i*len(self.userIndex)+j
-                taskid=taskids[pos]
                 #reg
 
-                if regY[pos]<self.regThreshold:
+                if j not in topReg:
                     #count+=1
                     continue
 
                 #sub
-                topN=int(self.topDig*len(self.userIndex))
-                selectedusers,_ =self.mymetric.getTopKonDIGRank(self.subExpr[taskid]["ranks"],topN)
                 #print(taskid,len(selectedusers),len(self.subExpr[taskid]["ranks"]),topN)
-                if subY[pos]<self.subThreshold or j not in selectedusers:
+                if j not in topSub or j not in selectedusers:
                     #count+=1
                     continue
                 #winner

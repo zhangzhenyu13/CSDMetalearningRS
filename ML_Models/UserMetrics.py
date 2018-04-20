@@ -6,6 +6,8 @@ from sklearn import preprocessing
 #metrics
 
 class TopKMetrics:
+    mmscaler=preprocessing.MinMaxScaler(feature_range=(0,1))
+
     def __init__(self,tasktype,callall=False,verbose=1,testMode=False):
         self.verbose=verbose
         self.callall=callall
@@ -59,10 +61,10 @@ class TopKMetrics:
         scoreP=predictP[1]
         scoreR=predictR[1]
 
-        maxR=np.max(scoreR)
-        minR=np.min(scoreR)
-        if maxR-minR>0:
-            scoreR=(scoreR-minR)/(maxR-minR)
+        X=np.concatenate((scoreP.reshape((len(scoreP),1)),scoreR.reshape((len(scoreR),1))),axis=1)
+        X=TopKMetrics.mmscaler.fit_transform(X)
+        scoreP,scoreR=X[:,0],X[:,1]
+
         #sort
         n_users=len(indexP)
         rmP=[]
