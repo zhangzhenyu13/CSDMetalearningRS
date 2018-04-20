@@ -14,34 +14,8 @@ def testCascadingModel():
     taskids=data.taskids[:data.testPoint]
     mymetric=model.mymetric
     mymetric.callall=False
-    print("\n meta-learning model top k acc")
-    Y_predict2=model.predict(data.testX,taskids)
-    for k in (3,5,10):
-        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
-        acc=np.mean(acc)
-        print(data.tasktype,"top %d"%k,acc)
 
-        acc=mymetric.topKRUsers(Y_predict2,data,k,)
-        acc=np.mean(acc)
-        print(data.tasktype,"top %d"%k,acc)
-
-        acc=mymetric.topKSUsers(Y_predict2,data,k,)
-        acc=np.mean(acc)
-        print(data.tasktype,"top %d"%k,acc)
-
-        print()
-    #exit(10)
     print()
-    mymetric.verbose=0
-    print("tuning cascading models")
-    for k in(3,5,10):
-        model.topK=k
-        model.metaWin=WinnerSel[k]
-        model.fit(data.testX)
-        model.saveConf()
-
-    mymetric.verbose=1
-    model.setVerbose(1)
 
     print("\n meta-learning model top k acc")
     for k in (3,5,10):
@@ -71,10 +45,8 @@ def testCascadingModel():
     #exit(10)
 
 def testBestReRank():
-    data=TopcoderWin(tasktype,testratio=1,validateratio=0)
-    data.setParameter(tasktype,2,True)
-    data.loadData()
-    data.WinClassificationData()
+    data=loadTestData(tasktype)
+    model=CascadingModel(tasktype)
     mymetric=model.mymetric
     mymetric.verbose=0
     taskids=data.taskids[:data.testPoint]
@@ -121,15 +93,14 @@ def testBestReRank():
 
 #test winning
 class TuneTask(multiprocessing.Process):
-    maxProcessNum=28
-    def __init__(self,tuneID,params,data,queue,cond):
+    maxProcessNum=30
+    def __init__(self,tuneID,params,data,queue):
         multiprocessing.Process.__init__(self)
         self.tuneID=tuneID
         self.model=CascadingModel(**params)
         self.data=data
         self.queue=queue
         self.params=params
-        self.cond=cond
 
     def run(self):
 
@@ -137,22 +108,33 @@ class TuneTask(multiprocessing.Process):
         topDig=[w/10 for w in range(0,11)]
         topDig.reverse()
         tD=0
+        #print("begin,%d"%self.tuneID)
+        mymetric=self.model.mymetric
+
+
         for self.model.topDig in topDig:
+            #print("predicting")
+            Y=self.model.predict(data.testX,data.taskids[:self.data.testPoint])
+            #print("predict=>topk")
             acc=self.model.score(self.data)
+            #print(acc,"topDig=%f"%self.model.topDig)
             if acc>bestScore:
                 tD=self.model.topDig
                 bestScore=acc
 
         self.model.topDig=tD
         self.params["topDig"]=self.model.topDig
-        self.cond.acquire()
-        self.queue.put([self.tuneID,self.model,bestScore])
-        print("%4.3f"%bestScore,"running ID: %d"%self.tuneID,"finished Tuning topDig",self.params)
-        self.cond.notify()
-        self.cond.release()
+
+        #print("finished")
+        #self.cond.acquire()
+        self.queue.put([self.tuneID,self.model,bestScore,self.params])
+        #print(bestScore,self.tuneID)
+        #self.cond.notify()
+        #self.cond.release()
 
 
 def TuneBestPara():
+
     params={"regThreshold":1,
             "subThreshold":1,
             "topDig":1,
@@ -162,53 +144,85 @@ def TuneBestPara():
 
     regT=[w/10 for w in range(0,11)]
     subT=[w/10 for w in range(0,11)]
-    queue=multiprocessing.Queue()
-    cond=multiprocessing.Condition()
+    metaRs=(1,2,3)
+    metaSs=(1,2,3)
+    metaWs=(1,2,3)
+
+    queue=multiprocessing.Queue(TuneTask.maxProcessNum)
 
     for topK in range(3,5,10):
         bestModel=None
         bestScore=0
         pools={}
-        params["metaWin"]=WinnerSel[topK]
+        #params["metaWin"]=WinnerSel[topK]
         params["topK"]=topK
         tuneID=0
+        #processes_pool=multiprocessing.Pool(processes=TuneTask.maxProcessNum)
         print("searching for top%d\n"%topK)
-        for metaReg in (1,2,3):
+
+        for metaReg in metaRs:
             params["metaReg"]=metaReg
 
-            for metaSub in (1,2,3):
+            for metaSub in metaSs:
                 params["metaSub"]=metaSub
 
-                for regThreshold in regT:
-                    params["regThreshold"]=regThreshold
+                for metaWin in metaWs:
+                    params["metaWin"]=metaWin
 
-                    for subThreshold in subT:
-                        params["subThreshold"]=subThreshold
+                    for regThreshold in regT:
+                        params["regThreshold"]=regThreshold
 
-                        if len(pools)<TuneTask.maxProcessNum:
+                        for subThreshold in subT:
+                            params["subThreshold"]=subThreshold
+                            #if tuneID<72:tuneID+=1;params["verbose"]=2;continue
 
-                            p=TuneTask(tuneID,params,data,queue,cond)
-                            p.start()
-                            pools[tuneID]=p
-                            tuneID+=1
-                        else:
-                            cond.acquire()
-                            if queue.empty():
-                                cond.wait()
-                            while queue.empty()==False:
-                                entry=queue.get()
+                            if len(pools)<TuneTask.maxProcessNum:
+                                #print("not full,size=%d"%len(pools),tuneID)
+
+                                p=TuneTask(tuneID,params,data,queue)
+                                p.start()
+                                pools[tuneID]=p
+                                tuneID+=1
+
+                            else:
+
+                                #cond.acquire()
+                                #print("full pool size=%d"%len(pools))
+
+                                entry=queue.get(block=True)
                                 if entry[2]>bestScore:
                                     bestModel=entry[1]
                                     bestScore=entry[2]
+
+                                    print("%4.3f"%bestScore,"ID:%d"%entry[0],entry[3])
+
                                 p=pools[entry[0]]
-                                #p.join()
+                                p.join()
+                                #print(pools.keys(),"del=>",entry[0])
                                 del pools[entry[0]]
 
-                            p=TuneTask(tuneID,params,data,queue,cond)
-                            p.start()
-                            pools[tuneID]=p
-                            tuneID+=1
-                            cond.release()
+                                while queue.qsize()>0:
+                                    entry=queue.get()
+                                    if entry[2]>bestScore:
+                                        bestModel=entry[1]
+                                        bestScore=entry[2]
+
+                                        print("%4.3f"%bestScore,"ID:%d"%entry[0],entry[3])
+
+                                    p=pools[entry[0]]
+                                    p.join()
+                                    #print(pools.keys(),"del=>",entry[0])
+                                    del pools[entry[0]]
+
+                                #print("del pool size=%d"%len(pools))
+
+                                p=TuneTask(tuneID,params,data,queue)
+                                p.start()
+                                pools[tuneID]=p
+                                tuneID+=1
+
+                                #cond.release()
+
         print("==============================>")
         print("gather final data...\n")
         while queue.empty()==False:
@@ -217,7 +231,7 @@ def TuneBestPara():
                 bestModel=entry[1]
                 bestScore=entry[2]
             p=pools[entry[0]]
-            #p.join()
+            p.join()
             del pools[entry[0]]
 
         #model.saveConf()
@@ -235,7 +249,7 @@ if __name__ == '__main__':
     }
     '''
 
-    WinnerSel={
+    WinnerSels={
         3:1,
         5:1,
         10:1
@@ -245,4 +259,4 @@ if __name__ == '__main__':
     data=loadTestData(tasktype)
 
     TuneBestPara()
-    testBestReRank()
+    #testBestReRank()

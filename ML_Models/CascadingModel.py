@@ -44,7 +44,6 @@ class CascadingModel(BaseEstimator,RegressorMixin):
         self.name=tasktype+"rulePredictor"
 
         self.loadModel()
-        self.bestScore=0
         self.setVerbose(self.verbose)
 
     def setVerbose(self,verbose):
@@ -111,12 +110,16 @@ class CascadingModel(BaseEstimator,RegressorMixin):
             left=i*len(self.userIndex)
             right=(i+1)*len(self.userIndex)
             taskid=taskids[left]
+            #print("begin top r")
             topReg,_=self.mymetric.getTopKonPossibility(regY[left:right],topRN)
+            #print("begin top s")
             topSub,_=self.mymetric.getTopKonPossibility(subY[left:right],topSN)
+            #print("begin top ds")
             selectedusers,_ =self.mymetric.getTopKonDIGRank(self.subExpr[taskid]["ranks"],topN)
             #print("topR%d"%len(topReg),topReg)
             #print("topS%d"%len(topSub),topSub)
             #print("topD%d"%len(selectedusers),selectedusers)
+            #print("begin filtering")
             for j in range(len(self.userIndex)):
                 pos=i*len(self.userIndex)+j
                 #reg
