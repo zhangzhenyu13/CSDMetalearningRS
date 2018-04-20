@@ -159,7 +159,7 @@ def TuneBestPara():
         tuneID=0
         #processes_pool=multiprocessing.Pool(processes=TuneTask.maxProcessNum)
         print("searching for top%d\n"%topK)
-
+        progress=1
         for metaReg in metaRs:
             params["metaReg"]=metaReg
 
@@ -168,6 +168,8 @@ def TuneBestPara():
 
                 for metaWin in metaWs:
                     params["metaWin"]=metaWin
+                    print("progress=%d/27"%progress)
+                    progress+=1
 
                     for regThreshold in regT:
                         params["regThreshold"]=regThreshold
@@ -255,7 +257,7 @@ if __name__ == '__main__':
         10:1
     }
 
-    tasktype="Architecture"
+    tasktype="Test Suites"
     data=loadTestData(tasktype)
 
     TuneBestPara()

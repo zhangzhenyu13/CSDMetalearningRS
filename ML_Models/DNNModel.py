@@ -93,7 +93,7 @@ class DNNCLassifier(ML_model):
     def predict(self,X):
         if self.verbose>0:
             print(self.name,"(DNN) is predicting ")
-        Y=self.model.predict(X,batch_size=10000,verbose=0)
+        Y=self.model.predict(X,verbose=0)
         #print("finished predicting ",len(Y))
         return Y
 
