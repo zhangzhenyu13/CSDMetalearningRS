@@ -10,14 +10,14 @@ class CascadingModel(BaseEstimator,RegressorMixin):
 
     def initData(self):
 
-        self.mymetric=TopKMetrics(tasktype=self.tasktype,testMode=True)
+        self.mymetric=TopKMetrics(tasktype=self.digtype,testMode=True)
         self.subExpr=self.mymetric.subRank
-        self.userIndex=getUsers(self.tasktype+"-test",mode=2)
+        self.userIndex=getUsers(self.digtype+"-test",mode=2)
 
         if self.verbose>0:
             print("model init for %d users"%len(self.userIndex),"%d tasks"%len(self.subExpr))
 
-    def __init__(self,tasktype=None,topK=3,verbose=0,metaReg=1,metaSub=1,metaWin=1,
+    def __init__(self,tasktype=None,digtype=None,topK=3,verbose=0,metaReg=1,metaSub=1,metaWin=1,
                  regThreshold=1,subThreshold=1,topDig=1):
         #meta-learners
         self.regModel=None
@@ -39,6 +39,11 @@ class CascadingModel(BaseEstimator,RegressorMixin):
         #aux info
         self.verbose=verbose
         self.tasktype=tasktype
+        if digtype is None:
+            self.digtype=self.tasktype
+        else:
+            self.digtype=digtype
+
         self.initData()
         self.topK=topK
         self.name=tasktype+"rulePredictor"
@@ -90,7 +95,7 @@ class CascadingModel(BaseEstimator,RegressorMixin):
     def predict(self,X,taskids=None):
 
         if self.verbose>0:
-            print("Cascading Model(%d,%d,%d) is predicting top %d for %d users,parameters are"%(
+            print("\nCascading Model(%d,%d,%d) is predicting top %d for %d users,parameters are"%(
                 self.metaReg,self.metaSub,self.metaWin,self.topK,len(self.userIndex)))
             print("regThreshold=%f, subThreshold=%f, DigThreshold=%f"%(self.regThreshold,self.subThreshold,
                   self.topDig))
