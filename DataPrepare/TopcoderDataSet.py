@@ -25,6 +25,7 @@ class DataSetTopcoder:
             self.filepath="../data/TopcoderDataSet/"+ModeTag[mode].lower()+"HistoryBasedData/"\
                           +self.tasktype+"-test-user_task.data"
             print("\n Test Mode \n")
+        self.testMode=testMode
 
     def indexDataPoint(self,taskids):
         id=taskids[0]
@@ -219,7 +220,9 @@ class TopcoderWin(DataSetTopcoder):
         self.trainLabel=Y[self.validatePoint:]
         self.validateLabel=Y[self.testPoint:self.validatePoint]
         self.testLabel=Y[:self.testPoint]
-        self.constructTrainInstances()
+
+        if self.testMode==False:
+            self.constructTrainInstances()
 
     def WinClassificationData(self):
         self.WinRankData()

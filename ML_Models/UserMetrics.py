@@ -54,50 +54,44 @@ class TopKMetrics:
         return np.array(userRank[:k,0],dtype=np.int),np.array(userRank[:k,1])
 
     #clip indices of top k data from weighted sum of P and R
-    def getTopKonPDIGScore(self,predictP,predictR,rank_weight=0.8):
+    def getTopKonPDIGScore(self,predictP,predictR,rank_weight):
         Y=[]
         indexP=predictP[0]
         indexR=predictR[0]
         scoreP=predictP[1]
         scoreR=predictR[1]
+        n_all=len(indexP)
 
-        X=np.concatenate((scoreP.reshape((len(scoreP),1)),scoreR.reshape((len(scoreR),1))),axis=1)
-        X=TopKMetrics.mmscaler.fit_transform(X)
-        scoreP,scoreR=X[:,0],X[:,1]
+        selUsers=list(set(indexP).intersection(indexR))
+        if len(selUsers)==len(indexP):
+            return indexP,scoreP
 
-        #sort
-        n_users=len(indexP)
-        rmP=[]
-        rmR=[]
-        for i in range(n_users):
+        if len(selUsers)!=0:
+            for index in selUsers:
+                PI=np.where(indexP==index)[0]
+                RI=np.where(indexR==index)[0]
+                Y.append([indexP[RI[0]],scoreP[RI[0]]])
+                indexP=np.delete(indexP,PI,axis=0)
+                scoreP=np.delete(scoreP,PI,axis=0)
+                indexR=np.delete(indexR,RI,axis=0)
+                scoreR=np.delete(scoreR,RI,axis=0)
+        n_left=n_all-len(selUsers)
+        n_r=int((1-rank_weight)*n_left)
+        n_p=n_left-n_r
+        for i in range(n_p):
+            Y.append([indexP[i],scoreP[i]])
+        for i in range(n_r):
+            Y.append([indexR[i],scoreR[i]])
 
-            index=np.where(indexR==indexP[i])[0]
-
-            if len(index)>0:
-                index=index[0]
-                Y.append([indexP[i],rank_weight*scoreP[i]+(1-rank_weight)*scoreR[index]])
-                rmP.append(i)
-                rmR.append(index)
-
-        for i in range(n_users):
-            if i not in rmP:
-                Y.append([indexP[i],rank_weight*scoreP[i]])
-        for i in range(n_users):
-            if i not in rmR:
-                Y.append([indexR[i],(1-rank_weight)*scoreR[i]])
-        #sort Y
-        ms=MySort(Y)
-        ms.compare_vec_index=-1
-        Y=ms.mergeSort()
         Y=np.array(Y)
+
         return np.array(Y[:,0],dtype=np.int),np.array(Y[:,1])
 
     #select top k users based on its prediction possibility
-    def topKPossibleUsers(self,Y_predict,data,k):
+    def topKPossibleUsers(self,Y_predict,Y_label,k):
         Y_predict2=copy.deepcopy(Y_predict)
 
         usersList=self.userlist
-        Y_label=data.testLabel
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
@@ -129,13 +123,11 @@ class TopKMetrics:
         return Y
 
     #select top k users based on DIG
-    def topKDIGUsers(self,data,k):
+    def topKDIGUsers(self,Y_label,taskids,k):
 
         usersList=self.userlist
-        Y_label=data.testLabel
 
         dataRank=self.scoreRank
-        taskids=data.taskids[:data.testPoint]
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
@@ -167,9 +159,8 @@ class TopKMetrics:
 
         return Y
 
-
     #top k acc based on hard classification
-    def topKPDIGUsers(self,Y_predict,data,k,rank_weight=0.9):
+    def topKPDIGUsers(self,Y_predict,Y_label,taskids,k,rank_weight):
         '''
         :return Y[i]=true if ith sample can intersect with each other in Y_predict[i] and Y_true[i]
                           else return false
@@ -181,10 +172,8 @@ class TopKMetrics:
         Y_predict2=copy.deepcopy(Y_predict)
         # measure top k accuracy
         dataRank=self.scoreRank
-        taskids=data.taskids[:data.testPoint]
 
         usersList=self.userlist
-        Y_label=data.testLabel
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
@@ -221,22 +210,21 @@ class TopKMetrics:
 
         return Y
 
-
     #this method is to test topk acc when the submit status is known
-    def topKSUsers(self,Y_predict,data,k):
+    def topKSUsers(self,Y_predict,Y_label,Y_sublabel,k):
         # measure top k accuracy
         # batch data into task centered array
         if self.verbose>0:
             print("sub status observed assumption top k acc")
 
         Y_predict2=copy.deepcopy(Y_predict)
-        submitlabels=data.submitLabelClassification[:data.testPoint]
+        submitlabels=Y_sublabel
         for p in range(len(submitlabels)):
             if submitlabels[p]==0:
                 Y_predict2[p]=0
 
         usersList=self.userlist
-        Y_label=data.testLabel
+
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)
@@ -265,19 +253,18 @@ class TopKMetrics:
 
         return Y
     #this method is to test topk acc when the register status is known
-    def topKRUsers(self,Y_predict,data,k):
+    def topKRUsers(self,Y_predict,Y_label,Y_reglabel,k):
         # measure top k accuracy
         # batch data into task centered array
         if self.verbose>0:
             print("reg status observed assumption top k acc")
         Y_predict2=copy.deepcopy(Y_predict)
-        reglabels=data.registerLabelClassification[:data.testPoint]
+        reglabels=Y_reglabel
         for p in range(len(reglabels)):
             if reglabels[p]==0:
                 Y_predict2[p]=0
 
         usersList=self.userlist
-        Y_label=data.testLabel
 
         taskNum=len(Y_label)//len(usersList)
         Y=np.zeros(shape=taskNum,dtype=np.int)

@@ -82,8 +82,8 @@ class CascadingModel(BaseEstimator,RegressorMixin):
             print("meta learner loaded",self.regModel,self.subModel,self.winModel)
 
     def score(self, data, y=None, sample_weight=None):
-        Y=self.predict(data.testX,data.taskids)
-        acc=self.mymetric.topKPossibleUsers(Y,data,self.topK)
+        Y=self.predict(data.testX,data.taskids[:data.testPoint])
+        acc=self.mymetric.topKPossibleUsers(Y,data.testLabel,self.topK)
         acc=np.mean(acc)
         return acc
 
@@ -120,7 +120,7 @@ class CascadingModel(BaseEstimator,RegressorMixin):
             #print("begin top s")
             topSub,_=self.mymetric.getTopKonPossibility(subY[left:right],topSN)
             #print("begin top ds")
-            selectedusers,_ =self.mymetric.getTopKonDIGRank(self.subExpr[taskid]["ranks"],topN)
+#            selectedusers,_ =self.mymetric.getTopKonDIGRank(self.subExpr[taskid]["ranks"],topN)
             #print("topR%d"%len(topReg),topReg)
             #print("topS%d"%len(topSub),topSub)
             #print("topD%d"%len(selectedusers),selectedusers)
@@ -135,7 +135,7 @@ class CascadingModel(BaseEstimator,RegressorMixin):
 
                 #sub
                 #print(taskid,len(selectedusers),len(self.subExpr[taskid]["ranks"]),topN)
-                if j not in topSub or j not in selectedusers:
+                if j not in topSub:# or j not in selectedusers:
                     #count+=1
                     continue
                 #winner

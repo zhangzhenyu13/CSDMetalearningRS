@@ -1,8 +1,9 @@
 from ML_Models.CascadingModel import *
 from DataPrepare.TopcoderDataSet import TopcoderWin
 import multiprocessing
-def loadTestData(tasktype):
-    data=TopcoderWin(tasktype,testratio=1,validateratio=0)
+
+def loadTestData(tasktype,clipratio=1.0,dropratio=0.0):
+    data=TopcoderWin(tasktype,testratio=clipratio,validateratio=dropratio)
     data.setParameter(tasktype,2,True)
     data.loadData()
     data.WinClassificationData()
@@ -12,6 +13,9 @@ def loadTestData(tasktype):
 def testCascadingModel():
     model=CascadingModel(tasktype=modeltype)
     taskids=data.taskids[:data.testPoint]
+    Y_label=data.testLabel[:data.testPoint]
+    Y_sublabel=data.submitLabelClassification[:data.testPoint]
+    Y_reglabel=data.registerLabelClassification[:data.testPoint]
     mymetric=model.mymetric
     mymetric.callall=False
 
@@ -24,15 +28,15 @@ def testCascadingModel():
         model.loadModel()
         Y_predict2=model.predict(data.testX,taskids)
         #metrics
-        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
+        acc=mymetric.topKPossibleUsers(Y_predict2,Y_label,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
-        acc=mymetric.topKRUsers(Y_predict2,data,k,)
+        acc=mymetric.topKRUsers(Y_predict2,Y_label,Y_reglabel,k,)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
-        acc=mymetric.topKSUsers(Y_predict2,data,k,)
+        acc=mymetric.topKSUsers(Y_predict2,Y_label,Y_sublabel,k,)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
@@ -44,32 +48,53 @@ def testCascadingModel():
 
     #exit(10)
 
+class TuneDIG(multiprocessing.Process):
+    maxProcessNum=32
+    def __init__(self,tuneID,model,data,queue):
+        multiprocessing.Process.__init__(self)
+        self.tuneID=tuneID
+        self.model=model
+        #if transferLearning:
+
+        self.data=data
+        self.queue=queue
+
+    def run(self):
+
+        bestScore=0
+        ran_weighte=[w/10 for w in range(10,11)]
+        ran_weighte.reverse()
+        best_w=0
+        #print("begin,%d"%self.tuneID)
+        mymetric=self.model.mymetric
+        taskids=self.data.taskids[self.data.validatePoint:]
+        X=self.data.trainX
+        Y_label=self.data.trainLabel
+        for rw in ran_weighte:
+            #print("predicting")
+            Y=self.model.predict(X,taskids)
+            Y=mymetric.topKPDIGUsers(Y,Y_label,taskids,self.model.topK,rw)
+            acc=np.mean(Y)
+
+            if acc>bestScore:
+                best_w=rw
+                bestScore=acc
+
+        self.queue.put([self.tuneID,self.model,bestScore,best_w])
+
+
 def testBestReRank():
-    data=loadTestData(datatype)
-    model=CascadingModel(tasktype=modeltype)
+
+    model=CascadingModel(tasktype=modeltype,digtype=datatype)
     mymetric=model.mymetric
     mymetric.verbose=0
     taskids=data.taskids[:data.testPoint]
+    Y_label=data.testLabel[:data.testPoint]
 
-    print("\n meta-learning model top k acc")
-    for k in (3,5,10):
-        model.topK=k
-        model.loadConf()
-        model.loadModel()
-        Y_predict2=model.predict(data.testX,taskids)
-        #metrics
-        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
-        acc=np.mean(acc)
-        print(data.tasktype,"top %d"%k,acc)
-
-        acc=mymetric.topKPDIGUsers(Y_predict2,data,k,1)
-        acc=np.mean(acc)
-        print(data.tasktype,"top %d"%k,acc)
-
-        print()
-
-    print("tuning re-rank weight")
+    print("tuning re-rank weight\n")
     best_param={3:0,5:0,10:0}
+    rw=[w/10 for w in range(0,11)]
+    rw.reverse()
 
     for k in (3,5,10):
         model.topK=k
@@ -78,18 +103,15 @@ def testBestReRank():
         model.loadModel()
         Y_predict2=model.predict(data.testX,taskids)
 
-        for w in range(0,11):
-            acc=mymetric.topKPDIGUsers(Y_predict2,data,k,w/10)
+        for w in rw:
+            acc=mymetric.topKPDIGUsers(Y_predict2,Y_label,taskids,k,w)
             acc=np.mean(acc)
             if acc>maxAcc[0]:
-                maxAcc=[acc,w/10]
-            print(data.tasktype,"top %d"%k,acc,"weight=%f"%(w/10))
+                maxAcc=[acc,w]
+                #print(data.tasktype,"top %d"%k,acc,"weight=%f"%(w/10))
         best_param[k]=maxAcc[1]
-        print(data.tasktype,"top %d"%k,maxAcc[0],"weight=%f"%maxAcc[1])
+        print("\n",data.tasktype,"top %d"%k,maxAcc[0],"weight=%f"%maxAcc[1])
         print()
-
-    return best_param
-
 
 #test winning
 class TuneTask(multiprocessing.Process):
@@ -107,18 +129,20 @@ class TuneTask(multiprocessing.Process):
     def run(self):
 
         bestScore=0
-        topDig=[w/10 for w in range(0,11)]
+        topDig=[w/10 for w in range(10,11)]
         topDig.reverse()
         tD=0
         #print("begin,%d"%self.tuneID)
         mymetric=self.model.mymetric
-
-
+        taskids=self.data.taskids[self.data.validatePoint:]
+        X=self.data.trainX
+        Y_label=self.data.trainLabel
         for self.model.topDig in topDig:
             #print("predicting")
-            Y=self.model.predict(data.testX,data.taskids[:self.data.testPoint])
-            #print("predict=>topk")
-            acc=self.model.score(self.data)
+            Y=self.model.predict(X,taskids)
+            Y=mymetric.topKPossibleUsers(Y,Y_label,self.model.topK)
+            acc=np.mean(Y)
+            #acc=self.model.score(self.data)
             #print(acc,"topDig=%f"%self.model.topDig)
             if acc>bestScore:
                 tD=self.model.topDig
@@ -135,7 +159,7 @@ class TuneTask(multiprocessing.Process):
         #self.cond.release()
 
 
-def TuneBestPara(topK,transfer=False):
+def TuneBestPara(topK):
 
     params={"regThreshold":1,
             "subThreshold":1,
@@ -248,30 +272,24 @@ def TuneBestPara(topK,transfer=False):
 
 
     queue.close()
-    if transfer ==False:
+    if transferLearning ==False:
         bestModel.saveConf()
 
     print()
-    print("top%d"%topK,"acc=%4.3f"%bestScore)
+    bestModel.setVerbose(1)
+    testAcc=bestModel.score(data)
+    print("top%d"%topK,"train acc=%4.3f"%bestScore,"test acc=%4.3f"%testAcc)
     print()
 
 if __name__ == '__main__':
 
-    '''
-    ml_model={
-        1:DNNCLassifier,
-        2:EnsembleClassifier,
-        3:XGBoostClassifier
-    }
-    '''
-
+    clipratio=0.5
+    dropratio=0.
     transferLearning=True
-    datatype="Development"
-    modeltype="Code"
-    data=loadTestData(datatype)
+    datatype="Bug Hunt"
+    modeltype="Bug Hunt"
+    data=loadTestData(datatype,clipratio,dropratio)
 
-    TuneBestPara(topK=3,transfer=transferLearning)
-    TuneBestPara(topK=5,transfer=transferLearning)
-    TuneBestPara(topK=10,transfer=transferLearning)
+    #TuneBestPara(topK=10)
 
-    #testBestReRank()
+    testBestReRank()

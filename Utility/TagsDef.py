@@ -31,8 +31,8 @@ if __name__ == '__main__':
     testMode=True
     for mode in (2,):
         #genSelectedUserlist("global",mode);continue
-        for k in tasltypes.keys():
-            for t in tasltypes[k]:
+        #for k in tasltypes.keys():
+            for t in tasltypes["clustered"]:
                 if testMode:
                     t=t+"-test"
                 genSelectedUserlist(t,mode)
