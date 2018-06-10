@@ -83,9 +83,11 @@ class TuneDIG(multiprocessing.Process):
         self.queue.put([self.tuneID,self.model,bestScore,best_w])
 
 
-def testBestReRank():
-
-    model=CascadingModel(tasktype=modeltype,digtype=datatype)
+def testBestReRank(k,bestModel=None):
+    if bestModel is None:
+        model=CascadingModel(tasktype=modeltype,digtype=datatype)
+    else:
+        model=bestModel
     mymetric=model.mymetric
     mymetric.verbose=0
     taskids=data.taskids[:data.testPoint]
@@ -96,22 +98,22 @@ def testBestReRank():
     rw=[w/10 for w in range(0,11)]
     rw.reverse()
 
-    for k in (3,5,10):
-        model.topK=k
-        maxAcc=[0,0]
-        model.loadConf()
-        model.loadModel()
-        Y_predict2=model.predict(data.testX,taskids)
 
-        for w in rw:
+    model.topK=k
+    maxAcc=[0,0]
+    model.loadConf()
+    model.loadModel()
+    Y_predict2=model.predict(data.testX,taskids)
+
+    for w in rw:
             acc=mymetric.topKPDIGUsers(Y_predict2,Y_label,taskids,k,w)
             acc=np.mean(acc)
             if acc>maxAcc[0]:
                 maxAcc=[acc,w]
                 #print(data.tasktype,"top %d"%k,acc,"weight=%f"%(w/10))
-        best_param[k]=maxAcc[1]
-        print("\n",data.tasktype,"top %d"%k,maxAcc[0],"weight=%f"%maxAcc[1])
-        print()
+    best_param[k]=maxAcc[1]
+    print("\n",data.tasktype,"top %d"%k,maxAcc[0],"weight=%f"%maxAcc[1])
+    print()
 
 #test winning
 class TuneTask(multiprocessing.Process):
@@ -280,16 +282,18 @@ def TuneBestPara(topK):
     testAcc=bestModel.score(data)
     print("top%d"%topK,"train acc=%4.3f"%bestScore,"test acc=%4.3f"%testAcc)
     print()
+    return bestModel
 
 if __name__ == '__main__':
 
     clipratio=0.5
     dropratio=0.
     transferLearning=True
-    datatype="Bug Hunt"
-    modeltype="Bug Hunt"
+    datatype="First2Finish#3"
+    modeltype="First2Finish"
     data=loadTestData(datatype,clipratio,dropratio)
 
-    #TuneBestPara(topK=10)
+    topK=3
+    bestModel=TuneBestPara(topK=topK)
 
-    testBestReRank()
+    testBestReRank(topK,bestModel)

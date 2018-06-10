@@ -28,7 +28,7 @@ class LDAFlow:
         for i in range(len(docs)):
             doc = docs[i]
             doc = ''.join(ch for ch in doc if ch not in exclude)
-            doc = " ".join([i for i in doc.lower().split() if i not in stop])
+            doc = " ".join([st for st in doc.lower().split() if st not in stop])
             doc = " ".join(lemma.lemmatize(word) for word in doc.split())
             docs[i] = doc.split()
         return  docs
