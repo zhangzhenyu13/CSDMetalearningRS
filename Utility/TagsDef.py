@@ -28,11 +28,11 @@ if __name__ == '__main__':
     from Utility.SelectedTaskTypes import loadTaskTypes
 
     tasltypes=loadTaskTypes()
-    testMode=True
+    testMode=False
     for mode in (2,):
         #genSelectedUserlist("global",mode);continue
         #for k in tasltypes.keys():
-            for t in tasltypes["clustered"]:
+            for t in tasltypes["keeped"]:
                 if testMode:
                     t=t+"-test"
                 genSelectedUserlist(t,mode)

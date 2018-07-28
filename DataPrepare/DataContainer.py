@@ -270,7 +270,7 @@ class Submission:
                 self.subdate.append(1)
             else:
                 self.subdate.append(data[3])
-            if data[4] is not None and data[4]>0:
+            if data[4] is not None and eval(data[4])>0:
                 self.score.append(data[4])
             else:
                 self.score.append(0)

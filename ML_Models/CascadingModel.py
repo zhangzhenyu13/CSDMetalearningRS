@@ -87,7 +87,7 @@ class CascadingModel(BaseEstimator,RegressorMixin):
         acc=np.mean(acc)
         return acc
 
-    def fit(self,x,y=None):
+    def loadMetaModel(self,x,y=None):
         self.loadModel()
 
         return self
@@ -143,6 +143,7 @@ class CascadingModel(BaseEstimator,RegressorMixin):
                 Y[pos]=winY[pos]
         #print("filtered %d in predict"%count)
         return Y
+
 
     def saveConf(self):
         params={"regThreshold":self.regThreshold,

@@ -1,6 +1,6 @@
 from ML_Models.Model_def import *
 from keras import models,layers,optimizers,losses
-import numpy as np
+import numpy as np, collections
 import time,json,keras.backend as K
 from Utility.TagsDef import ModeTag
 from keras.wrappers.scikit_learn import KerasRegressor
@@ -11,21 +11,17 @@ warnings.filterwarnings("ignore")
 
 
 #create model
-def createDNN(dp=0.5):
+def createDNN():
     inputDim=126#user:60, task:66
     ouputDim=1
     DNNmodel=models.Sequential()
     DNNmodel.add(layers.Dense(units=96,input_shape=(inputDim,),activation="relu"))
-    DNNmodel.add(layers.Dense(units=96,activation="relu"))
+    DNNmodel.add(layers.Dense(units=72,activation="relu"))
     DNNmodel.add(layers.Dense(units=64,activation="relu"))
-    DNNmodel.add(layers.Dense(units=64,activation="relu"))
-    DNNmodel.add(layers.Dense(units=32,activation="relu"))
-    DNNmodel.add(layers.Dense(units=32,activation="relu"))
-    DNNmodel.add(layers.Dense(units=16,activation="relu"))
-    DNNmodel.add(layers.Dropout(dp))
+    DNNmodel.add(layers.Dropout(0.36))
     DNNmodel.add(layers.Dense(units=ouputDim,activation="sigmoid"))
 
-    opt = optimizers.Adadelta()
+    opt = optimizers.Adam()
     DNNmodel.compile(optimizer=opt,loss=losses.mean_squared_error)
     return DNNmodel
 
@@ -46,7 +42,6 @@ class DNNCLassifier(ML_model):
             paras=json.load(f)
         for k in paras.keys():
             self.params[k]=paras[k]
-
     def saveConf(self):
         with open("../data/saved_ML_models/dnns/config/"+self.name+".json","w") as f:
             json.dump(self.params,f)
@@ -71,20 +66,17 @@ class DNNCLassifier(ML_model):
 
         self.saveConf()
         paras=self.params
-        self.model=createDNN(paras['dp'])
+        self.model=createDNN()
 
     def trainModel(self,dataSet):
         print(self.name+" training")
         t0=time.time()
-        try:
-            self.loadConf()
-            paras=self.params
-            self.model=createDNN(paras['dp'])
-        except:
-            print("loading configuration failed")
-            self.searchParameters(dataSet)
+        print(collections.Counter(dataSet.trainLabel),collections.Counter(dataSet.validateLabel))
+        self.model=createDNN()
 
-        self.model.fit(dataSet.trainX,dataSet.trainLabel,verbose=0,epochs=5,batch_size=500)
+        self.model.fit(dataSet.trainX,dataSet.trainLabel,
+                       validation_data=(dataSet.validateX,dataSet.validateLabel),
+                       verbose=2,epochs=5,batch_size=500)
 
         t1=time.time()
         mse=self.model.evaluate(dataSet.validateX,dataSet.validateLabel,verbose=0,batch_size=10000)
@@ -107,23 +99,24 @@ if __name__ == '__main__':
     from Utility import SelectedTaskTypes
     tasktypes=SelectedTaskTypes.loadTaskTypes()["clustered"]
     #tasktypes=("global",)
+    mode=2 #0,1,2
+
     for tasktype in tasktypes:
-        for mode in (0,1):
 
-            dnnmodel=DNNCLassifier()
-            dnnmodel.name=tasktype+"-classifier"+ModeTag[mode]
+        dnnmodel=DNNCLassifier()
+        dnnmodel.name=tasktype+"-classifier"+ModeTag[mode]
 
-            data=loadData(tasktype,mode)
-            #train model
-            dnnmodel.trainModel(data);dnnmodel.saveModel()
+        data=loadData(tasktype,mode)
+        #train model
+        dnnmodel.trainModel(data)
+        #dnnmodel.loadModel()
+        #saveTag=input("save model:(Y/N)")
+        #if saveTag=="Y":
+        #    dnnmodel.saveModel()
             #measuer model
-            dnnmodel.loadModel()
-            Y_predict2=dnnmodel.predict(data.testX)
-            showMetrics(Y_predict2,data,dnnmodel.threshold)
+        #    dnnmodel.loadModel()
 
-            #winners
-            if mode==2:
-                mymetric=TopKMetrics(data.tasktype)
+        Y_predict2=dnnmodel.predict(data.testX)
+        showMetrics(Y_predict2,data,dnnmodel.threshold)
 
-                topKmetrics(mymetric,Y_predict2,data)
-        print()
+

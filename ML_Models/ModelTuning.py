@@ -32,10 +32,11 @@ def showMetrics(Y_predict2,data,threshold):
 def topKmetrics(mymetric,Y_predict2,data):
     print("\n meta-learning model top k acc")
     for k in (1,3,5):
-        acc=mymetric.topKPossibleUsers(Y_predict2,data,k)
+        acc=mymetric.topKPossibleUsers(Y_predict2,data.testLabel,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
 
+        '''
         acc=mymetric.topKDIGUsers(data,k)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
@@ -47,6 +48,8 @@ def topKmetrics(mymetric,Y_predict2,data):
         acc=mymetric.topKSUsers(Y_predict2,data,k,)
         acc=np.mean(acc)
         print(data.tasktype,"top %d"%k,acc)
+        '''
+
 
         print()
 

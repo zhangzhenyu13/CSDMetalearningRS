@@ -47,6 +47,24 @@ class TopKMetrics:
         x_vec=np.array(x_vec)[:k]
 
         return np.array(x_vec[:,0],dtype=np.int),np.array(x_vec[:,1])
+    def getMRR(self,trueY,predictY):
+        x_vec=[]
+        for i in range(len(predictY)):
+            x_vec.insert(i,[i,predictY[i]])
+
+        mysort=MySort(x_vec)
+        mysort.compare_vec_index=-1
+        x_vec=mysort.mergeSort()
+        x_vec=np.array(x_vec)
+
+        predictY=np.array(x_vec[:,0],dtype=np.int)
+
+        mrr=0
+        for i in range(len(predictY)):
+            if predictY[i] in trueY:
+                mrr=1.0/(i+1.0)
+                break
+        return mrr
 
     #clip indices of top k data from DIG
     def getTopKonDIGRank(self,userRank,k):
@@ -121,6 +139,35 @@ class TopKMetrics:
                     Y[i]=len(containUsers)/len(trueY)
 
         return Y
+
+    #select top k users based on its prediction possibility
+    def getAllMRR(self,Y_predict,Y_label):
+        Y_predict2=copy.deepcopy(Y_predict)
+
+        usersList=self.userlist
+
+        taskNum=len(Y_label)//len(usersList)
+        Y=np.zeros(shape=taskNum,dtype=np.float32)
+        if self.verbose>0:
+            print("MRR for %d tasks(%d winners,%d users) "%
+              (taskNum,np.sum(Y_label),len(usersList)))
+
+        for i in range(taskNum):
+            left=i*len(usersList)
+            right=(i+1)*len(usersList)
+
+            trueY=Y_label[left:right]
+            trueY=np.where(trueY==1)[0]
+            trueY=set(trueY)
+            if len(trueY)==0:continue
+
+            predictY=Y_predict2[left:right]
+
+            mrr=self.getMRR(trueY,predictY)
+            Y[i]=mrr
+
+        return Y
+
 
     #select top k users based on DIG
     def topKDIGUsers(self,Y_label,taskids,k):
