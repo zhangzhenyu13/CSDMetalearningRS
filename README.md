@@ -14,6 +14,6 @@ refer to the topcoder project at: https://github.com/lifeloner/topcoder for newe
 customize local mysql database ip and port accroding to local machine configuration.
 
 Make sure that the hierarchy of data folder is same in local disk.
-Run DataPre package script to start Data Extractor and generate input data for the system
-Run ML_Models package script to start meta-model training and optimal meta feature searching 
+Run DataPre package script to start Data Extractor and generate input data for the system.
+Run ML_Models package script to start meta-model training and optimal meta feature searching.
 Test Policy Model.
