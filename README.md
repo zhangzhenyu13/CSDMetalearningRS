@@ -7,9 +7,9 @@ For challenge and developer feature encoding and some data preprocessing modules
 The Utility package contains some personalized tag definition, user fucntion and testing scripts. 
 
 Before running the system, make sure to configure following settings:
-install python 3.x
-pip install keras, tensorflow, scikit-learn, imbalance-learn, numpy. pymysql
-install mysql database
+install python 3.x;
+pip install keras, tensorflow, scikit-learn, imbalance-learn, numpy. pymysql;
+install mysql database;
 refer to the topcoder project at: https://github.com/lifeloner/topcoder for newest data crawler implemented in JAVA.
 customize local mysql database ip and port accroding to local machine configuration.
 
