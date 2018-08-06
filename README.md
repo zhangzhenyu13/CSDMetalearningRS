@@ -1,6 +1,12 @@
 # CSDMetalearningRS
 a meta learning based CSD recommender
 
+The rest of the README is a brief decription for how to use the project, for more detailed information please refer to the SystemInstruction.pdf of our rpoject.
+
+
+
+
+
 The DIG is implemented in CompetitionGraph Package.
 The machine learning algorithms and policy model are implemented in ML_Models package. 
 For challenge and developer feature encoding and some data preprocessing modules of the system, refer to the DataPre package. 
