@@ -5,6 +5,8 @@ The rest of the README is a brief decription for how to use the project, for mor
 
 
 
+Our experimental results data are also available as an excel file in the project that is experiments.xlsx.
+
 
 
 The DIG is implemented in CompetitionGraph Package.
