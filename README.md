@@ -171,7 +171,7 @@ Readers can refer to MetaLearning.py of ML_Models package which implemented some
 Please give a cite to our work if you want use the project somewhere else. 
 </h2>
 <pre><code>@INPROCEEDINGS{metalearning-recommender, 
-author={Zhenyu Zhang}, 
+author={Zhenyu Zhang, Hailong Sun, HongyuZhang}, 
 title={Developer Recommendation for Topcoder through aMeta-learning based Policy Model},
 year={2019},
 url={https://github.com/zhangzhenyu13/CSDMetalearningRS} 
