@@ -133,8 +133,8 @@ if __name__ == '__main__':
     from ML_Models.ModelTuning import loadData,showMetrics,topKmetrics
     from Utility import SelectedTaskTypes
     tasktypes=SelectedTaskTypes.loadTaskTypes()
-    for tasktype in tasktypes["clustered"]:
-        for mode in (2,):
+    for tasktype in tasktypes["keeped"]:
+        for mode in (0,1,2):
 
             model=XGBoostClassifier()
             model.name=tasktype+"-classifier"+ModeTag[mode]
@@ -146,5 +146,7 @@ if __name__ == '__main__':
             Y_predict2=model.predict(data.testX)
             showMetrics(Y_predict2,data,model.threshold)
 
-
+            if mode==2:
+                mymetric=TopKMetrics(data.tasktype)
+                topKmetrics(mymetric,Y_predict2,data)
         print()

@@ -22,6 +22,7 @@ class EnsembleClassifier(ML_model):
             'bootstrap':False,
             'n_jobs':-1,
             'verbose':0,
+            'class_weight':{0:1,1:1}
         }
     def __init__(self):
         ML_model.__init__(self)
@@ -34,7 +35,14 @@ class EnsembleClassifier(ML_model):
 
         Y=self.model.predict_proba(X)
         return Y[:,1]
-
+    def loadConf(self):
+        with open("../data/saved_ML_models/classifiers/config/"+self.name+".json","r") as f:
+            paras=json.load(f)
+        for k in paras.keys():
+            self.params[k]=paras[k]
+    def saveConf(self):
+        with open("../data/saved_ML_models/classifiers/config/"+self.name+".json","w") as f:
+            json.dump(self.params,f)
     def updateParameters(self,paras):
         for k in paras:
             self.params[k]=paras[k]
@@ -47,7 +55,8 @@ class EnsembleClassifier(ML_model):
             {'max_depth':[i for i in range(3,20)]},
             {'min_samples_split':[i for i in range(20,100,5)]},
             {'min_samples_leaf':[i for i in range(5,30,2)]},
-            {'max_features':["sqrt","log2",None]},
+            {'max_features':["auto","sqrt","log2",None]},
+            {'class_weight':[{0:1,1:i} for i in range(1,7)]}
         ]
 
 
@@ -59,16 +68,18 @@ class EnsembleClassifier(ML_model):
             print("best para",gsearch.best_params_)
             self.updateParameters(gsearch.best_params_)
 
+        self.saveConf()
         self.model=ensemble.ExtraTreesClassifier(**self.params)
 
     def trainModel(self,dataSet):
         print("training")
         t0=time.time()
-
-        self.searchParameters(dataSet)
-
-        print("training label(2) test",Counter(dataSet.trainLabel))
-        print("validating label(2) test",Counter(dataSet.validateLabel))
+        try:
+            self.loadConf()
+            self.model=ensemble.ExtraTreesClassifier(**self.params)
+        except:
+            print("loading configuration failed")
+            self.searchParameters(dataSet)
 
         self.model.fit(dataSet.trainX,dataSet.trainLabel)
 
@@ -88,7 +99,7 @@ if __name__ == '__main__':
     from ML_Models.ModelTuning import loadData,showMetrics,topKmetrics
     from Utility import SelectedTaskTypes
     tasktypes=SelectedTaskTypes.loadTaskTypes()
-    for tasktype in tasktypes["clustered"]:
+    for tasktype in tasktypes["keeped"]:
         for mode in (2,):
 
             #if "Architecture" in tasktype:
@@ -98,11 +109,13 @@ if __name__ == '__main__':
 
             data=loadData(tasktype,mode)
             #train model
-            #dnnmodel.loadModel()
             dnnmodel.trainModel(data);dnnmodel.saveModel()
             #measuer model
-            #dnnmodel.loadModel()
+            dnnmodel.loadModel()
             Y_predict2=dnnmodel.predict(data.testX)
             showMetrics(Y_predict2,data,dnnmodel.threshold)
 
-
+            #winners
+            if mode==2:
+                mymetric=TopKMetrics(data.tasktype)
+                topKmetrics(mymetric,Y_predict2,data)
