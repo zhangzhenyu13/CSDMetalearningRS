@@ -171,10 +171,10 @@ Readers can refer to MetaLearning.py of ML_Models package which implemented some
 Please give a cite to our work if you want use the project somewhere else. 
 </h2>
 <pre><code>@INPROCEEDINGS{metalearning-recommender, 
-author={AnonymousAuthor2013}, 
-title={Developer Recommendation for Crowdsourcing Software Development through a Meta-learning based Policy Model},
+author={Zhenyu Zhang}, 
+title={Developer Recommendation for Topcoder through aMeta-learning based Policy Model},
 year={2019},
-url={https://github.com/AnonymousAuthor2013/CSDMetalearningRS} 
+url={https://github.com/zhangzhenyu13/CSDMetalearningRS} 
 }
 
   </body>
