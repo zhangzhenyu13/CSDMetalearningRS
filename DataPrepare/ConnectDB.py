@@ -1,6 +1,7 @@
 import xml.dom.minidom as xmlparser
 import pymysql
-import warnings
+import tqdm
+
 def ConnectDB():
     #READ PARAMETERS
     dom=xmlparser.parse("../data/dbSetup.xml")
@@ -16,18 +17,21 @@ def ConnectDB():
     return conn
 
 #for test purpose
-def testConnect(cur):
-    sql = "select * from challenge_item limit 10;"
+def ConnectTest(cur):
+    sql = "select * from challenge_item;"
     cur.execute(sql)
+    cur.fetchone()
     rows = cur.fetchall()
-
-    for dr in rows:
-        print(dr)
-
-
+    data=[]
+    count=10
+    for dr in tqdm.tqdm(rows):
+        data.append(dr)
+        if len(data)<count:
+            print(dr)
+    print(len(data))
 def main():
 
-    testConnect(ConnectDB().cursor())
+    ConnectTest(ConnectDB().cursor())
 
 if __name__=="__main__":
     main()

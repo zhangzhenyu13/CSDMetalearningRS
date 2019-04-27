@@ -1,7 +1,7 @@
 <config>
-    <host>192.168.3.125</host>
+    <host>39.105.65.95</host>
     <port>3306</port>
-    <dbname>topcoder</dbname>
+    <dbname>topcoderylt</dbname>
     <user>root</user>
-    <password>123456</password>
+    <password>cooper@2018</password>
 </config>
