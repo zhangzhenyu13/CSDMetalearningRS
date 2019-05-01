@@ -6,9 +6,11 @@ from Utility.TagsDef import ModeTag
 from keras.wrappers.scikit_learn import KerasRegressor
 from sklearn.model_selection import GridSearchCV
 from ML_Models.UserMetrics import TopKMetrics
+from ML_Models.Model_def import Maskdata
 import warnings
 warnings.filterwarnings("ignore")
-
+Maskdata.initMasks(130)
+mask=Maskdata.maskLanguage
 
 #create model
 def createDNN(dp=0.5):
@@ -40,6 +42,7 @@ class DNNCLassifier(ML_model):
     def __init__(self):
         ML_model.__init__(self)
         self.initParameters()
+        self.mask=mask
 
     def loadConf(self):
         with open("../data/saved_ML_models/dnns/config/"+self.name+".json","r") as f:
@@ -83,6 +86,9 @@ class DNNCLassifier(ML_model):
         except:
             print("loading configuration failed")
             self.searchParameters(dataSet)
+        self.maskX(data.trainX)
+        self.maskX(dataSet.validateX)
+        #self.maskX(data.testX)
 
         self.model.fit(dataSet.trainX,dataSet.trainLabel,verbose=0,epochs=5,batch_size=500)
 
@@ -91,6 +97,7 @@ class DNNCLassifier(ML_model):
         print("finished in %ds"%(t1-t0),"mse=",mse)
 
     def predict(self,X):
+        self.maskX(X)
         if self.verbose>0:
             print(self.name,"(DNN) is predicting ")
         Y=self.model.predict(X,verbose=0)

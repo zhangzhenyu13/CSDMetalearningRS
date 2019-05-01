@@ -71,6 +71,7 @@ class Maskdata:
             [],
             [],
         ]
+
         with open("../data/masks","r") as f:
             lines=f.readlines()
             i=0

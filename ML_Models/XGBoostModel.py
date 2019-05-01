@@ -6,8 +6,11 @@ from sklearn import metrics
 from sklearn.model_selection import GridSearchCV
 import warnings
 from ML_Models.UserMetrics import TopKMetrics
+from ML_Models.Model_def import Maskdata
+Maskdata.initMasks(130)
 
 warnings.filterwarnings("ignore")
+mask=Maskdata.maskLanguage
 
 class XGBoostClassifier(ML_model):
 
@@ -51,8 +54,11 @@ class XGBoostClassifier(ML_model):
         self.trainEpchos=500
         self.threshold=0.5
         self.initParameters()
+        self.mask=mask
 
     def predict(self,X):
+        self.maskX(X)
+
         if self.verbose>0:
             print(self.name,"XGBoost model is predicting")
         InputData=xgboost.DMatrix(data=X)
@@ -113,7 +119,8 @@ class XGBoostClassifier(ML_model):
             json.dump(self.params,f)
 
     def trainModel(self,dataSet):
-
+        self.maskX(dataSet.trainX)
+        self.maskX(dataSet.validateX)
         #procedure 1=>search best parameters
         try:
             self.loadConf()

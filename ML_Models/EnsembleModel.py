@@ -6,8 +6,11 @@ import time,json
 from sklearn.model_selection import GridSearchCV
 import warnings
 from ML_Models.UserMetrics import TopKMetrics
-
+from ML_Models.Model_def import Maskdata
 warnings.filterwarnings("ignore")
+Maskdata.initMasks(130)
+
+mask=Maskdata.maskLanguage
 
 class EnsembleClassifier(ML_model):
     def initParameters(self):
@@ -27,7 +30,9 @@ class EnsembleClassifier(ML_model):
     def __init__(self):
         ML_model.__init__(self)
         self.initParameters()
+        self.mask=mask
     def predict(self,X):
+        self.maskX(X)
         if  len(X)==0:
             return np.array([],dtype=np.int)
         if self.verbose>0:
@@ -74,6 +79,10 @@ class EnsembleClassifier(ML_model):
     def trainModel(self,dataSet):
         print("training")
         t0=time.time()
+
+        self.maskX(dataSet.trainX)
+        self.maskX(dataSet.validateX)
+
         try:
             self.loadConf()
             self.model=ensemble.ExtraTreesClassifier(**self.params)

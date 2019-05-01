@@ -6,10 +6,14 @@ from ML_Models.XGBoostModel import XGBoostClassifier
 from ML_Models.DNNModel import DNNCLassifier
 from ML_Models.EnsembleModel import EnsembleClassifier
 from sklearn.base import BaseEstimator,RegressorMixin
+from ML_Models.Model_def import Maskdata
+Maskdata.initMasks(130)
+mask=Maskdata.maskLanguage
+
 class CascadingModel(BaseEstimator,RegressorMixin):
 
     def initData(self):
-
+        self.mask=mask
         self.mymetric=TopKMetrics(tasktype=self.digtype,testMode=True)
         self.subExpr=self.mymetric.subRank
         self.userIndex=getUsers(self.digtype+"-test",mode=2)
@@ -64,6 +68,9 @@ class CascadingModel(BaseEstimator,RegressorMixin):
         self.regModel=self.availableModels[self.metaReg]()
         self.subModel=self.availableModels[self.metaSub]()
         self.winModel=self.availableModels[self.metaWin]()
+        self.regModel.mask=mask
+        self.subModel.mask=mask
+        self.winModel.mask=mask
 
         self.winModel.name=tasktype+"-classifierWin"
 
