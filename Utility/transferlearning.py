@@ -152,5 +152,5 @@ def gentransferNeighbors(cr_threshold_reg=0.8,cr_threshold_sub=0.6,cr_threshold_
 
 if __name__ == '__main__':
     tasktypes=SelectedTaskTypes.loadTaskTypes()
-    #genCRTable(tasktypes["keeped"])
+    genCRTable(tasktypes["keeped"])
     gentransferNeighbors(cr_threshold_win=0)

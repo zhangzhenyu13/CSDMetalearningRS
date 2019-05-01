@@ -111,6 +111,18 @@ class DataSetTopcoder:
 
         label_status=Counter(labels)
         print(self.tasktype,"data "+self.tasktype,label_status)
+
+        featurelen=len(data[0])
+        if 1 not in label_status.keys():
+            x,y=np.zeros(shape=featurelen,dtype=np.int),1
+        elif 0 not in label_status.keys():
+            x,y=np.zeros(shape=featurelen,dtype=np.int),0
+        else:
+            x,y=None,None
+        if x is not None:
+            data=np.insert(data,0,x,0)
+            labels=np.insert(labels,0,y,0)
+
         if len(label_status)<2:
             print(self.tasktype,"no need to resample")
             return data,labels
@@ -210,8 +222,13 @@ class TopcoderWin(DataSetTopcoder):
         self.trainX=self.trainX[indices]
         self.trainLabel=self.trainLabel[indices]
         indices=np.where(validateSub>0)[0]
-        self.validateX=self.validateX[indices]
-        self.validateLabel=self.validateLabel[indices]
+        if len(indices)==0:
+            self.validateLabel=self.trainLabel[-2:-1]
+            self.validateX=self.trainX[-2:-1]
+        else:
+            self.validateX=self.validateX[indices]
+            self.validateLabel=self.validateLabel[indices]
+
         print("after refactoring, train size=%d,validate size=%d,test size=%d"%(
             len(self.trainLabel),len(self.validateLabel),len(self.testLabel)))
 
@@ -229,3 +246,12 @@ class TopcoderWin(DataSetTopcoder):
         self.trainLabel=np.array(self.trainLabel==0,dtype=np.int)
         self.validateLabel=np.array(self.validateLabel==0,dtype=np.int)
         self.testLabel=np.array(self.testLabel==0,dtype=np.int)
+
+if __name__ == '__main__':
+    from Utility import SelectedTaskTypes
+    tasktypes=SelectedTaskTypes.loadTaskTypes()["keeped"]
+    #tasktypes=("global",)
+    for tasktype in tasktypes:
+        data=TopcoderWin(tasktype)
+        data.loadData()
+        print(tasktype,data.validatePoint,data.testPoint)

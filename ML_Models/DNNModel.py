@@ -78,6 +78,9 @@ class DNNCLassifier(ML_model):
 
     def trainModel(self,dataSet):
         print(self.name+" training")
+        self.maskX(dataSet.trainX)
+        self.maskX(dataSet.validateX)
+
         t0=time.time()
         try:
             self.loadConf()
@@ -86,8 +89,7 @@ class DNNCLassifier(ML_model):
         except:
             print("loading configuration failed")
             self.searchParameters(dataSet)
-        self.maskX(data.trainX)
-        self.maskX(dataSet.validateX)
+
         #self.maskX(data.testX)
 
         self.model.fit(dataSet.trainX,dataSet.trainLabel,verbose=0,epochs=5,batch_size=500)

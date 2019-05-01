@@ -22,8 +22,11 @@ class DataInstances(multiprocessing.Process):
         self.filePath="../data/TopcoderDataSet/"+ModeTag[self.usingMode].lower()+\
                  "HistoryBasedData/"+self.tasktype+"-user_task.data"
 
+
     def run(self):
         self.loadData()
+
+        self.watchUsers()
 
         self.createInstancesWithHistoryInfo()
 
@@ -79,6 +82,53 @@ class DataInstances(multiprocessing.Process):
                 data.append(filepath+str(seg))
             pickle.dump(data,f)
 
+    def watchUsers(self):
+
+        userData=self.userdata.loadActiveUserHistory(tasktype=self.tasktype,mode=self.usingMode)
+        UsersIndex=getUsers(self.tasktype,self.usingMode)
+
+        watchPoint=int(0.7*len(self.selTasks.taskIDs))-1
+
+        for index in range(len(self.selTasks.taskIDs)):
+
+
+            id,date=self.selTasks.taskIDs[index],self.selTasks.postingdate[index]
+
+            reg_usernams, regDates=self.regdata.getRegUsers(id)
+
+            if reg_usernams is None:
+                continue
+
+            naiveUcount=0
+            if watchPoint==index:
+                for nth in range(len(UsersIndex)):
+                    name=UsersIndex[nth]
+                    tenure= userData[name]["tenure"]
+                    if tenure<=date:
+                        naiveUcount+=1
+                print("\n %d cold users in %s\n"%(naiveUcount,self.tasktype))
+                exit(12)
+
+            for nth in range(len(UsersIndex)):
+                name=UsersIndex[nth]
+
+                tenure, skills,skills_vec = \
+                    userData[name]["tenure"],userData[name]["skills"],userData[name]["skills_vec"]
+
+                #get reg and sub history before date for user:name
+                regtasks = userData[name]["regtasks"]
+                while len(regtasks[0]) > 0 and regtasks[1][0] <= date:
+                    for l in range(len(regtasks)):
+                        regtasks[l] = np.delete(regtasks[l], 0, axis=0)
+                userData[name]["regtasks"] = regtasks
+
+                subtasks = userData[name]["subtasks"]
+                while len(subtasks[0]) > 0 and subtasks[2][0] <= date:
+                    for l in range(len(subtasks)):
+                        subtasks[l] = np.delete(subtasks[l], 0, axis=0)
+                userData[name]["subtasks"] = subtasks
+
+
     def createInstancesWithHistoryInfo(self,threshold=6e+5,verboseNum=1e+3):
         filepath=self.filePath
 
@@ -105,6 +155,8 @@ class DataInstances(multiprocessing.Process):
         t0=time.time()
 
         for index in range(len(self.selTasks.taskIDs)):
+
+
             if (index+1)%verboseNum==0:
                 print(self.tasktype+"=>:",index+1,"of",len(self.selTasks.taskIDs),
                       "current size=%d"%(len(taskids)),"in %ds"%(time.time()-t0))
@@ -118,6 +170,7 @@ class DataInstances(multiprocessing.Process):
             if reg_usernams is None:
                 missingtask+=1
                 continue
+
             for nth in range(len(UsersIndex)):
                 name=UsersIndex[nth]
 
@@ -295,7 +348,7 @@ def genDataSet():
 
     tasktypes=SelectedTaskTypes.loadTaskTypes()
 
-    for t in tasktypes["clustered"]:
+    for t in tasktypes["keeped"]:
 
         if len(process_pools)<DataInstances.maxProcessNum:
             proc=DataInstances(tasktype=t,cond=cond,queue=queue,usingmode=mode,testMode=testInst)
@@ -329,7 +382,7 @@ if __name__ == '__main__':
     queue=multiprocessing.Queue()
 
     mode=2
-    testInst=True
+    testInst=False
     #DataInstances(tasktype="global",cond=cond,queue=queue,usingmode=mode).start();exit()
     genDataSet()
 

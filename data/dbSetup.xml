@@ -1,5 +1,5 @@
 <config>
-    <host>39.105.65.95</host>
+    <host>192.168.7.109</host>
     <port>3306</port>
     <dbname>topcoderylt</dbname>
     <user>root</user>
