@@ -4,10 +4,13 @@ from sklearn import tree,naive_bayes
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
 import time
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
 import warnings
 
 warnings.filterwarnings("ignore")
+
+#cross fold is 10 as in original paper
+cross_folds=10
 
 class NBBayes(ML_model):
 
@@ -28,7 +31,8 @@ class NBBayes(ML_model):
         print("training")
         t0=time.time()
 
-        self.model=naive_bayes.GaussianNB()
+        self.model=GridSearchCV(naive_bayes.GaussianNB(),cv=cross_folds,param_grid={})
+
 
         print("training label(2) test",Counter(dataSet.trainLabel))
         print("validating label(2) test",Counter(dataSet.validateLabel))
@@ -89,7 +93,7 @@ class DecsionTree(ML_model):
         for i in range(len(selParas)):
             para=selParas[i]
             model=tree.DecisionTreeClassifier(**self.params)
-            gsearch=GridSearchCV(model,para,scoring=metrics.make_scorer(metrics.accuracy_score))
+            gsearch=GridSearchCV(model,para,cv=cross_folds,scoring=metrics.make_scorer(metrics.accuracy_score))
             gsearch.fit(dataSet.trainX,dataSet.trainLabel)
             print("best para",gsearch.best_params_)
             self.updateParameters(gsearch.best_params_)
@@ -142,13 +146,17 @@ class KNN(ML_model):
         print("training")
         t0=time.time()
 
-        self.model=KNeighborsClassifier(self.KN)
-
+        KNeighborsClassifier(self.KN)
+        params={
+            'weights':['uniform','distance'],
+            'algorithm':['auto', 'ball_tree', 'kd_tree', 'brute'],
+            'leaf_size':[i for i in range(5,61,5)],
+            'p':[1,2],
+        }
+        self.model=GridSearchCV(KNeighborsClassifier,cv=cross_folds,param_grid=params)
         print("training label(2) test",Counter(dataSet.trainLabel))
         print("validating label(2) test",Counter(dataSet.validateLabel))
-
         self.model.fit(dataSet.trainX,dataSet.trainLabel)
-
         t1=time.time()
 
         #measure training result
