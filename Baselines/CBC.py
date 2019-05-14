@@ -1,6 +1,6 @@
 from ML_Models.Model_def import *
 from DataPrepare.TopcoderDataSet import *
-from sklearn import tree,naive_bayes
+from sklearn import tree,naive_bayes,svm
 from sklearn import metrics
 import time
 from sklearn.model_selection import GridSearchCV
@@ -169,30 +169,46 @@ class DecsionTree(ML_model):
 
 
 class CBCModel:
-    def __init__(self,learner,clustering):
-        self.model=learner
+    def __init__(self,learners,clustering):
+        self.models={}
+        if type(learners) not in(list, tuple):
+            learners=[learners]
+        for i in range(len(learners)):
+            self.models[i]=learners
         self.clustering=clustering
+
     def predict(self,X,clustered=False):
         if clustered:
-            Y=self.model.predict_proba(X)
+            cluster_no=self.clustering.predict(X)
+            Y=self.models[cluster_no].predict(X)
             return Y[:,1]
 
-        predictor=Pipeline([('clustering',self.clustering),('classifier',self.model)])
-        Y=predictor.predict_proba(X)
+
+        Y=self.models[0].predict_proba(X)
         return Y[:,1]
 
-def buildCBC(tasktype,classifierNo=0):
+def buildCBC(tasktype,classifierNo=0,clusters=0):
     if classifierNo==0:
-        classifier=DecsionTree()
+        classifier=DecsionTree
     else:
-        classifier=NBBayes()
+        classifier=NBBayes
 
-    classifier.name=tasktype+"-classifier"+ModeTag[2]
-    classifier.loadModel()
+    learners=[]
+    if clusters>0:
+        for i in range(clusters):
+            learner=classifier()
+            learner.name=tasktype+"-classifier"+ModeTag[2]
+            learner.loadModel()
+            learners.append(learner)
+    else:
+        classifier=classifier()
+        classifier.name=tasktype+"-classifier"+ModeTag[2]
+        classifier.loadModel()
+        learners.append(classifier)
 
     clustering=ClusteringModel()
 
-    return CBCModel(classifier,clustering)
+    return CBCModel(learners,clustering)
 
 def train(mode):
     #CBC employs an clustering+ classification style method to predict winners
